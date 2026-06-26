@@ -19,18 +19,13 @@ export async function createClientAction(data: CreateClientData) {
   const adminSupabase = createAdminClient()
   const supabase = await createClient()
 
-  // Verificar que quien llama es un empleado
+  // Verificar que quien llama es un empleado leyendo el rol del JWT (app_metadata)
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) return { error: 'No autorizado — sesión no encontrada' }
   const user = session.user
 
-  const { data: profile } = await adminSupabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profile?.role !== 'employee') return { error: 'No autorizado — rol incorrecto' }
+  const role = user.app_metadata?.role
+  if (role !== 'employee') return { error: 'No autorizado — rol incorrecto: ' + (role ?? 'sin rol') }
 
   // 1. Crear usuario en Supabase Auth con rol 'client' en metadata
   const { data: authData, error: authError } = await adminSupabase.auth.admin.createUser({
