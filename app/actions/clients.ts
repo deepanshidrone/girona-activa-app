@@ -40,12 +40,7 @@ export async function createClientAction(data: CreateClientData) {
     return { error: 'Error al crear el acceso: ' + authError.message }
   }
 
-  // 2. Forzar la sesión del empleado en el cliente antes del insert
-  await supabase.auth.setSession({
-    access_token: session.access_token,
-    refresh_token: session.refresh_token,
-  })
-
+  // 2. Insertar cliente
   const { error: clientError } = await supabase.from('clients').insert({
     user_id: authData?.user?.id ?? null,
     first_name: data.first_name,

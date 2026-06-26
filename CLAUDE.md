@@ -215,6 +215,21 @@ Vercel pla Hobby no permet col·laboració en repos privats. Per al MVP és
 acceptable (les claus d'entorn mai van al repo). Avaluar canvi a privat / Pro quan
 el projecte estigui en producció real.
 
+### Permisos PostgreSQL — GRANT obligatori
+
+Supabase NO atorga automàticament permisos de taula als rols `authenticated` i `service_role`.
+Cada vegada que es creen taules noves, cal executar al SQL Editor:
+
+```sql
+GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO authenticated;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
+```
+
+Sense això, qualsevol operació d'escriptura retorna `permission denied for table X`
+**encara que RLS estigui desactivat i el service_role key sigui correcte.**
+
 ### shadcn/ui + Tailwind v4
 shadcn init sobreescriu globals.css. Després de cada `shadcn init` cal verificar:
 1. `--font-sans` no sigui circular (`var(--font-sans)` → canviar per `"Outfit", Arial, sans-serif`)
