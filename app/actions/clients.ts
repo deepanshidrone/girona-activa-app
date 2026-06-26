@@ -19,7 +19,7 @@ export async function createClientAction(data: CreateClientData) {
   const adminSupabase = createAdminClient()
   const supabase = await createClient()
 
-  // Verificar que quien llama es un empleado leyendo el rol del JWT (app_metadata)
+  // Verificar que quien llama es un empleado
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) return { error: 'No autorizado — sesión no encontrada' }
   const user = session.user
@@ -30,19 +30,22 @@ export async function createClientAction(data: CreateClientData) {
   // 1. Crear usuario en Supabase Auth con rol 'client' en metadata
   const { data: authData, error: authError } = await adminSupabase.auth.admin.createUser({
     email: data.email,
-    password: crypto.randomUUID(), // contraseña temporal aleatoria
+    password: crypto.randomUUID(),
     email_confirm: true,
     user_metadata: { role: 'client' },
+    app_metadata: { role: 'client' },
   })
 
-  if (authError) {
-    // Si el email ya existe, intentamos obtener el usuario existente
-    if (!authError.message.includes('already')) {
-      return { error: 'Error al crear el acceso: ' + authError.message }
-    }
+  if (authError && !authError.message.includes('already')) {
+    return { error: 'Error al crear el acceso: ' + authError.message }
   }
 
-  // 2. Insertar en la tabla clients con el cliente del usuario logueado
+  // 2. Forzar la sesión del empleado en el cliente antes del insert
+  await supabase.auth.setSession({
+    access_token: session.access_token,
+    refresh_token: session.refresh_token,
+  })
+
   const { error: clientError } = await supabase.from('clients').insert({
     user_id: authData?.user?.id ?? null,
     first_name: data.first_name,
