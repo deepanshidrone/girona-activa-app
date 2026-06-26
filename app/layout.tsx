@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
 import "./globals.css";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const outfit = Outfit({
   variable: "--font-outfit",
@@ -19,8 +20,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={`${outfit.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-white text-dark">
-        {children}
+      <body className="min-h-full flex flex-col">
+        <TooltipProvider>{children}</TooltipProvider>
       </body>
     </html>
   );
