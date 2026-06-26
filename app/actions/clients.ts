@@ -24,7 +24,7 @@ export async function createClientAction(data: CreateClientData) {
   if (!session) return { error: 'No autorizado — sesión no encontrada' }
   const user = session.user
 
-  const { data: profile } = await supabase
+  const { data: profile } = await adminSupabase
     .from('profiles')
     .select('role')
     .eq('id', user.id)
@@ -47,8 +47,8 @@ export async function createClientAction(data: CreateClientData) {
     }
   }
 
-  // 2. Insertar en la tabla clients usando el cliente del empleado logueado (respeta RLS)
-  const { error: clientError } = await supabase.from('clients').insert({
+  // 2. Insertar en la tabla clients (admin client bypasea RLS — ya verificamos el rol manualmente)
+  const { error: clientError } = await adminSupabase.from('clients').insert({
     user_id: authData?.user?.id ?? null,
     first_name: data.first_name,
     last_name: data.last_name,
