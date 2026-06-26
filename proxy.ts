@@ -43,6 +43,11 @@ export async function proxy(request: NextRequest) {
   }
 
   // Si ya está logueado y va al login, redirige al dashboard
+  // (pero no interceptar /logout)
+  if (request.nextUrl.pathname === '/logout') {
+    return supabaseResponse
+  }
+
   if (request.nextUrl.pathname === '/login' && user) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
