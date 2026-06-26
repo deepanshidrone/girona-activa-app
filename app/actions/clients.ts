@@ -20,8 +20,9 @@ export async function createClientAction(data: CreateClientData) {
   const supabase = await createClient()
 
   // Verificar que quien llama es un empleado
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'No autorizado' }
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) return { error: 'No autorizado — sesión no encontrada' }
+  const user = session.user
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -29,7 +30,7 @@ export async function createClientAction(data: CreateClientData) {
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'employee') return { error: 'No autorizado' }
+  if (profile?.role !== 'employee') return { error: 'No autorizado — rol incorrecto' }
 
   // 1. Crear usuario en Supabase Auth con rol 'client' en metadata
   const { data: authData, error: authError } = await adminSupabase.auth.admin.createUser({
