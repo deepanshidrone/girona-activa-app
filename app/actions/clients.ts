@@ -46,8 +46,8 @@ export async function createClientAction(data: CreateClientData) {
     }
   }
 
-  // 2. Insertar en la tabla clients
-  const { error: clientError } = await adminSupabase.from('clients').insert({
+  // 2. Insertar en la tabla clients usando el cliente del empleado logueado (respeta RLS)
+  const { error: clientError } = await supabase.from('clients').insert({
     user_id: authData?.user?.id ?? null,
     first_name: data.first_name,
     last_name: data.last_name,

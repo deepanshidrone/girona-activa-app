@@ -114,7 +114,9 @@ export default function NuevoClientePage() {
           <Label>Sexo <span className="text-red-500">*</span></Label>
           <Select value={form.sex} onValueChange={(val) => setForm({ ...form, sex: val ?? '' })} required>
             <SelectTrigger>
-              <SelectValue placeholder="Selecciona..." />
+              <SelectValue placeholder="Selecciona...">
+                {form.sex === 'male' ? 'Hombre' : form.sex === 'female' ? 'Mujer' : form.sex === 'other' ? 'Otro' : ''}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="male">Hombre</SelectItem>
