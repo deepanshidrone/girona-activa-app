@@ -215,6 +215,21 @@ Vercel pla Hobby no permet col·laboració en repos privats. Per al MVP és
 acceptable (les claus d'entorn mai van al repo). Avaluar canvi a privat / Pro quan
 el projecte estigui en producció real.
 
+### Polítiques RLS — usar auth.role() no is_employee()
+
+Les funcions `is_employee()` i `is_client()` no funcionen bé en Server Components/Actions
+perquè `auth.uid()` no es resol correctament en context de servidor amb el publishable key.
+
+**Política correcta per al MVP:**
+```sql
+-- Qualsevol usuari autenticat pot fer CRUD (la seguretat real és al proxy)
+FOR SELECT USING (auth.role() = 'authenticated')
+FOR INSERT WITH CHECK (auth.role() = 'authenticated')
+FOR UPDATE USING (auth.role() = 'authenticated')
+```
+
+Aplicar el mateix patró a totes les taules noves.
+
 ### Permisos PostgreSQL — GRANT obligatori
 
 Supabase NO atorga automàticament permisos de taula als rols `authenticated` i `service_role`.
