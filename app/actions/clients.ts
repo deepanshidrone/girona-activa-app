@@ -27,20 +27,27 @@ export async function createClientAction(data: CreateClientData) {
   const role = user.app_metadata?.role
   if (role !== 'employee') return { error: 'No autorizado — rol incorrecto: ' + (role ?? 'sin rol') }
 
-  // 1. Crear usuario en Supabase Auth con rol 'client' en metadata
-  const { data: authData, error: authError } = await adminSupabase.auth.admin.createUser({
-    email: data.email,
-    password: crypto.randomUUID(),
-    email_confirm: true,
-    user_metadata: { role: 'client' },
-    app_metadata: { role: 'client' },
-  })
+  // 1. Invitar al cliente — crea el usuario Y envía el email de bienvenida automáticamente
+  const { data: authData, error: authError } = await adminSupabase.auth.admin.inviteUserByEmail(
+    data.email,
+    {
+      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?next=/client/set-password`,
+      data: { role: 'client' },
+    }
+  )
 
-  if (authError && !authError.message.includes('already')) {
-    return { error: 'Error al crear el acceso: ' + authError.message }
+  if (authError) {
+    return { error: 'Error al enviar la invitación: ' + authError.message }
   }
 
-  // 2. Insertar cliente
+  // 2. Establecer app_metadata con el rol (inviteUserByEmail solo set user_metadata)
+  if (authData?.user) {
+    await adminSupabase.auth.admin.updateUserById(authData.user.id, {
+      app_metadata: { role: 'client' },
+    })
+  }
+
+  // 3. Insertar cliente en la BD
   const { error: clientError } = await supabase.from('clients').insert({
     user_id: authData?.user?.id ?? null,
     first_name: data.first_name,
@@ -56,14 +63,6 @@ export async function createClientAction(data: CreateClientData) {
 
   if (clientError) {
     return { error: 'Error al guardar el cliente: ' + clientError.message }
-  }
-
-  // 3. Enviar email para que el cliente establezca su contraseña
-  if (authData?.user) {
-    await adminSupabase.auth.admin.generateLink({
-      type: 'recovery',
-      email: data.email,
-    })
   }
 
   return { success: true }
