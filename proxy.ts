@@ -2,55 +2,59 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function proxy(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
-  })
+  let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
       cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
+        getAll() { return request.cookies.getAll() },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          )
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({ request })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
+          cookiesToSet.forEach(({ name, value, options }) => supabaseResponse.cookies.set(name, value, options))
         },
       },
     }
   )
 
-  // Refresca la sesión si ha expirado
+  // No interceptar /logout
+  if (request.nextUrl.pathname === '/logout') return supabaseResponse
+
   const { data: { user } } = await supabase.auth.getUser()
+  const role = user?.app_metadata?.role as string | undefined
+  const path = request.nextUrl.pathname
 
-  // Rutas protegidas — redirige al login si no hay sesión
-  const protectedRoutes = ['/dashboard', '/clientes', '/ejercicios', '/planes']
-  const isProtectedRoute = protectedRoutes.some(route =>
-    request.nextUrl.pathname.startsWith(route)
-  )
+  // Rutas protegidas por rol
+  const isEmployeeRoute = path.startsWith('/dashboard')
+  const isClientRoute = path.startsWith('/client')
 
-  if (isProtectedRoute && !user) {
+  // Sin sesión → login
+  if ((isEmployeeRoute || isClientRoute) && !user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  // Si ya está logueado y va al login, redirige al dashboard
-  // (pero no interceptar /logout)
-  if (request.nextUrl.pathname === '/logout') {
-    return supabaseResponse
+  // Cliente intentando acceder a rutas de empleado → su área
+  if (isEmployeeRoute && role === 'client') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/client'
+    return NextResponse.redirect(url)
   }
 
-  if (request.nextUrl.pathname === '/login' && user) {
+  // Empleado intentando acceder a rutas de cliente → su área
+  if (isClientRoute && role === 'employee') {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
+    return NextResponse.redirect(url)
+  }
+
+  // Login con sesión activa → redirigir según rol
+  if (path === '/login' && user) {
+    const url = request.nextUrl.clone()
+    url.pathname = role === 'client' ? '/client' : '/dashboard'
     return NextResponse.redirect(url)
   }
 
