@@ -8,7 +8,7 @@ export default async function EjerciciosPage() {
   const supabase = await createClient()
 
   const [
-    { data: exercises },
+    { data: exercises, error: exError },
     { data: movementPatterns },
     { data: muscleGroups },
     { data: equipment },
@@ -16,12 +16,7 @@ export default async function EjerciciosPage() {
   ] = await Promise.all([
     supabase.from('exercises').select(`
       id, name, level, technical_level, progression, regression,
-      movement_patterns (id, name),
-      equipment (id, name),
-      objectives (id, name),
-      exercise_muscle_groups (
-        muscle_groups (id, name)
-      )
+      movement_pattern_id, equipment_id, objective_id
     `).order('name'),
     supabase.from('movement_patterns').select('id, name').order('name'),
     supabase.from('muscle_groups').select('id, name').order('name'),
@@ -29,13 +24,33 @@ export default async function EjerciciosPage() {
     supabase.from('objectives').select('id, name').order('name'),
   ])
 
+  // Fetch muscle groups per exercise separately
+  const exercisesWithData = await Promise.all(
+    (exercises ?? []).map(async (ex) => {
+      const { data: mgs } = await supabase
+        .from('exercise_muscle_groups')
+        .select('muscle_group_id')
+        .eq('exercise_id', ex.id)
+
+      return {
+        ...ex,
+        movement_patterns: movementPatterns?.find(mp => mp.id === ex.movement_pattern_id) ?? null,
+        equipment: equipment?.find(eq => eq.id === ex.equipment_id) ?? null,
+        objectives: objectives?.find(ob => ob.id === ex.objective_id) ?? null,
+        exercise_muscle_groups: (mgs ?? []).map(mg => ({
+          muscle_groups: muscleGroups?.find(m => m.id === mg.muscle_group_id) ?? null
+        }))
+      }
+    })
+  )
+
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-[#1C1C1C]">Ejercicios</h1>
           <p className="text-[#666666] text-sm mt-1">
-            {exercises?.length ?? 0} ejercicio{exercises?.length !== 1 ? 's' : ''} en la galería
+            {exercisesWithData?.length ?? 0} ejercicio{exercisesWithData?.length !== 1 ? 's' : ''} en la galería
           </p>
         </div>
         <Link href="/dashboard/ejercicios/nuevo">
@@ -46,7 +61,7 @@ export default async function EjerciciosPage() {
         </Link>
       </div>
 
-      {!exercises || exercises.length === 0 ? (
+      {!exercisesWithData || exercisesWithData.length === 0 ? (
         <div className="bg-white rounded-2xl border border-[#E5E5E5] p-12 flex flex-col items-center justify-center text-center">
           <div className="w-12 h-12 rounded-full bg-[#FF914D]/10 flex items-center justify-center mb-4">
             <Dumbbell className="h-6 w-6 text-[#FF914D]" />
@@ -62,7 +77,7 @@ export default async function EjerciciosPage() {
         </div>
       ) : (
         <EjerciciosGallery
-          exercises={exercises as any}
+          exercises={exercisesWithData as any}
           movementPatterns={movementPatterns ?? []}
           muscleGroups={muscleGroups ?? []}
           equipment={equipment ?? []}
