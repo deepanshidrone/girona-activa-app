@@ -31,7 +31,7 @@ export async function createClientAction(data: CreateClientData) {
   const { data: authData, error: authError } = await adminSupabase.auth.admin.inviteUserByEmail(
     data.email,
     {
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?next=/client/set-password`,
+      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/confirm`,
       data: { role: 'client' },
     }
   )
