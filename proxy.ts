@@ -19,8 +19,9 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  // No interceptar /logout
-  if (request.nextUrl.pathname === '/logout') return supabaseResponse
+  // No interceptar rutas de auth
+  const authPaths = ['/logout', '/auth/confirm', '/auth/callback']
+  if (authPaths.some(p => request.nextUrl.pathname.startsWith(p))) return supabaseResponse
 
   const { data: { user } } = await supabase.auth.getUser()
   const role = user?.app_metadata?.role as string | undefined
