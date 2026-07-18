@@ -50,7 +50,7 @@ export function AppSidebar() {
       {/* Header */}
       <SidebarHeader className="px-4 py-5 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full overflow-hidden shrink-0">
+          <Link href="/dashboard" className="w-9 h-9 rounded-full overflow-hidden shrink-0 block">
             <Image
               src="/logo.png"
               alt="Girona Activa"
@@ -58,7 +58,7 @@ export function AppSidebar() {
               height={36}
               className="object-cover w-full h-full"
             />
-          </div>
+          </Link>
           <span
             className="text-white text-sm font-semibold tracking-widest uppercase"
             style={{ fontStyle: 'italic', transform: 'skewX(-12deg)', display: 'inline-block' }}
