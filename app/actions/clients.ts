@@ -60,7 +60,8 @@ async function sendInviteEmail(email: string, firstName: string, inviteLink: str
 
   if (!res.ok) {
     const err = await res.text()
-    throw new Error('Error Resend: ' + err)
+    const keyPreview = process.env.RESEND_API_KEY?.substring(0, 10) ?? 'UNDEFINED'
+    throw new Error(`Error Resend (key: ${keyPreview}...): ${err}`)
   }
 }
 
