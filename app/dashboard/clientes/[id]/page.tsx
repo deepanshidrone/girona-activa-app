@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, User, Calendar, Dumbbell, ClipboardList } from 'lucide-react'
+import { DeleteClientButton } from './delete-button'
 
 export default async function ClienteDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -56,6 +57,10 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
             </span>
           </div>
         </div>
+      </div>
+
+      <div className="flex justify-end mb-2">
+        <DeleteClientButton clientId={id} clientName={`${cliente.first_name} ${cliente.last_name}`} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
