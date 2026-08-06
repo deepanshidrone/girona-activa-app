@@ -76,6 +76,14 @@ export default async function PlanesPage() {
                       {plan.status === 'active' ? 'Activo' : plan.status === 'draft' ? 'Borrador' : 'Completado'}
                     </span>
                   </td>
+                  <td className="px-5 py-4 text-right">
+                    {plan.status === 'active' && (
+                      <Link href={`/dashboard/planes/${plan.id}/editar`}
+                        className="text-sm font-medium text-[#FF914D] hover:underline">
+                        Editar →
+                      </Link>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
