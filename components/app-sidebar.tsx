@@ -50,21 +50,26 @@ export function AppSidebar() {
       {/* Header */}
       <SidebarHeader className="px-4 py-5 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <Link href="/dashboard" className="w-9 h-9 rounded-full overflow-hidden shrink-0 block">
+          <Link href="/dashboard" className="w-11 h-11 rounded-full overflow-hidden shrink-0 block ring-1 ring-white/20">
             <Image
               src="/logo.png"
               alt="Girona Activa"
-              width={36}
-              height={36}
+              width={44}
+              height={44}
               className="object-cover w-full h-full"
             />
           </Link>
-          <span
-            className="text-white text-sm font-semibold tracking-widest uppercase"
-            style={{ fontStyle: 'italic', transform: 'skewX(-12deg)', display: 'inline-block' }}
-          >
-            GIRONA ACTIVA
-          </span>
+          <div className="flex flex-col">
+            <span
+              className="text-white text-sm font-black tracking-widest uppercase leading-tight"
+              style={{ fontStyle: 'italic', transform: 'skewX(-8deg)', display: 'inline-block' }}
+            >
+              GIRONA <span className="text-[#FF914D]">ACTIVA</span>
+            </span>
+            <span className="text-white/30 text-[10px] tracking-widest uppercase">
+              Centre d&apos;Entrenament
+            </span>
+          </div>
         </div>
       </SidebarHeader>
 

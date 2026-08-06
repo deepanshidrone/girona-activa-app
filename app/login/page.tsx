@@ -31,36 +31,39 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-[#F5F5F5] px-4">
+    <main className="min-h-screen flex items-center justify-center bg-[#111111] px-4">
       <div className="w-full max-w-md">
 
         {/* Logo + nombre */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 rounded-full overflow-hidden mb-4 shadow">
+        <div className="flex flex-col items-center mb-10">
+          <div className="w-24 h-24 rounded-full overflow-hidden mb-5 shadow-lg ring-2 ring-white/10">
             <Image
               src="/logo.png"
               alt="Girona Activa"
-              width={64}
-              height={64}
+              width={96}
+              height={96}
               className="object-cover w-full h-full"
             />
           </div>
           <h1
-            className="text-2xl font-semibold tracking-widest uppercase"
-            style={{ fontStyle: 'italic', transform: 'skewX(-12deg)', color: '#1C1C1C' }}
+            className="text-3xl font-black tracking-widest uppercase text-white"
+            style={{ fontStyle: 'italic', transform: 'skewX(-8deg)', display: 'inline-block' }}
           >
-            GIRONA ACTIVA
+            GIRONA <span className="text-[#FF914D]">ACTIVA</span>
           </h1>
+          <p className="text-white/40 text-xs tracking-widest uppercase mt-1">
+            Centre d&apos;Entrenament
+          </p>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-[#E5E5E5] p-8">
-          <h2 className="text-xl font-bold text-[#1C1C1C] mb-1">Accede a tu cuenta</h2>
-          <p className="text-[#666666] text-sm mb-6">Introduce tu email y contraseña</p>
+        <div className="bg-[#1C1C1C] rounded-2xl border border-white/10 p-8">
+          <h2 className="text-xl font-bold text-white mb-1">Accede a tu cuenta</h2>
+          <p className="text-white/50 text-sm mb-6">Introduce tu email i contrasenya</p>
 
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1">
-              <label htmlFor="email" className="text-sm font-medium text-[#1C1C1C]">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="email" className="text-sm font-medium text-white/70">
                 Email
               </label>
               <input
@@ -70,12 +73,12 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="tu@email.com"
-                className="border border-[#E5E5E5] rounded-lg px-4 py-3 text-sm outline-none focus:border-[#FF914D] transition-colors"
+                className="bg-[#111111] border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-white/30 outline-none focus:border-[#FF914D] transition-colors"
               />
             </div>
 
-            <div className="flex flex-col gap-1">
-              <label htmlFor="password" className="text-sm font-medium text-[#1C1C1C]">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="password" className="text-sm font-medium text-white/70">
                 Contraseña
               </label>
               <input
@@ -85,12 +88,12 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 placeholder="••••••••"
-                className="border border-[#E5E5E5] rounded-lg px-4 py-3 text-sm outline-none focus:border-[#FF914D] transition-colors"
+                className="bg-[#111111] border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-white/30 outline-none focus:border-[#FF914D] transition-colors"
               />
             </div>
 
             {error && (
-              <p className="text-red-500 text-sm bg-red-50 px-4 py-2 rounded-lg">
+              <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 px-4 py-2 rounded-lg">
                 {error}
               </p>
             )}
@@ -98,9 +101,9 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 bg-[#FF914D] text-white font-semibold py-3 rounded-lg hover:bg-[#e07a3a] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              className="mt-2 bg-[#FF914D] text-white font-bold py-3 rounded-lg hover:bg-[#e07a3a] transition-colors disabled:opacity-60 disabled:cursor-not-allowed tracking-wide"
             >
-              {loading ? 'Entrando...' : 'Entrar'}
+              {loading ? 'Entrant...' : 'Entrar'}
             </button>
           </form>
         </div>

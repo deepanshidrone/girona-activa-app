@@ -11,11 +11,11 @@ export default function DashboardLayout({
     <SidebarProvider defaultOpen={true}>
       <div className="flex min-h-screen w-full">
         <AppSidebar />
-        <div className="flex-1 flex flex-col bg-[#F5F5F5]">
-          {/* Topbar con toggle */}
-          <header className="flex items-center gap-2 px-4 py-3 bg-white border-b border-[#E5E5E5] sticky top-0 z-10">
-            <SidebarTrigger className="text-[#666666] hover:text-[#1C1C1C]" />
-            <Separator orientation="vertical" className="h-4" />
+        <div className="flex-1 flex flex-col bg-[#111111]">
+          {/* Topbar */}
+          <header className="flex items-center gap-2 px-4 py-3 bg-[#1C1C1C] border-b border-white/10 sticky top-0 z-10">
+            <SidebarTrigger className="text-white/50 hover:text-white" />
+            <Separator orientation="vertical" className="h-4 bg-white/10" />
           </header>
           <main className="flex-1">
             {children}
