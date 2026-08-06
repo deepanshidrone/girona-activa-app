@@ -7,6 +7,7 @@ Ideas y funcionalidades descartadas del MVP para implementar en una segunda fase
 ## Planes de entrenamiento
 
 - **Modificación masiva de días**: Al editar un plan activo, poder cambiar los días de la semana de todas las semanas a la vez (en lugar de semana por semana). Por ejemplo, pasar de Lunes/Miércoles a Martes/Jueves en todo el plan con un solo cambio.
+- **Arrastrar sesiones en el calendario**: En la vista de edición del plan, poder arrastrar un día de entrenamiento a otro día directamente en el calendario (drag & drop), en lugar de usar el selector de fecha manual.
 
 ## Galería de ejercicios
 
