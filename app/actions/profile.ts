@@ -29,7 +29,8 @@ export async function updateProfileAction(formData: FormData) {
     avatarUrl = publicUrl + `?t=${Date.now()}`
   }
 
-  const updates: Record<string, string> = { updated_at: new Date().toISOString() }
+  const role = user.app_metadata?.role ?? 'employee'
+  const updates: Record<string, string> = { updated_at: new Date().toISOString(), role }
   if (fullName) updates.full_name = fullName
   if (avatarUrl) updates.avatar_url = avatarUrl
 
