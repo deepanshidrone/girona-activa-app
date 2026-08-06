@@ -94,12 +94,18 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
           <div className="bg-white rounded-2xl border border-[#E5E5E5] p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold text-[#1C1C1C]">Plan activo</h2>
-              <Link
-                href={`/dashboard/planes/nuevo?client=${id}`}
-                className="text-sm font-medium text-[#FF914D] hover:underline"
-              >
-                + Nuevo plan
-              </Link>
+              <div className="flex items-center gap-3">
+                {planActivo && (
+                  <Link href={`/dashboard/planes/${planActivo.id}/editar`}
+                    className="text-sm font-medium text-[#666666] hover:text-[#1C1C1C] transition-colors">
+                    Editar
+                  </Link>
+                )}
+                <Link href={`/dashboard/planes/nuevo?client=${id}`}
+                  className="text-sm font-medium text-[#FF914D] hover:underline">
+                  + Nuevo plan
+                </Link>
+              </div>
             </div>
 
             {!planActivo ? (
