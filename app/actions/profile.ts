@@ -1,7 +1,6 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 
 export async function updateProfileAction(formData: FormData) {
@@ -30,13 +29,36 @@ export async function updateProfileAction(formData: FormData) {
     avatarUrl = publicUrl + `?t=${Date.now()}`
   }
 
-  const updates: Record<string, string> = {}
+  const updates: Record<string, string> = { updated_at: new Date().toISOString() }
   if (fullName) updates.full_name = fullName
   if (avatarUrl) updates.avatar_url = avatarUrl
 
-  const { error } = await supabase.auth.updateUser({ data: updates })
+  const { error } = await supabase
+    .from('profiles')
+    .upsert({ id: user.id, ...updates })
+
   if (error) return { error: 'Error actualizando perfil: ' + error.message }
 
   revalidatePath('/dashboard')
   return { success: true }
+}
+
+export async function getProfileAction() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const { data } = await supabase
+    .from('profiles')
+    .select('full_name, avatar_url')
+    .eq('id', user.id)
+    .single()
+
+  return {
+    id: user.id,
+    email: user.email ?? '',
+    fullName: data?.full_name ?? '',
+    avatarUrl: data?.avatar_url ?? null,
+    role: user.app_metadata?.role === 'client' ? 'Cliente' : 'Empleado',
+  }
 }

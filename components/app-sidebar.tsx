@@ -37,12 +37,17 @@ export function AppSidebar() {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, avatar_url')
+        .eq('id', user.id)
+        .single()
       setUserInfo({
-        name: user.user_metadata?.full_name ?? '',
+        name: profile?.full_name ?? '',
         email: user.email ?? '',
-        avatarUrl: user.user_metadata?.avatar_url ?? null,
+        avatarUrl: profile?.avatar_url ?? null,
         role: user.app_metadata?.role === 'client' ? 'Cliente' : 'Empleado',
       })
     })
