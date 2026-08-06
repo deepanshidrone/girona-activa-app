@@ -60,12 +60,14 @@ export function AppSidebar() {
             />
           </Link>
           <div className="flex flex-col">
-            <span
-              className="text-white text-sm font-black tracking-widest uppercase leading-tight"
-              style={{ fontStyle: 'italic', transform: 'skewX(-8deg)', display: 'inline-block' }}
-            >
-              GIRONA <span className="text-[#FF914D]">ACTIVA</span>
-            </span>
+            <div className="flex gap-1.5 items-baseline" style={{ fontStyle: 'italic', transform: 'skewX(-8deg)' }}>
+              <span className="text-white text-sm font-black tracking-widest uppercase leading-tight">
+                GIRONA
+              </span>
+              <span className="text-[#FF914D] text-sm font-black tracking-widest uppercase leading-tight">
+                ACTIVA
+              </span>
+            </div>
             <span className="text-white/30 text-[10px] tracking-widest uppercase">
               Centre d&apos;Entrenament
             </span>

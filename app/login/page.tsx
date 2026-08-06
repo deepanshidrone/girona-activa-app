@@ -45,12 +45,10 @@ export default function LoginPage() {
               className="object-cover w-full h-full"
             />
           </div>
-          <h1
-            className="text-3xl font-black tracking-widest uppercase text-white"
-            style={{ fontStyle: 'italic', transform: 'skewX(-8deg)', display: 'inline-block' }}
-          >
-            GIRONA <span className="text-[#FF914D]">ACTIVA</span>
-          </h1>
+          <div className="flex gap-2 items-baseline" style={{ fontStyle: 'italic', transform: 'skewX(-8deg)' }}>
+            <span className="text-3xl font-black tracking-widest uppercase text-white">GIRONA</span>
+            <span className="text-3xl font-black tracking-widest uppercase text-[#FF914D]">ACTIVA</span>
+          </div>
           <p className="text-white/40 text-xs tracking-widest uppercase mt-1">
             Centre d&apos;Entrenament
           </p>
