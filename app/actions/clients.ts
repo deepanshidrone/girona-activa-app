@@ -86,7 +86,7 @@ export async function createClientAction(data: CreateClientData) {
   })
 
   if (linkError) {
-    return { error: 'Error al generar la invitación: ' + linkError.message }
+    return { error: 'Error al generar la invitación: ' + (linkError.message || linkError.code || JSON.stringify(linkError)) }
   }
 
   const authUser = linkData.user
