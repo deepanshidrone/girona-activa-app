@@ -7,7 +7,15 @@ import { EjerciciosGallery } from './gallery'
 export default async function EjerciciosPage() {
   const supabase = createAdminClient()
 
-  const results = await Promise.all([
+  const [
+    { data: exercises },
+    { data: bodyZones },
+    { data: movementPatterns },
+    { data: muscleGroups },
+    { data: equipmentRes },
+    { data: objectivesRes },
+    { data: muscleLinksRes },
+  ] = await Promise.all([
     supabase.from('exercises').select(
       'id, name, technical_name, exercise_code, subpattern, level, technical_level, progression, regression, secondary_muscles, body_zone_id, movement_pattern_id, equipment_id, objective_id'
     ).order('name'),
@@ -19,16 +27,14 @@ export default async function EjerciciosPage() {
     supabase.from('exercise_muscle_groups').select('exercise_id, muscle_group_id'),
   ])
 
-  const [exercises, bodyZones, movementPatterns, muscleGroups, equipmentRes, objectivesRes, muscleLinksRes] = results.map(r => r.data)
-
-  const exercisesWithData = (exercises ?? []).map((ex: any) => ({
+  const exercisesWithData = (exercises ?? []).map((ex) => ({
     ...ex,
-    movement_patterns: movementPatterns?.find((mp: any) => mp.id === ex.movement_pattern_id) ?? null,
-    equipment: equipmentRes?.find((eq: any) => eq.id === ex.equipment_id) ?? null,
-    objectives: objectivesRes?.find((ob: any) => ob.id === ex.objective_id) ?? null,
+    movement_patterns: movementPatterns?.find(mp => mp.id === ex.movement_pattern_id) ?? null,
+    equipment: equipmentRes?.find(eq => eq.id === ex.equipment_id) ?? null,
+    objectives: objectivesRes?.find(ob => ob.id === ex.objective_id) ?? null,
     exercise_muscle_groups: (muscleLinksRes ?? [])
-      .filter((ml: any) => ml.exercise_id === ex.id)
-      .map((ml: any) => ({ muscle_groups: muscleGroups?.find((m: any) => m.id === ml.muscle_group_id) ?? null })),
+      .filter(ml => ml.exercise_id === ex.id)
+      .map(ml => ({ muscle_groups: muscleGroups?.find(m => m.id === ml.muscle_group_id) ?? null })),
   }))
 
   return (
