@@ -15,7 +15,7 @@ type Exercise = {
   progression: string | null
   regression: string | null
   secondary_muscles: string | null
-  body_zone: string | null
+  body_zone_id: string | null
   movement_patterns: Item | null
   equipment: Item | null
   objectives: Item | null
@@ -24,6 +24,7 @@ type Exercise = {
 
 interface Props {
   exercises: Exercise[]
+  bodyZones: Item[]
   movementPatterns: Item[]
   muscleGroups: Item[]
   equipment: Item[]
@@ -42,9 +43,10 @@ const TECH_LABELS: Record<string, string> = {
   avanzado: 'Tèc. 4-5',
 }
 
-export function EjerciciosGallery({ exercises, movementPatterns, muscleGroups, equipment, objectives }: Props) {
+export function EjerciciosGallery({ exercises, bodyZones, movementPatterns, muscleGroups, equipment, objectives }: Props) {
   const [search, setSearch] = useState('')
   const [filters, setFilters] = useState({
+    body_zone_id: '',
     movement_pattern_id: '',
     muscle_group_id: '',
     equipment_id: '',
@@ -55,7 +57,7 @@ export function EjerciciosGallery({ exercises, movementPatterns, muscleGroups, e
   const [expanded, setExpanded] = useState<string | null>(null)
 
   function clearFilters() {
-    setFilters({ movement_pattern_id: '', muscle_group_id: '', equipment_id: '', objective_id: '', level: '', technical_level: '' })
+    setFilters({ body_zone_id: '', movement_pattern_id: '', muscle_group_id: '', equipment_id: '', objective_id: '', level: '', technical_level: '' })
     setSearch('')
   }
 
@@ -66,6 +68,7 @@ export function EjerciciosGallery({ exercises, movementPatterns, muscleGroups, e
       const q = search.toLowerCase()
       if (!ex.name.toLowerCase().includes(q) && !(ex.technical_name ?? '').toLowerCase().includes(q)) return false
     }
+    if (filters.body_zone_id && ex.body_zone_id !== filters.body_zone_id) return false
     if (filters.movement_pattern_id && ex.movement_patterns?.id !== filters.movement_pattern_id) return false
     if (filters.muscle_group_id && !ex.exercise_muscle_groups.some(mg => mg.muscle_groups?.id === filters.muscle_group_id)) return false
     if (filters.equipment_id && ex.equipment?.id !== filters.equipment_id) return false
@@ -99,6 +102,9 @@ export function EjerciciosGallery({ exercises, movementPatterns, muscleGroups, e
               className="w-full bg-[#111111] border border-white/10 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-white/30 outline-none focus:border-[#FF914D] transition-colors"
             />
           </div>
+
+          <FilterGroup label="Parte del cuerpo" items={bodyZones} value={filters.body_zone_id}
+            onChange={(v) => setFilters({ ...filters, body_zone_id: v })} />
 
           {/* Nivel mínimo */}
           <div className="flex flex-col gap-1.5">

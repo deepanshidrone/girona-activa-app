@@ -7,6 +7,7 @@ export default async function NuevoPlanPage() {
   const [
     { data: clients },
     { data: exercises },
+    { data: bodyZones },
     { data: muscleGroups },
     { data: movementPatterns },
     { data: equipment },
@@ -14,7 +15,8 @@ export default async function NuevoPlanPage() {
     { data: muscleLinks },
   ] = await Promise.all([
     supabase.from('clients').select('id, first_name, last_name').eq('is_active', true).order('first_name'),
-    supabase.from('exercises').select('id, name, technical_name, level, technical_level, movement_pattern_id, equipment_id, objective_id').order('name'),
+    supabase.from('exercises').select('id, name, technical_name, level, technical_level, body_zone_id, movement_pattern_id, equipment_id, objective_id').order('name'),
+    supabase.from('body_zones').select('id, name').order('name'),
     supabase.from('muscle_groups').select('id, name').order('name'),
     supabase.from('movement_patterns').select('id, name').order('name'),
     supabase.from('equipment').select('id, name').order('name'),
@@ -34,6 +36,7 @@ export default async function NuevoPlanPage() {
     <PlanWizard
       clients={clients ?? []}
       exercises={exercisesWithMuscles}
+      bodyZones={bodyZones ?? []}
       muscleGroups={muscleGroups ?? []}
       movementPatterns={movementPatterns ?? []}
       equipment={equipment ?? []}

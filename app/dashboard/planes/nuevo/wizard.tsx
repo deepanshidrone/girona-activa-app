@@ -14,6 +14,7 @@ type Client = { id: string; first_name: string; last_name: string }
 type Exercise = {
   id: string; name: string; technical_name: string | null
   level: number | null; technical_level: string | null
+  body_zone_id: string | null
   movement_pattern_id: string | null; equipment_id: string | null
   objective_id: string | null; muscle_group_ids: string[]
 }
@@ -22,6 +23,7 @@ type Item = { id: string; name: string }
 interface Props {
   clients: Client[]
   exercises: Exercise[]
+  bodyZones: Item[]
   muscleGroups: Item[]
   movementPatterns: Item[]
   equipment: Item[]
@@ -59,7 +61,7 @@ function getMonthsInRange(startDate: string, months: number): { year: number; mo
   return result
 }
 
-export function PlanWizard({ clients, exercises, muscleGroups, movementPatterns, equipment, objectives }: Props) {
+export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, movementPatterns, equipment, objectives }: Props) {
   const router = useRouter()
   const [step, setStep] = useState(1)
   const [saving, setSaving] = useState(false)
@@ -413,6 +415,7 @@ export function PlanWizard({ clients, exercises, muscleGroups, movementPatterns,
       {editingDay && (
         <ExercisePickerModal
           exercises={exercises}
+          bodyZones={bodyZones}
           movementPatterns={movementPatterns}
           muscleGroups={muscleGroups}
           equipment={equipment}

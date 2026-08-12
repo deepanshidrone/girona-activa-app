@@ -13,6 +13,7 @@ type Exercise = {
   technical_name: string | null
   level: number | null
   technical_level: string | null
+  body_zone_id: string | null
   movement_pattern_id: string | null
   equipment_id: string | null
   objective_id: string | null
@@ -21,6 +22,7 @@ type Exercise = {
 
 interface Props {
   exercises: Exercise[]
+  bodyZones: Item[]
   movementPatterns: Item[]
   muscleGroups: Item[]
   equipment: Item[]
@@ -37,10 +39,11 @@ const LEVEL_LABELS: Record<number, { label: string; color: string }> = {
 }
 
 export function ExercisePickerModal({
-  exercises, movementPatterns, muscleGroups, equipment, objectives, dayLabel, onAdd, onClose
+  exercises, bodyZones, movementPatterns, muscleGroups, equipment, objectives, dayLabel, onAdd, onClose
 }: Props) {
   const [search, setSearch] = useState('')
   const [filters, setFilters] = useState({
+    body_zone_id: '',
     movement_pattern_id: '',
     muscle_group_id: '',
     equipment_id: '',
@@ -57,6 +60,7 @@ export function ExercisePickerModal({
       const q = search.toLowerCase()
       if (!ex.name.toLowerCase().includes(q) && !(ex.technical_name ?? '').toLowerCase().includes(q)) return false
     }
+    if (filters.body_zone_id && ex.body_zone_id !== filters.body_zone_id) return false
     if (filters.movement_pattern_id && ex.movement_pattern_id !== filters.movement_pattern_id) return false
     if (filters.muscle_group_id && !ex.muscle_group_ids.includes(filters.muscle_group_id)) return false
     if (filters.equipment_id && ex.equipment_id !== filters.equipment_id) return false
@@ -94,13 +98,16 @@ export function ExercisePickerModal({
               <span className="text-xs font-semibold text-white/40 uppercase tracking-wider">Filtros</span>
               {activeFilters > 0 && (
                 <button
-                  onClick={() => setFilters({ movement_pattern_id: '', muscle_group_id: '', equipment_id: '', objective_id: '', level: '' })}
+                  onClick={() => setFilters({ body_zone_id: '', movement_pattern_id: '', muscle_group_id: '', equipment_id: '', objective_id: '', level: '' })}
                   className="text-[10px] text-[#FF914D] hover:underline"
                 >
                   Limpiar
                 </button>
               )}
             </div>
+
+            <FilterSelect label="Parte del cuerpo" items={bodyZones} value={filters.body_zone_id}
+              onChange={v => setFilters(f => ({ ...f, body_zone_id: v }))} />
 
             {/* Nivel */}
             <div className="flex flex-col gap-1.5">
