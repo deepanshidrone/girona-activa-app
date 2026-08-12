@@ -1,11 +1,11 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Plus, Dumbbell } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { EjerciciosGallery } from './gallery'
 
 export default async function EjerciciosPage() {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const [
     { data: exercises },
