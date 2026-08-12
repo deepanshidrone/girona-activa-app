@@ -6,11 +6,17 @@ import { createPlanAction, PlanDay, PlanExercise } from '@/app/actions/plans'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight, Plus, Trash2, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
 import Link from 'next/link'
+import { ExercisePickerModal } from './exercise-picker-modal'
 
 type Client = { id: string; first_name: string; last_name: string }
-type Exercise = { id: string; name: string; level: number | null; technical_level: string | null; movement_pattern_id: string | null }
+type Exercise = {
+  id: string; name: string; technical_name: string | null
+  level: number | null; technical_level: string | null
+  movement_pattern_id: string | null; equipment_id: string | null
+  objective_id: string | null; muscle_group_ids: string[]
+}
 type Item = { id: string; name: string }
 
 interface Props {
@@ -18,6 +24,8 @@ interface Props {
   exercises: Exercise[]
   muscleGroups: Item[]
   movementPatterns: Item[]
+  equipment: Item[]
+  objectives: Item[]
 }
 
 const WEEKDAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
@@ -51,7 +59,7 @@ function getMonthsInRange(startDate: string, months: number): { year: number; mo
   return result
 }
 
-export function PlanWizard({ clients, exercises, muscleGroups, movementPatterns }: Props) {
+export function PlanWizard({ clients, exercises, muscleGroups, movementPatterns, equipment, objectives }: Props) {
   const router = useRouter()
   const [step, setStep] = useState(1)
   const [saving, setSaving] = useState(false)
@@ -69,9 +77,6 @@ export function PlanWizard({ clients, exercises, muscleGroups, movementPatterns 
 
   // Day editor state
   const [editingDay, setEditingDay] = useState<string | null>(null)
-  const [exFilter, setExFilter] = useState('')
-  const [addingEx, setAddingEx] = useState<Exercise | null>(null)
-  const [exForm, setExForm] = useState({ sets: 3, reps: 10, weight_kg: '', notes: '' })
 
   const selectedClient = clients.find(c => c.id === clientId)
 
@@ -102,13 +107,8 @@ export function PlanWizard({ clients, exercises, muscleGroups, movementPatterns 
     return planDays.find(d => d.date === date)?.exercises ?? []
   }
 
-  function addExerciseToDay(date: string, exercise: Exercise) {
-    const sets = exForm.sets
-    const reps = exForm.reps
-    const weight_kg = exForm.weight_kg ? parseFloat(exForm.weight_kg) : undefined
-    const notes = exForm.notes || undefined
-
-    setPlanDays(planDays.map(d => {
+  function addExerciseToDay(date: string, exercise: Exercise, sets: number, reps: number, weight_kg: string, notes: string) {
+    setPlanDays(prev => prev.map(d => {
       if (d.date !== date) return d
       return {
         ...d,
@@ -116,14 +116,12 @@ export function PlanWizard({ clients, exercises, muscleGroups, movementPatterns 
           exercise_id: exercise.id,
           sets,
           reps,
-          weight_kg,
-          notes,
+          weight_kg: weight_kg ? parseFloat(weight_kg) : undefined,
+          notes: notes || undefined,
           order_index: d.exercises.length,
         }]
       }
     }))
-    setAddingEx(null)
-    setExForm({ sets: 3, reps: 10, weight_kg: '', notes: '' })
   }
 
   function removeExerciseFromDay(date: string, index: number) {
@@ -149,10 +147,6 @@ export function PlanWizard({ clients, exercises, muscleGroups, movementPatterns 
     setSaved(true)
     setTimeout(() => router.push('/dashboard/planes'), 1500)
   }
-
-  const filteredExercises = exercises.filter(ex =>
-    ex.name.toLowerCase().includes(exFilter.toLowerCase())
-  )
 
   if (saved) {
     return (
@@ -415,111 +409,20 @@ export function PlanWizard({ clients, exercises, muscleGroups, movementPatterns 
         </div>
       )}
 
-      {/* PANEL LATERAL — Editor de día */}
+      {/* MODAL — Selector de ejercicio */}
       {editingDay && (
-        <div className="fixed inset-0 z-50 flex">
-          <div className="flex-1 bg-black/40" onClick={() => { setEditingDay(null); setAddingEx(null) }} />
-          <div className="w-full max-w-md bg-white h-full overflow-y-auto flex flex-col shadow-xl">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[#E5E5E5]">
-              <div>
-                <h3 className="font-bold text-[#1C1C1C]">
-                  {new Date(editingDay + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
-                </h3>
-                <p className="text-xs text-[#666666]">{getDayExercises(editingDay).length} ejercicio{getDayExercises(editingDay).length !== 1 ? 's' : ''}</p>
-              </div>
-              <button onClick={() => { setEditingDay(null); setAddingEx(null) }} className="text-[#666666] hover:text-[#1C1C1C]">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="flex-1 p-5 flex flex-col gap-4">
-              {/* Lista ejercicios del día */}
-              {getDayExercises(editingDay).length > 0 && (
-                <div className="flex flex-col gap-2">
-                  {getDayExercises(editingDay).map((ex, i) => {
-                    const exData = exercises.find(e => e.id === ex.exercise_id)
-                    return (
-                      <div key={i} className="flex items-center gap-3 bg-[#F5F5F5] rounded-xl px-3 py-2.5">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-[#1C1C1C] truncate">{exData?.name}</p>
-                          <p className="text-xs text-[#666666]">
-                            {ex.sets} series × {ex.reps} reps
-                            {ex.weight_kg ? ` · ${ex.weight_kg} kg` : ''}
-                          </p>
-                        </div>
-                        <button onClick={() => removeExerciseFromDay(editingDay, i)} className="text-[#666666] hover:text-red-500 shrink-0">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-
-              {/* Formulario agregar ejercicio */}
-              {addingEx ? (
-                <div className="bg-orange-50 border border-[#FF914D]/30 rounded-xl p-4 flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <p className="font-medium text-sm text-[#1C1C1C]">{addingEx.name}</p>
-                    <button onClick={() => setAddingEx(null)} className="text-[#666666] hover:text-[#1C1C1C]">
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="flex flex-col gap-1">
-                      <Label className="text-xs">Series</Label>
-                      <Input type="number" value={exForm.sets} onChange={e => setExForm({ ...exForm, sets: parseInt(e.target.value) || 1 })} min={1} max={10} />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <Label className="text-xs">Repeticiones</Label>
-                      <Input type="number" value={exForm.reps} onChange={e => setExForm({ ...exForm, reps: parseInt(e.target.value) || 1 })} min={1} max={100} />
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <Label className="text-xs">Peso (kg) — opcional</Label>
-                    <Input type="number" value={exForm.weight_kg} onChange={e => setExForm({ ...exForm, weight_kg: e.target.value })} placeholder="Ej: 60" step={0.5} />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <Label className="text-xs">Notas — opcional</Label>
-                    <Input value={exForm.notes} onChange={e => setExForm({ ...exForm, notes: e.target.value })} placeholder="Indicaciones..." />
-                  </div>
-                  <Button onClick={() => addExerciseToDay(editingDay, addingEx)} className="bg-[#FF914D] hover:bg-[#e07a3a] text-white w-full">
-                    <Plus className="h-4 w-4 mr-1.5" /> Agregar al día
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  {/* Buscador de ejercicios */}
-                  <div>
-                    <p className="text-sm font-medium text-[#1C1C1C] mb-2">Agregar ejercicio</p>
-                    <Input
-                      placeholder="Buscar ejercicio..."
-                      value={exFilter}
-                      onChange={e => setExFilter(e.target.value)}
-                      className="mb-2"
-                    />
-                    <div className="flex flex-col gap-1 max-h-64 overflow-y-auto">
-                      {filteredExercises.map(ex => (
-                        <button
-                          key={ex.id}
-                          onClick={() => { setAddingEx(ex); setExForm({ sets: 3, reps: 10, weight_kg: '', notes: '' }) }}
-                          className="flex items-center gap-2 px-3 py-2 rounded-lg text-left hover:bg-[#F5F5F5] transition-colors"
-                        >
-                          <span className="text-sm text-[#1C1C1C] flex-1">{ex.name}</span>
-                          {ex.level && <span className="text-xs text-[#666666] bg-[#F5F5F5] px-1.5 py-0.5 rounded">Niv.{ex.level}</span>}
-                          <Plus className="h-3.5 w-3.5 text-[#FF914D] shrink-0" />
-                        </button>
-                      ))}
-                      {filteredExercises.length === 0 && (
-                        <p className="text-sm text-[#666666] text-center py-4">No hay ejercicios con ese nombre</p>
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+        <ExercisePickerModal
+          exercises={exercises}
+          movementPatterns={movementPatterns}
+          muscleGroups={muscleGroups}
+          equipment={equipment}
+          objectives={objectives}
+          dayLabel={new Date(editingDay + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+          onAdd={(exercise, sets, reps, weight_kg, notes) => {
+            addExerciseToDay(editingDay, exercise, sets, reps, weight_kg, notes)
+          }}
+          onClose={() => setEditingDay(null)}
+        />
       )}
     </div>
   )
