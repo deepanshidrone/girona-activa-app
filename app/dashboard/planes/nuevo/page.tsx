@@ -1,6 +1,8 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { PlanWizard } from './wizard'
 
+export const dynamic = 'force-dynamic'
+
 export default async function NuevoPlanPage() {
   const supabase = createAdminClient()
 
