@@ -52,7 +52,7 @@ export async function createExerciseAction(data: CreateExerciseData) {
   return { success: true, id: exercise.id }
 }
 
-export async function createCatalogItemAction(table: 'movement_patterns' | 'equipment' | 'objectives', name: string) {
+export async function createCatalogItemAction(table: 'movement_patterns' | 'equipment' | 'objectives' | 'muscle_groups', name: string) {
   const adminSupabase = createAdminClient()
   const supabase = await createClient()
 

@@ -3,11 +3,11 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createExerciseAction } from '@/app/actions/exercises'
-import { CreatableSelect } from '@/components/creatable-select'
+import { CreatableSelect, CreatableMultiSelect } from '@/components/creatable-select'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Check } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
 type Item = { id: string; name: string }
@@ -36,15 +36,6 @@ export default function NuevoEjercicioForm({ movementPatterns, muscleGroups, equ
     progression: '',
     regression: '',
   })
-
-  function toggleMuscleGroup(id: string) {
-    setForm(prev => ({
-      ...prev,
-      muscle_group_ids: prev.muscle_group_ids.includes(id)
-        ? prev.muscle_group_ids.filter(m => m !== id)
-        : [...prev.muscle_group_ids, id],
-    }))
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -95,8 +86,8 @@ export default function NuevoEjercicioForm({ movementPatterns, muscleGroups, equ
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-[#1C1C1C]">Nuevo ejercicio</h1>
-          <p className="text-[#666666] text-sm mt-0.5">Solo el nombre es obligatorio</p>
+          <h1 className="text-2xl font-bold text-white">Nuevo ejercicio</h1>
+          <p className="text-white/50 text-sm mt-0.5">Solo el nombre es obligatorio</p>
         </div>
       </div>
 
@@ -128,23 +119,12 @@ export default function NuevoEjercicioForm({ movementPatterns, muscleGroups, equ
         {/* Músculos principales */}
         <div className="flex flex-col gap-1.5">
           <Label>Músculos principales</Label>
-          <div className="flex flex-wrap gap-2">
-            {muscleGroups.map((mg) => (
-              <button
-                key={mg.id}
-                type="button"
-                onClick={() => toggleMuscleGroup(mg.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-colors ${
-                  form.muscle_group_ids.includes(mg.id)
-                    ? 'bg-[#FF914D] text-white'
-                    : 'bg-[#F5F5F5] text-[#1C1C1C] hover:bg-[#E5E5E5]'
-                }`}
-              >
-                {form.muscle_group_ids.includes(mg.id) && <Check className="h-3 w-3" />}
-                {mg.name}
-              </button>
-            ))}
-          </div>
+          <CreatableMultiSelect
+            table="muscle_groups"
+            items={muscleGroups}
+            values={form.muscle_group_ids}
+            onChange={(vals) => setForm({ ...form, muscle_group_ids: vals })}
+          />
         </div>
 
         {/* Nivel mínimo recomendado y Nivel técnico */}
