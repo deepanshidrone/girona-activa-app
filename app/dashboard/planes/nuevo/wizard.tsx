@@ -187,7 +187,7 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-[#1C1C1C]">Nuevo plan de entrenamiento</h1>
+          <h1 className="text-2xl font-bold text-white">Nuevo plan de entrenamiento</h1>
           <p className="text-[#666666] text-sm mt-0.5">Paso {step} de 5</p>
         </div>
       </div>

@@ -90,8 +90,8 @@ export default function NuevoClientePage() {
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-[#1C1C1C]">Nuevo cliente</h1>
-          <p className="text-[#666666] text-sm mt-0.5">Rellena los datos para dar de alta al cliente</p>
+          <h1 className="text-2xl font-bold text-white">Nuevo cliente</h1>
+          <p className="text-white/50 text-sm mt-0.5">Rellena los datos para dar de alta al cliente</p>
         </div>
       </div>
 
