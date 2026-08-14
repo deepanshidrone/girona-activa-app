@@ -133,6 +133,21 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
     }))
   }
 
+  function updateExerciseInDay(date: string, index: number, sets: number, reps: number, weight_kg: string, notes: string) {
+    setPlanDays(prev => prev.map(d => {
+      if (d.date !== date) return d
+      const updated = [...d.exercises]
+      updated[index] = {
+        ...updated[index],
+        sets,
+        reps,
+        weight_kg: weight_kg ? parseFloat(weight_kg) : undefined,
+        notes: notes || undefined,
+      }
+      return { ...d, exercises: updated }
+    }))
+  }
+
   async function handleSave() {
     setSaving(true)
     const result = await createPlanAction({
@@ -420,9 +435,15 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
           muscleGroups={muscleGroups}
           equipment={equipment}
           objectives={objectives}
+          existingExercises={getDayExercises(editingDay)}
+          exerciseCatalog={exercises}
           dayLabel={new Date(editingDay + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
           onAdd={(exercise, sets, reps, weight_kg, notes) => {
             addExerciseToDay(editingDay, exercise, sets, reps, weight_kg, notes)
+          }}
+          onRemove={(index) => removeExerciseFromDay(editingDay, index)}
+          onUpdate={(index, sets, reps, weight_kg, notes) => {
+            updateExerciseInDay(editingDay, index, sets, reps, weight_kg, notes)
           }}
           onClose={() => setEditingDay(null)}
         />
