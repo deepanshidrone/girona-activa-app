@@ -155,17 +155,17 @@ Selector: Grupal / Individual.
 - Al clicar un día → se abre el **modal de selección de ejercicios** (pantalla completa)
 
 **Modal de selección de ejercicios:**
-- Galería con filtros en sidebar izquierdo:
-  - Parte del cuerpo (body zone)
-  - Nivel (Groc / Blau / Vermell)
-  - Patrón de movimiento
-  - Músculo
-  - Equipamiento
-  - Objetivo
-- Búsqueda por nombre / nombre técnico
+
+Layout de tres columnas:
+- **Izquierda:** filtros (Parte del cuerpo, Nivel, Patrón, Músculo, Equipamiento, Objetivo) + búsqueda
+- **Centro:** galería de ejercicios / formulario de configuración del ejercicio seleccionado
+- **Derecha:** panel "En este día" — lista de ejercicios ya agregados
+
+Comportamiento:
 - Al seleccionar un ejercicio se configuran: Series · Repeticiones · Peso (kg, opcional) · Notas (opcional)
 - Se pueden agregar múltiples ejercicios por día
-- Se pueden eliminar ejercicios de un día
+- El panel derecho muestra los ejercicios del día en tiempo real (tanto al añadir como al reabrir el modal)
+- Cada ejercicio del panel tiene botón **Editar** (abre formulario pre-relleno) y **Eliminar**
 
 **Paso 6 — Confirmación**
 El empleado guarda el plan completo → queda activo para el cliente.
