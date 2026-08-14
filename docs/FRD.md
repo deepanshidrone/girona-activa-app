@@ -85,11 +85,23 @@ Un único rol de empleado para el MVP. Sin distinción admin/entrenador.
 
 ### Ramas Git
 
-| Rama | Propósito |
-|---|---|
-| `main` | Producción estable |
-| `dev` | Desarrollo activo — deploy automático en Vercel (preview) |
-| `feature/*` | Funcionalidades nuevas — se mergean a `dev` |
+| Rama | Propósito | Deploy |
+|---|---|---|
+| `main` | Producción estable | Vercel prod (pendiente DNS) |
+| `dev` | Desarrollo activo | Vercel preview (auto) |
+| `feature/nombre` | Funcionalidad nueva | Solo local |
+| `fix/nombre` | Bug fix puntual | Solo local |
+
+**Flujo:** `feature/*` → `dev` → (MVP listo) → `main` + tag `v1.0.0`
+
+### Versionado
+
+Semántico: `vMAJOR.MINOR.PATCH`
+- `v1.0.0` → lanzamiento MVP (cuando se configure DNS y se mergee a main)
+- `v1.x.0` → nueva funcionalidad mayor
+- `v1.0.x` → bug fix
+
+**Estado actual:** todo en `dev`, sin versión en producción todavía.
 
 ---
 
