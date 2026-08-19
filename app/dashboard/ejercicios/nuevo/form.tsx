@@ -7,7 +7,7 @@ import { CreatableSelect, CreatableMultiSelect } from '@/components/creatable-se
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Check } from 'lucide-react'
 import Link from 'next/link'
 
 type Item = { id: string; name: string }

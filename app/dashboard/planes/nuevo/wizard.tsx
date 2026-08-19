@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createPlanAction, PlanDay, PlanExercise } from '@/app/actions/plans'
+import { createGroupPlanAction } from '@/app/actions/group-sessions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -19,6 +20,14 @@ type Exercise = {
   objective_id: string | null; muscle_group_ids: string[]
 }
 type Item = { id: string; name: string }
+type Cycle = { id: string; start_date: string; notes: string | null }
+type GroupDay = { date: string; session_label: 'A' | 'B' | 'C' }
+
+const SESSION_LABEL_COLORS = { A: 'bg-blue-500', B: 'bg-purple-500', C: 'bg-green-500' }
+
+function getSessionLabel(index: number): 'A' | 'B' | 'C' {
+  return (['A', 'B', 'C'] as const)[index % 3]
+}
 
 interface Props {
   clients: Client[]
@@ -28,6 +37,7 @@ interface Props {
   movementPatterns: Item[]
   equipment: Item[]
   objectives: Item[]
+  cycles: Cycle[]
 }
 
 const WEEKDAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
@@ -61,7 +71,7 @@ function getMonthsInRange(startDate: string, months: number): { year: number; mo
   return result
 }
 
-export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, movementPatterns, equipment, objectives }: Props) {
+export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, movementPatterns, equipment, objectives, cycles }: Props) {
   const router = useRouter()
   const [step, setStep] = useState(1)
   const [saving, setSaving] = useState(false)
@@ -69,7 +79,10 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
 
   // Form state
   const [clientId, setClientId] = useState('')
+  const [planType, setPlanType] = useState<'individual' | 'group'>('individual')
+  const [selectedCycleId, setSelectedCycleId] = useState<string>('')
   const [level, setLevel] = useState<number | null>(null)
+  const [groupDays, setGroupDays] = useState<GroupDay[]>([])
   const [durationMonths, setDurationMonths] = useState(1)
   const [weeklyFreq, setWeeklyFreq] = useState(3)
   const [sessionDuration, setSessionDuration] = useState<30 | 60>(60)
@@ -85,7 +98,11 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
   // Step 4 → 5: generate calendar
   function handleGenerateCalendar() {
     const dates = generatePlanDates(startDate, durationMonths, selectedWeekdays)
-    setPlanDays(dates.map(date => ({ date, exercises: [] })))
+    if (planType === 'group') {
+      setGroupDays(dates.map((date, i) => ({ date, session_label: getSessionLabel(i) })))
+    } else {
+      setPlanDays(dates.map(date => ({ date, exercises: [] })))
+    }
     setStep(5)
   }
 
@@ -150,15 +167,29 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
 
   async function handleSave() {
     setSaving(true)
-    const result = await createPlanAction({
-      client_id: clientId,
-      level: level!,
-      duration_months: durationMonths,
-      weekly_frequency: weeklyFreq,
-      session_duration: sessionDuration,
-      start_date: startDate,
-      days: planDays,
-    })
+    let result: { error?: string; success?: boolean }
+    if (planType === 'group') {
+      result = await createGroupPlanAction({
+        client_id: clientId,
+        level: level ?? 1,
+        duration_months: durationMonths,
+        weekly_frequency: weeklyFreq,
+        session_duration: sessionDuration,
+        start_date: startDate,
+        cycle_id: selectedCycleId,
+        training_dates: groupDays,
+      })
+    } else {
+      result = await createPlanAction({
+        client_id: clientId,
+        level: level!,
+        duration_months: durationMonths,
+        weekly_frequency: weeklyFreq,
+        session_duration: sessionDuration,
+        start_date: startDate,
+        days: planDays,
+      })
+    }
     setSaving(false)
     if (result.error) { alert(result.error); return }
     setSaved(true)
@@ -228,28 +259,61 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
         </div>
       )}
 
-      {/* STEP 2 — Tipo (solo individual en MVP) */}
+      {/* STEP 2 — Tipo */}
       {step === 2 && (
         <div className="bg-white rounded-2xl border border-[#E5E5E5] p-6">
           <h2 className="text-lg font-bold text-[#1C1C1C] mb-4">Tipo de entrenamiento</h2>
           <div className="grid grid-cols-2 gap-3">
-            {[{ val: 'individual', label: 'Individual', desc: 'Plan personalizado día a día' },
-              { val: 'group', label: 'Grupal', desc: 'Plantilla predefinida por nivel', disabled: true }
-            ].map(t => (
-              <button
-                key={t.val}
-                disabled={t.disabled}
-                onClick={() => !t.disabled && setStep(3)}
-                className={`p-4 rounded-xl border text-left transition-colors ${
-                  t.val === 'individual' ? 'border-[#FF914D] bg-orange-50' : 'border-[#E5E5E5] opacity-40 cursor-not-allowed'
-                }`}
-              >
-                <p className="font-semibold text-[#1C1C1C]">{t.label}</p>
-                <p className="text-xs text-[#666666] mt-0.5">{t.desc}</p>
-                {t.disabled && <span className="text-xs text-[#FF914D]">Próximamente</span>}
-              </button>
-            ))}
+            <button
+              onClick={() => { setPlanType('individual'); setStep(3) }}
+              className={`p-4 rounded-xl border text-left transition-colors ${
+                planType === 'individual' ? 'border-[#FF914D] bg-orange-50' : 'border-[#E5E5E5] hover:border-[#FF914D]/50'
+              }`}
+            >
+              <p className="font-semibold text-[#1C1C1C]">Individual</p>
+              <p className="text-xs text-[#666666] mt-0.5">Plan personalizado día a día</p>
+            </button>
+            <button
+              onClick={() => { setPlanType('group'); setStep(3) }}
+              disabled={cycles.length === 0}
+              className={`p-4 rounded-xl border text-left transition-colors ${
+                cycles.length === 0 ? 'border-[#E5E5E5] opacity-50 cursor-not-allowed' : planType === 'group' ? 'border-[#FF914D] bg-orange-50' : 'border-[#E5E5E5] hover:border-[#FF914D]/50'
+              }`}
+            >
+              <p className="font-semibold text-[#1C1C1C]">Grupal</p>
+              <p className="text-xs text-[#666666] mt-0.5">Sesiones A / B / C predefinidas</p>
+              {cycles.length === 0 && (
+                <Link href="/dashboard/sesiones/nuevo" onClick={e => e.stopPropagation()} className="text-xs text-[#FF914D] hover:underline mt-1 block">
+                  Crear ciclo primero →
+                </Link>
+              )}
+            </button>
           </div>
+          {/* Cycle selector when group is chosen */}
+          {planType === 'group' && cycles.length > 0 && (
+            <div className="mt-4">
+              <Label className="text-xs text-[#666666] mb-2 block">Ciclo a usar</Label>
+              <div className="flex flex-col gap-2">
+                {cycles.map(c => {
+                  const end = new Date(c.start_date); end.setDate(end.getDate() + 13)
+                  const fmt = (d: Date) => d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => setSelectedCycleId(c.id)}
+                      className={`text-left px-3 py-2.5 rounded-xl border text-sm transition-colors ${
+                        selectedCycleId === c.id ? 'border-[#FF914D] bg-orange-50' : 'border-[#E5E5E5] hover:border-[#FF914D]/50'
+                      }`}
+                    >
+                      <span className="font-medium text-[#1C1C1C]">{fmt(new Date(c.start_date))} — {fmt(end)}</span>
+                      {c.notes && <span className="text-xs text-[#666666] ml-2">{c.notes}</span>}
+                      {selectedCycleId === c.id && <Check className="h-4 w-4 text-[#FF914D] float-right mt-0.5" />}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
           <div className="flex justify-between mt-6">
             <Button variant="outline" onClick={() => setStep(1)}>
               <ArrowLeft className="h-4 w-4 mr-2" /> Atrás
@@ -367,12 +431,12 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
           </div>
 
           <div className="flex justify-between mt-6">
-            <Button variant="outline" onClick={() => setStep(3)}>
+            <Button variant="outline" onClick={() => setStep(planType === 'group' ? 2 : 3)}>
               <ArrowLeft className="h-4 w-4 mr-2" /> Atrás
             </Button>
             <Button
               onClick={handleGenerateCalendar}
-              disabled={selectedWeekdays.length !== weeklyFreq}
+              disabled={selectedWeekdays.length !== weeklyFreq || (planType === 'group' && !selectedCycleId)}
               className="bg-[#FF914D] hover:bg-[#e07a3a] text-white gap-2"
             >
               Generar calendario <ArrowRight className="h-4 w-4" />
@@ -389,27 +453,50 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
               <div>
                 <p className="text-sm text-[#666666]">
                   <strong className="text-[#1C1C1C]">{selectedClient?.first_name} {selectedClient?.last_name}</strong>
-                  {' · '}Nivel {level} · {durationMonths} mes{durationMonths > 1 ? 'es' : ''} · {weeklyFreq}x semana · {sessionDuration} min
+                  {' · '}{planType === 'group' ? 'Grupal' : `Nivel ${level}`} · {durationMonths} mes{durationMonths > 1 ? 'es' : ''} · {weeklyFreq}x semana · {sessionDuration} min
                 </p>
-                <p className="text-xs text-[#666666] mt-0.5">{planDays.length} sesiones en total</p>
+                <p className="text-xs text-[#666666] mt-0.5">
+                  {planType === 'group' ? groupDays.length : planDays.length} sesiones en total
+                  {planType === 'group' && ' (A/B/C rotación)'}
+                </p>
               </div>
               <Button variant="outline" onClick={() => setStep(4)} className="text-sm">
                 <ArrowLeft className="h-3.5 w-3.5 mr-1.5" /> Editar
               </Button>
             </div>
+            {planType === 'group' && (
+              <div className="flex items-center gap-3 mt-3 pt-3 border-t border-[#E5E5E5]">
+                {(['A', 'B', 'C'] as const).map(l => (
+                  <div key={l} className="flex items-center gap-1.5">
+                    <span className={`w-4 h-4 rounded-full ${SESSION_LABEL_COLORS[l]} text-white text-[9px] font-bold flex items-center justify-center`}>{l}</span>
+                    <span className="text-xs text-[#666666]">Sesión {l} ({groupDays.filter(d => d.session_label === l).length})</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Calendarios por mes */}
-          {getMonthsInRange(startDate, durationMonths).map(({ year, month }) => (
-            <MonthCalendar
-              key={`${year}-${month}`}
-              year={year}
-              month={month}
-              planDays={planDays}
-              onToggleDay={toggleDay}
-              onEditDay={setEditingDay}
-            />
-          ))}
+          {planType === 'group'
+            ? getMonthsInRange(startDate, durationMonths).map(({ year, month }) => (
+                <GroupMonthCalendar
+                  key={`${year}-${month}`}
+                  year={year}
+                  month={month}
+                  groupDays={groupDays}
+                />
+              ))
+            : getMonthsInRange(startDate, durationMonths).map(({ year, month }) => (
+                <MonthCalendar
+                  key={`${year}-${month}`}
+                  year={year}
+                  month={month}
+                  planDays={planDays}
+                  onToggleDay={toggleDay}
+                  onEditDay={setEditingDay}
+                />
+              ))
+          }
 
           <div className="flex justify-between">
             <Button variant="outline" onClick={() => setStep(4)}>
@@ -448,6 +535,58 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
           onClose={() => setEditingDay(null)}
         />
       )}
+    </div>
+  )
+}
+
+// Calendario para plan grupal (muestra A/B/C)
+function GroupMonthCalendar({ year, month, groupDays }: {
+  year: number; month: number; groupDays: GroupDay[]
+}) {
+  const firstDay = new Date(year, month, 1)
+  const lastDay = new Date(year, month + 1, 0)
+  const startDow = (firstDay.getDay() + 6) % 7
+
+  const dayMap = new Map(groupDays.map(d => [d.date, d.session_label]))
+
+  const cells: (number | null)[] = Array(startDow).fill(null)
+  for (let d = 1; d <= lastDay.getDate(); d++) cells.push(d)
+  while (cells.length % 7 !== 0) cells.push(null)
+
+  return (
+    <div className="bg-white rounded-2xl border border-[#E5E5E5] p-5">
+      <h3 className="font-bold text-[#1C1C1C] mb-4">{MONTHS_ES[month]} {year}</h3>
+      <div className="grid grid-cols-7 gap-1 mb-2">
+        {['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa', 'Do'].map(d => (
+          <div key={d} className="text-center text-xs font-medium text-[#666666] py-1">{d}</div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map((day, i) => {
+          if (!day) return <div key={i} />
+          const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+          const label = dayMap.get(dateStr)
+          return (
+            <div key={i} className="relative aspect-square">
+              <div className={`w-full h-full rounded-lg flex flex-col items-center justify-center gap-0.5 text-sm font-medium
+                ${label ? 'text-white' : 'text-[#1C1C1C]'}`}
+                style={label ? { backgroundColor: label === 'A' ? '#3b82f6' : label === 'B' ? '#a855f7' : '#22c55e' } : {}}
+              >
+                <span>{day}</span>
+                {label && <span className="text-[9px] font-bold opacity-90">{label}</span>}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      <div className="flex items-center gap-4 mt-3 pt-3 border-t border-[#E5E5E5]">
+        {(['A', 'B', 'C'] as const).map(l => (
+          <div key={l} className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded" style={{ backgroundColor: l === 'A' ? '#3b82f6' : l === 'B' ? '#a855f7' : '#22c55e' }} />
+            <span className="text-xs text-[#666666]">Sesión {l}</span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
