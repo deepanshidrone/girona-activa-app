@@ -275,43 +275,49 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
             </button>
             <button
               onClick={() => { setPlanType('group'); setStep(3) }}
-              disabled={cycles.length === 0}
               className={`p-4 rounded-xl border text-left transition-colors ${
-                cycles.length === 0 ? 'border-[#E5E5E5] opacity-50 cursor-not-allowed' : planType === 'group' ? 'border-[#FF914D] bg-orange-50' : 'border-[#E5E5E5] hover:border-[#FF914D]/50'
+                planType === 'group' ? 'border-[#FF914D] bg-orange-50' : 'border-[#E5E5E5] hover:border-[#FF914D]/50'
               }`}
             >
               <p className="font-semibold text-[#1C1C1C]">Grupal</p>
               <p className="text-xs text-[#666666] mt-0.5">Sesiones A / B / C predefinidas</p>
-              {cycles.length === 0 && (
-                <Link href="/dashboard/sesiones/nuevo" onClick={e => e.stopPropagation()} className="text-xs text-[#FF914D] hover:underline mt-1 block">
-                  Crear ciclo primero →
-                </Link>
-              )}
             </button>
           </div>
           {/* Cycle selector when group is chosen */}
-          {planType === 'group' && cycles.length > 0 && (
+          {planType === 'group' && (
             <div className="mt-4">
               <Label className="text-xs text-[#666666] mb-2 block">Ciclo a usar</Label>
-              <div className="flex flex-col gap-2">
-                {cycles.map(c => {
-                  const end = new Date(c.start_date); end.setDate(end.getDate() + 13)
-                  const fmt = (d: Date) => d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
-                  return (
-                    <button
-                      key={c.id}
-                      onClick={() => setSelectedCycleId(c.id)}
-                      className={`text-left px-3 py-2.5 rounded-xl border text-sm transition-colors ${
-                        selectedCycleId === c.id ? 'border-[#FF914D] bg-orange-50' : 'border-[#E5E5E5] hover:border-[#FF914D]/50'
-                      }`}
-                    >
-                      <span className="font-medium text-[#1C1C1C]">{fmt(new Date(c.start_date))} — {fmt(end)}</span>
-                      {c.notes && <span className="text-xs text-[#666666] ml-2">{c.notes}</span>}
-                      {selectedCycleId === c.id && <Check className="h-4 w-4 text-[#FF914D] float-right mt-0.5" />}
-                    </button>
-                  )
-                })}
-              </div>
+              {cycles.length === 0 ? (
+                <div className="border border-dashed border-[#E5E5E5] rounded-xl p-4 text-center">
+                  <p className="text-sm text-[#666666]">No hay ciclos de sesiones creados.</p>
+                  <Link
+                    href="/dashboard/sesiones/nuevo"
+                    className="text-sm text-[#FF914D] hover:underline font-medium mt-1 inline-block"
+                  >
+                    Crear primer ciclo →
+                  </Link>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {cycles.map(c => {
+                    const end = new Date(c.start_date); end.setDate(end.getDate() + 13)
+                    const fmt = (d: Date) => d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
+                    return (
+                      <button
+                        key={c.id}
+                        onClick={() => setSelectedCycleId(c.id)}
+                        className={`text-left px-3 py-2.5 rounded-xl border text-sm transition-colors ${
+                          selectedCycleId === c.id ? 'border-[#FF914D] bg-orange-50' : 'border-[#E5E5E5] hover:border-[#FF914D]/50'
+                        }`}
+                      >
+                        <span className="font-medium text-[#1C1C1C]">{fmt(new Date(c.start_date))} — {fmt(end)}</span>
+                        {c.notes && <span className="text-xs text-[#666666] ml-2">{c.notes}</span>}
+                        {selectedCycleId === c.id && <Check className="h-4 w-4 text-[#FF914D] float-right mt-0.5" />}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           )}
           <div className="flex justify-between mt-6">
