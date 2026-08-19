@@ -326,7 +326,11 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
       {step === 3 && (
         <div className="bg-white rounded-2xl border border-[#E5E5E5] p-6">
           <h2 className="text-lg font-bold text-[#1C1C1C] mb-1">Nivel del cliente</h2>
-          <p className="text-[#666666] text-sm mb-5">Para <strong>{selectedClient?.first_name} {selectedClient?.last_name}</strong></p>
+          <p className="text-[#666666] text-sm mb-1">Para <strong>{selectedClient?.first_name} {selectedClient?.last_name}</strong></p>
+          {planType === 'group' && (
+            <p className="text-xs text-[#FF914D] mb-5">Los ejercicios de las sesiones A/B/C son los mismos para todos los niveles — el nivel determina los pesos y repeticiones.</p>
+          )}
+          {planType === 'individual' && <div className="mb-4" />}
           <div className="grid grid-cols-3 gap-3">
             {[
               { val: 1, label: 'Nivel 1', desc: 'Sin experiencia previa' },
@@ -431,7 +435,7 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
           </div>
 
           <div className="flex justify-between mt-6">
-            <Button variant="outline" onClick={() => setStep(planType === 'group' ? 2 : 3)}>
+            <Button variant="outline" onClick={() => setStep(3)}>
               <ArrowLeft className="h-4 w-4 mr-2" /> Atrás
             </Button>
             <Button
