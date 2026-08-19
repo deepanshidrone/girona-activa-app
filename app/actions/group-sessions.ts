@@ -35,11 +35,6 @@ export type CreateGroupPlanData = {
   training_dates: { date: string; session_label: 'A' | 'B' | 'C' }[]
 }
 
-// The session rotation: training day index mod 3 → A, B, C
-export function getSessionLabel(trainingDayIndex: number): 'A' | 'B' | 'C' {
-  return (['A', 'B', 'C'] as const)[trainingDayIndex % 3]
-}
-
 export async function createGroupCycleAction(data: CreateGroupCycleData) {
   const adminSupabase = createAdminClient()
   const supabase = await createClient()
