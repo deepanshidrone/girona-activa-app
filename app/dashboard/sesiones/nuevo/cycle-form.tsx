@@ -152,11 +152,11 @@ export function CycleForm({ exercises, bodyZones, muscleGroups, movementPatterns
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-1.5">
             <Label className="text-white/60 text-xs">Fecha de inicio</Label>
-            <Input
+            <input
               type="date"
               value={startDate}
               onChange={e => setStartDate(e.target.value)}
-              className="bg-white/5 border-white/10 text-white"
+              className="h-9 rounded-md border border-white/10 bg-white/5 px-3 py-1 text-sm text-white cursor-pointer [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:invert"
             />
           </div>
           <div className="flex flex-col gap-1.5">

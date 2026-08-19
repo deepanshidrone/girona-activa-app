@@ -376,7 +376,12 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
             {/* Fecha inicio */}
             <div className="flex flex-col gap-1.5">
               <Label>Fecha de inicio</Label>
-              <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="max-w-xs" />
+              <input
+                type="date"
+                value={startDate}
+                onChange={e => setStartDate(e.target.value)}
+                className="max-w-xs h-9 rounded-md border border-[#E5E5E5] bg-white px-3 py-1 text-sm text-[#1C1C1C] cursor-pointer [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+              />
             </div>
 
             {/* Duración */}
