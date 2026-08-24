@@ -334,7 +334,7 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
           <h2 className="text-lg font-bold text-[#1C1C1C] mb-1">Nivel del cliente</h2>
           <p className="text-[#666666] text-sm mb-1">Para <strong>{selectedClient?.first_name} {selectedClient?.last_name}</strong></p>
           {planType === 'group' && (
-            <p className="text-xs text-[#FF914D] mb-5">Los ejercicios de las sesiones A/B/C son los mismos para todos los niveles — el nivel determina los pesos y repeticiones.</p>
+            <p className="text-xs text-[#FF914D] mb-4">El nivel selecciona automáticamente la variante de sesión: Nivel 1 → Regresión · Nivel 2 → Base · Nivel 3 → Progresión.</p>
           )}
           {planType === 'individual' && <div className="mb-4" />}
           <div className="grid grid-cols-3 gap-3">

@@ -7,7 +7,7 @@ import { ExercisePickerModal } from '@/app/dashboard/planes/nuevo/exercise-picke
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, Check, Dumbbell, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Check, Dumbbell, Plus, Trash2, Zap } from 'lucide-react'
 import Link from 'next/link'
 
 type Exercise = {
@@ -175,6 +175,16 @@ export function CycleForm({ exercises, bodyZones, muscleGroups, movementPatterns
             className="mt-1.5 bg-white/5 border-white/10 text-white placeholder:text-white/20"
           />
         </div>
+      </div>
+
+      {/* Info auto-generación */}
+      <div className="flex items-start gap-3 bg-white/5 border border-white/10 rounded-xl p-4 mb-5 text-sm text-white/50">
+        <Zap className="h-4 w-4 text-[#FF914D] shrink-0 mt-0.5" />
+        <p>
+          Define solo las <strong className="text-white/70">sesiones base</strong> (A, B, C).
+          Las versiones de <strong className="text-white/70">regresión</strong> (Nivel 1) y <strong className="text-white/70">progresión</strong> (Nivel 3)
+          se generarán automáticamente usando los campos de regresión/progresión de cada ejercicio.
+        </p>
       </div>
 
       {/* Las 3 sesiones */}

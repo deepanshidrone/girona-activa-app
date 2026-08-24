@@ -35,6 +35,14 @@ export type CreateGroupPlanData = {
   training_dates: { date: string; session_label: 'A' | 'B' | 'C' }[]
 }
 
+export type Difficulty = 'base' | 'regression' | 'progression'
+
+export function levelToDifficulty(level: number): Difficulty {
+  if (level === 1) return 'regression'
+  if (level === 3) return 'progression'
+  return 'base'
+}
+
 export async function createGroupCycleAction(data: CreateGroupCycleData) {
   const adminSupabase = createAdminClient()
   const supabase = await createClient()
@@ -55,23 +63,103 @@ export async function createGroupCycleAction(data: CreateGroupCycleData) {
   if (cycleError) return { error: 'Error al crear el ciclo: ' + cycleError.message }
 
   for (const sessionData of data.sessions) {
-    const { data: gs, error: gsError } = await adminSupabase
+    // 1. Crear sesión base
+    const { data: baseSession, error: baseError } = await adminSupabase
       .from('group_sessions')
       .insert({
         cycle_id: cycle.id,
         label: sessionData.label,
+        difficulty: 'base',
         notes: sessionData.notes || null,
       })
       .select()
       .single()
 
-    if (gsError) continue
+    if (baseError) continue
 
-    if (sessionData.exercises.length > 0) {
+    if (sessionData.exercises.length === 0) {
+      // Auto-generar sesiones vacías igualmente
+      await adminSupabase.from('group_sessions').insert([
+        { cycle_id: cycle.id, label: sessionData.label, difficulty: 'regression' },
+        { cycle_id: cycle.id, label: sessionData.label, difficulty: 'progression' },
+      ])
+      continue
+    }
+
+    // 2. Obtener progression_id / regression_id de cada ejercicio base
+    const exerciseIds = sessionData.exercises.map(e => e.exercise_id)
+    const { data: exerciseDetails } = await adminSupabase
+      .from('exercises')
+      .select('id, regression_id, progression_id')
+      .in('id', exerciseIds)
+
+    const detailMap = new Map((exerciseDetails ?? []).map(e => [e.id, e]))
+
+    type EnrichedEx = GroupSessionExercise & { regression_id: string | null; progression_id: string | null }
+    const enriched: EnrichedEx[] = sessionData.exercises.map(ex => ({
+      ...ex,
+      weight_kg: ex.weight_kg ?? undefined,
+      notes: ex.notes ?? undefined,
+      regression_id: detailMap.get(ex.exercise_id)?.regression_id ?? null,
+      progression_id: detailMap.get(ex.exercise_id)?.progression_id ?? null,
+    }))
+
+    // 3. Insertar ejercicios de la sesión base
+    await adminSupabase.from('group_session_exercises').insert(
+      enriched.map(ex => ({
+        session_id: baseSession.id,
+        exercise_id: ex.exercise_id,
+        sets: ex.sets,
+        reps: ex.reps,
+        weight_kg: ex.weight_kg ?? null,
+        notes: ex.notes ?? null,
+        order_index: ex.order_index,
+      }))
+    )
+
+    // 4. Auto-generar sesión regresión
+    const { data: regSession } = await adminSupabase
+      .from('group_sessions')
+      .insert({
+        cycle_id: cycle.id,
+        label: sessionData.label,
+        difficulty: 'regression',
+        notes: `Auto-generada a partir de sesión ${sessionData.label}`,
+      })
+      .select()
+      .single()
+
+    if (regSession) {
       await adminSupabase.from('group_session_exercises').insert(
-        sessionData.exercises.map(ex => ({
-          session_id: gs.id,
-          exercise_id: ex.exercise_id,
+        enriched.map(ex => ({
+          session_id: regSession.id,
+          exercise_id: ex.regression_id ?? ex.exercise_id, // fallback al ejercicio base
+          sets: ex.sets,
+          reps: ex.reps,
+          weight_kg: ex.weight_kg ?? null,
+          notes: ex.notes ?? null,
+          order_index: ex.order_index,
+        }))
+      )
+    }
+
+    // 5. Auto-generar sesión progresión
+    const { data: progSession } = await adminSupabase
+      .from('group_sessions')
+      .insert({
+        cycle_id: cycle.id,
+        label: sessionData.label,
+        difficulty: 'progression',
+        notes: `Auto-generada a partir de sesión ${sessionData.label}`,
+      })
+      .select()
+      .single()
+
+    if (progSession) {
+      await adminSupabase.from('group_session_exercises').insert(
+        enriched.map(ex => ({
+          session_id: progSession.id,
+          exercise_id: ex.progression_id ?? ex.exercise_id, // fallback al ejercicio base
           sets: ex.sets,
           reps: ex.reps,
           weight_kg: ex.weight_kg ?? null,
@@ -141,40 +229,14 @@ export async function getGroupCyclesAction() {
     .from('group_cycles')
     .select(`
       id, start_date, notes, created_at,
-      group_sessions(id, label, notes,
-        group_session_exercises(id, exercise_id, sets, reps, weight_kg, notes, order_index)
+      group_sessions(id, label, difficulty, notes,
+        group_session_exercises(id, exercise_id, sets, reps, weight_kg, notes, order_index,
+          exercises(id, name)
+        )
       )
     `)
     .order('start_date', { ascending: false })
 
   if (error) return { error: error.message, cycles: [] }
   return { cycles: data ?? [] }
-}
-
-export async function getActiveCycleAction() {
-  const adminSupabase = createAdminClient()
-  const today = new Date().toISOString().split('T')[0]
-  // Active cycle: started ≤ today, started > 14 days ago
-  const twoWeeksAgo = new Date()
-  twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14)
-  const cutoff = twoWeeksAgo.toISOString().split('T')[0]
-
-  const { data, error } = await adminSupabase
-    .from('group_cycles')
-    .select(`
-      id, start_date, notes,
-      group_sessions(id, label, notes,
-        group_session_exercises(id, exercise_id, sets, reps, weight_kg, notes, order_index,
-          exercises(id, name)
-        )
-      )
-    `)
-    .gte('start_date', cutoff)
-    .lte('start_date', today)
-    .order('start_date', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (error) return { cycle: null }
-  return { cycle: data }
 }

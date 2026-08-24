@@ -1,5 +1,5 @@
 import { getGroupCyclesAction } from '@/app/actions/group-sessions'
-import { Plus, CalendarDays, Dumbbell } from 'lucide-react'
+import { Plus, CalendarDays, Dumbbell, Zap } from 'lucide-react'
 import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
@@ -24,15 +24,27 @@ function formatDateRange(startDate: string) {
   return `${fmt(start)} — ${fmt(end)}`
 }
 
+const DIFFICULTY_META = {
+  regression:  { label: 'Regresión',  short: 'Reg',  color: 'text-blue-400',   dot: 'bg-blue-400'   },
+  base:        { label: 'Base',       short: 'Base', color: 'text-[#FF914D]',  dot: 'bg-[#FF914D]'  },
+  progression: { label: 'Progresión', short: 'Prog', color: 'text-purple-400', dot: 'bg-purple-400' },
+} as const
+
+const LEVEL_LABELS = {
+  regression:  'Nivel 1 (Groc)',
+  base:        'Nivel 2 (Blau)',
+  progression: 'Nivel 3 (Vermell)',
+} as const
+
 export default async function SesionesPage() {
   const { cycles } = await getGroupCyclesAction()
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
+    <div className="p-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white">Sesiones grupales</h1>
-          <p className="text-white/50 text-sm mt-0.5">Ciclos de 2 semanas con sesiones A, B y C</p>
+          <p className="text-white/50 text-sm mt-0.5">Ciclos de 2 semanas · 3 sesiones × 3 dificultades</p>
         </div>
         <Link
           href="/dashboard/sesiones/nuevo"
@@ -41,6 +53,16 @@ export default async function SesionesPage() {
           <Plus className="h-4 w-4" />
           Nuevo ciclo
         </Link>
+      </div>
+
+      {/* Leyenda niveles */}
+      <div className="flex items-center gap-4 mb-5 text-xs text-white/40">
+        {(Object.entries(DIFFICULTY_META) as [keyof typeof DIFFICULTY_META, typeof DIFFICULTY_META[keyof typeof DIFFICULTY_META]][]).map(([key, meta]) => (
+          <div key={key} className="flex items-center gap-1.5">
+            <span className={`w-2 h-2 rounded-full ${meta.dot}`} />
+            <span>{meta.label} — {LEVEL_LABELS[key]}</span>
+          </div>
+        ))}
       </div>
 
       {cycles.length === 0 ? (
@@ -57,48 +79,95 @@ export default async function SesionesPage() {
           </Link>
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-6">
           {cycles.map((cycle: any) => {
             const status = getCycleStatus(cycle.start_date)
-            const sessions = (cycle.group_sessions ?? []).sort((a: any, b: any) => a.label.localeCompare(b.label))
-            const totalExercises = sessions.reduce((acc: number, s: any) => acc + (s.group_session_exercises?.length ?? 0), 0)
+            const sessions: any[] = cycle.group_sessions ?? []
+
+            const getSession = (label: string, difficulty: string) =>
+              sessions.find((s: any) => s.label === label && s.difficulty === difficulty)
+
+            const baseCount = (['A','B','C']).reduce((acc, label) => {
+              const s = getSession(label, 'base')
+              return acc + (s?.group_session_exercises?.length ?? 0)
+            }, 0)
 
             return (
-              <div key={cycle.id} className="bg-[#1C1C1C] rounded-2xl border border-white/10 p-5">
-                <div className="flex items-start justify-between gap-4 mb-4">
-                  <div>
-                    <div className="flex items-center gap-2.5 mb-1">
-                      <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${status.color}`}>
-                        {status.label}
-                      </span>
-                      <span className="text-white font-semibold text-sm">{formatDateRange(cycle.start_date)}</span>
-                    </div>
-                    {cycle.notes && <p className="text-white/40 text-xs">{cycle.notes}</p>}
+              <div key={cycle.id} className="bg-[#1C1C1C] rounded-2xl border border-white/10 overflow-hidden">
+                {/* Header */}
+                <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+                  <div className="flex items-center gap-3">
+                    <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${status.color}`}>
+                      {status.label}
+                    </span>
+                    <span className="text-white font-semibold">{formatDateRange(cycle.start_date)}</span>
+                    {cycle.notes && <span className="text-white/30 text-xs">{cycle.notes}</span>}
                   </div>
-                  <div className="flex items-center gap-1 text-white/30 text-xs shrink-0">
+                  <div className="flex items-center gap-1 text-white/30 text-xs">
                     <Dumbbell className="h-3.5 w-3.5" />
-                    {totalExercises} ejercicios
+                    {baseCount} ejerc. base
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
-                  {(['A', 'B', 'C'] as const).map(label => {
-                    const s = sessions.find((s: any) => s.label === label)
-                    const count = s?.group_session_exercises?.length ?? 0
-                    return (
-                      <div key={label} className="bg-white/5 rounded-xl p-3">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="w-6 h-6 rounded-full bg-[#FF914D] text-white text-xs font-bold flex items-center justify-center">
-                            {label}
-                          </span>
-                          <span className="text-white/30 text-xs">{count} ejerc.</span>
-                        </div>
-                        <p className="text-white/50 text-xs line-clamp-2 min-h-[2rem]">
-                          {s?.notes || (count > 0 ? `${count} ejercicios definidos` : 'Sin notas')}
-                        </p>
+                {/* Cuadrícula 3×3 */}
+                <div className="p-5">
+                  {/* Header columnas */}
+                  <div className="grid grid-cols-4 gap-3 mb-2">
+                    <div />
+                    {(['regression', 'base', 'progression'] as const).map(diff => (
+                      <div key={diff} className="text-center">
+                        <span className={`text-xs font-semibold ${DIFFICULTY_META[diff].color}`}>
+                          {DIFFICULTY_META[diff].label}
+                        </span>
+                        <p className="text-[10px] text-white/30">{LEVEL_LABELS[diff]}</p>
                       </div>
-                    )
-                  })}
+                    ))}
+                  </div>
+
+                  {/* Filas A, B, C */}
+                  {(['A', 'B', 'C'] as const).map(label => (
+                    <div key={label} className="grid grid-cols-4 gap-3 mb-3">
+                      {/* Label sesión */}
+                      <div className="flex items-center justify-center">
+                        <span className="w-8 h-8 rounded-full bg-[#FF914D] text-white text-sm font-bold flex items-center justify-center">
+                          {label}
+                        </span>
+                      </div>
+
+                      {/* Regresión, Base, Progresión */}
+                      {(['regression', 'base', 'progression'] as const).map(diff => {
+                        const s = getSession(label, diff)
+                        const count = s?.group_session_exercises?.length ?? 0
+                        const isAuto = diff !== 'base'
+                        const exercises: any[] = s?.group_session_exercises ?? []
+
+                        return (
+                          <div key={diff} className={`rounded-xl p-3 border ${isAuto ? 'border-white/5 bg-white/[0.02]' : 'border-white/10 bg-white/5'}`}>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-xs text-white/50">{count} ejerc.</span>
+                              {isAuto && (
+                                <span className="flex items-center gap-0.5 text-[10px] text-white/20">
+                                  <Zap className="h-2.5 w-2.5" />
+                                  auto
+                                </span>
+                              )}
+                            </div>
+                            {exercises.slice(0, 2).map((ex: any, i: number) => (
+                              <p key={i} className="text-[11px] text-white/40 truncate leading-snug">
+                                {ex.exercises?.name ?? '—'}
+                              </p>
+                            ))}
+                            {exercises.length > 2 && (
+                              <p className="text-[10px] text-white/20 mt-0.5">+{exercises.length - 2} más</p>
+                            )}
+                            {exercises.length === 0 && (
+                              <p className="text-[11px] text-white/20 italic">Sin ejercicios</p>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ))}
                 </div>
               </div>
             )
