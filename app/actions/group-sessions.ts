@@ -35,13 +35,7 @@ export type CreateGroupPlanData = {
   training_dates: { date: string; session_label: 'A' | 'B' | 'C' }[]
 }
 
-export type Difficulty = 'base' | 'regression' | 'progression'
-
-export function levelToDifficulty(level: number): Difficulty {
-  if (level === 1) return 'regression'
-  if (level === 3) return 'progression'
-  return 'base'
-}
+export type { Difficulty } from '@/lib/group-sessions-utils'
 
 export async function createGroupCycleAction(data: CreateGroupCycleData) {
   const adminSupabase = createAdminClient()

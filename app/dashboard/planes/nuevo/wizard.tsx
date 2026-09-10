@@ -265,7 +265,7 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
           <h2 className="text-lg font-bold text-[#1C1C1C] mb-4">Tipo de entrenamiento</h2>
           <div className="grid grid-cols-2 gap-3">
             <button
-              onClick={() => { setPlanType('individual'); setStep(3) }}
+              onClick={() => { setPlanType('individual'); setSelectedCycleId('') }}
               className={`p-4 rounded-xl border text-left transition-colors ${
                 planType === 'individual' ? 'border-[#FF914D] bg-orange-50' : 'border-[#E5E5E5] hover:border-[#FF914D]/50'
               }`}
@@ -274,7 +274,7 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
               <p className="text-xs text-[#666666] mt-0.5">Plan personalizado día a día</p>
             </button>
             <button
-              onClick={() => { setPlanType('group'); setStep(3) }}
+              onClick={() => setPlanType('group')}
               className={`p-4 rounded-xl border text-left transition-colors ${
                 planType === 'group' ? 'border-[#FF914D] bg-orange-50' : 'border-[#E5E5E5] hover:border-[#FF914D]/50'
               }`}
@@ -323,6 +323,13 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
           <div className="flex justify-between mt-6">
             <Button variant="outline" onClick={() => setStep(1)}>
               <ArrowLeft className="h-4 w-4 mr-2" /> Atrás
+            </Button>
+            <Button
+              onClick={() => setStep(3)}
+              disabled={planType === 'group' && !selectedCycleId}
+              className="bg-[#FF914D] hover:bg-[#e07a3a] text-white gap-2"
+            >
+              Siguiente <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -451,7 +458,7 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
             </Button>
             <Button
               onClick={handleGenerateCalendar}
-              disabled={selectedWeekdays.length !== weeklyFreq || (planType === 'group' && !selectedCycleId)}
+              disabled={selectedWeekdays.length !== weeklyFreq}
               className="bg-[#FF914D] hover:bg-[#e07a3a] text-white gap-2"
             >
               Generar calendario <ArrowRight className="h-4 w-4" />
