@@ -172,11 +172,43 @@ El empleado guarda el plan completo → queda activo para el cliente.
 
 ---
 
-### 5.3 Generación de plan grupal ⏳
+### 5.3 Generación de plan grupal ✅
 
-El plan se asigna automáticamente según el nivel seleccionado. Hay 3 plantillas predefinidas (una por nivel) almacenadas en Supabase. El empleado confirma la asignación → el plan queda activo.
+Los planes grupales se basan en un ciclo de 2 semanas con 3 sesiones predefinidas (A, B, C). El empleado define los ciclos con antelación desde la sección **Sesiones grupales**, y al crear el plan grupal selecciona el ciclo vigente.
 
-> **Pendiente:** recibir las 3 plantillas predefinidas del cliente para cargarlas en Supabase.
+**Flujo de creación de plan grupal:**
+
+| Paso | Descripción |
+|---|---|
+| 1 — Cliente | Desplegable con todos los clientes activos |
+| 2 — Tipo | Selección **Grupal** + elección del ciclo activo |
+| 3 — Nivel | Nivel 1/2/3 — determina pesos y repeticiones (los ejercicios son los mismos para todos los niveles) |
+| 4 — Parámetros | Fecha de inicio, duración (meses), frecuencia semanal, días de la semana, duración de sesión |
+| 5 — Calendario | Vista mensual con sesión A/B/C asignada a cada día de entrenamiento |
+| 6 — Confirmación | Guardar → plan queda activo para el cliente |
+
+**Rotación de sesiones:** el índice de sesión de entrenamiento módulo 3 determina la sesión asignada (0→A, 1→B, 2→C). El ciclo se repite continuamente durante toda la duración del plan.
+
+### 5.3.1 Gestión de ciclos de sesiones grupales ✅
+
+Los empleados definen los ciclos desde `/dashboard/sesiones` antes del inicio de cada período de 2 semanas.
+
+**Estructura de un ciclo:**
+- Fecha de inicio (la fecha de fin se calcula automáticamente: +13 días)
+- 3 sesiones (A, B, C) con su lista de ejercicios y notas
+- Cada sesión usa el mismo selector de ejercicios que el plan individual (series, repeticiones, peso, notas)
+
+**Estados de un ciclo:** Activo · Próximo · Expirado
+
+**Base de datos:**
+
+| Tabla | Descripción |
+|---|---|
+| `group_cycles` | Un registro por ciclo de 2 semanas |
+| `group_sessions` | 3 filas por ciclo (label A, B o C) |
+| `group_session_exercises` | Ejercicios de cada sesión con parámetros |
+
+Los planes grupales en `training_plans` incluyen `type = 'group'` y `cycle_id`. Cada sesión en `plan_sessions` almacena `session_label` (A/B/C).
 
 ---
 
@@ -322,13 +354,14 @@ Funcionalidades identificadas para después del MVP:
 - Galería de ejercicios (41 ejercicios, filtros completos, dark theme)
 - Importación de ejercicios desde Excel (script Python → SQL)
 - Plan individual — wizard completo (selección cliente, nivel, parámetros, calendario, modal ejercicios)
-- Modal de selección de ejercicios (pantalla completa, mismos filtros que galería)
+- Modal de selección de ejercicios (pantalla completa, mismos filtros que galería, panel "En este día" con editar/eliminar)
 - Base de datos: `body_zones`, `profiles`, `exercises` con metadata extendida
+- **Sesiones grupales** — gestión de ciclos A/B/C desde `/dashboard/sesiones`
+- **Plan grupal** — wizard completo con rotación A/B/C en calendario, nivel del cliente, ciclo seleccionable
 
 ### ⏳ Pendiente (MVP)
 
 - Vista del cliente (calendario con plan activo, mobile-first)
-- Planes grupales (bloqueado: pendiente plantillas del cliente)
 - Gestión de planes (ver activo/historial desde perfil cliente)
 - Imágenes de ejercicios en Supabase Storage
 - DNS: `app.gironaactiva.com` → Vercel

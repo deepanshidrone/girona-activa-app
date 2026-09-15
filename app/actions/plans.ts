@@ -14,6 +14,7 @@ export type PlanExercise = {
 
 export type PlanDay = {
   date: string // YYYY-MM-DD
+  session_time?: string // HH:MM
   exercises: PlanExercise[]
 }
 
@@ -73,6 +74,7 @@ export async function createPlanAction(data: CreatePlanData) {
       .insert({
         plan_id: plan.id,
         session_date: day.date,
+        session_time: day.session_time ?? null,
         order_index: i,
       })
       .select()

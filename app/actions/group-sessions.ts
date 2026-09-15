@@ -32,6 +32,7 @@ export type CreateGroupPlanData = {
   session_duration: 30 | 60
   start_date: string
   cycle_id: string
+  session_time?: string
   training_dates: { date: string; session_label: 'A' | 'B' | 'C' }[]
 }
 
@@ -209,6 +210,7 @@ export async function createGroupPlanAction(data: CreateGroupPlanData) {
     await adminSupabase.from('plan_sessions').insert({
       plan_id: plan.id,
       session_date: date,
+      session_time: data.session_time ?? null,
       session_label,
       order_index: i,
     })

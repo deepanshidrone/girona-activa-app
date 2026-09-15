@@ -87,6 +87,7 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
   const [weeklyFreq, setWeeklyFreq] = useState(3)
   const [sessionDuration, setSessionDuration] = useState<30 | 60>(60)
   const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [sessionTime, setSessionTime] = useState<string>('')
   const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([])
   const [planDays, setPlanDays] = useState<PlanDay[]>([])
 
@@ -101,7 +102,7 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
     if (planType === 'group') {
       setGroupDays(dates.map((date, i) => ({ date, session_label: getSessionLabel(i) })))
     } else {
-      setPlanDays(dates.map(date => ({ date, exercises: [] })))
+      setPlanDays(dates.map(date => ({ date, session_time: sessionTime || undefined, exercises: [] })))
     }
     setStep(5)
   }
@@ -177,6 +178,7 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
         session_duration: sessionDuration,
         start_date: startDate,
         cycle_id: selectedCycleId,
+        session_time: sessionTime || undefined,
         training_dates: groupDays,
       })
     } else {
@@ -380,15 +382,26 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
           <h2 className="text-lg font-bold text-[#1C1C1C] mb-5">Parámetros del ciclo</h2>
           <div className="flex flex-col gap-5">
 
-            {/* Fecha inicio */}
-            <div className="flex flex-col gap-1.5">
-              <Label>Fecha de inicio</Label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={e => setStartDate(e.target.value)}
-                className="max-w-xs h-9 rounded-md border border-[#E5E5E5] bg-white px-3 py-1 text-sm text-[#1C1C1C] cursor-pointer [&::-webkit-calendar-picker-indicator]:cursor-pointer"
-              />
+            {/* Fecha + hora inicio */}
+            <div className="grid grid-cols-2 gap-4 max-w-sm">
+              <div className="flex flex-col gap-1.5">
+                <Label>Fecha de inicio</Label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={e => setStartDate(e.target.value)}
+                  className="h-9 rounded-md border border-[#E5E5E5] bg-white px-3 py-1 text-sm text-[#1C1C1C] cursor-pointer [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>Hora de sesión <span className="text-[#999] font-normal">(opcional)</span></Label>
+                <input
+                  type="time"
+                  value={sessionTime}
+                  onChange={e => setSessionTime(e.target.value)}
+                  className="h-9 rounded-md border border-[#E5E5E5] bg-white px-3 py-1 text-sm text-[#1C1C1C] cursor-pointer [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                />
+              </div>
             </div>
 
             {/* Duración */}
