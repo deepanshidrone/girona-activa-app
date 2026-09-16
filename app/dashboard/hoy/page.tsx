@@ -56,8 +56,10 @@ export default async function HoyPage() {
       )}
 
       {error && (
-        <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-red-400 text-sm mb-4">
-          {error}
+        <div className="bg-[#1C1C1C] rounded-2xl border border-white/10 p-12 text-center">
+          <CalendarClock className="h-10 w-10 text-white/20 mx-auto mb-3" />
+          <p className="text-white/50 font-medium">La agenda no está disponible aún</p>
+          <p className="text-white/30 text-sm mt-1">Es necesario completar la configuración de la base de datos antes de usar esta sección.</p>
         </div>
       )}
 
