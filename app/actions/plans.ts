@@ -20,6 +20,7 @@ export type PlanDay = {
 
 export type CreatePlanData = {
   client_id: string
+  assigned_employee_id: string
   level: number
   duration_months: number
   weekly_frequency: number
@@ -50,6 +51,7 @@ export async function createPlanAction(data: CreatePlanData) {
     .from('training_plans')
     .insert({
       client_id: data.client_id,
+      assigned_employee_id: data.assigned_employee_id,
       type: 'individual',
       level: data.level,
       status: 'active',

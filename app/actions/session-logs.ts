@@ -110,15 +110,20 @@ export async function completeSessionLogAction(sessionLogId: string) {
 
 export async function getTodaySessionsAction() {
   const adminSupabase = createAdminClient()
+  const supabase = await createClient()
   const today = new Date().toISOString().split('T')[0]
+
+  const { data: { session: authSession } } = await supabase.auth.getSession()
+  const currentUserId = authSession?.user?.id ?? null
 
   const { data, error } = await adminSupabase
     .from('plan_sessions')
     .select(`
       id, session_date, session_time, session_label, order_index,
       training_plans!inner (
-        id, type, level, client_id,
-        clients (id, first_name, last_name)
+        id, type, level, client_id, assigned_employee_id,
+        clients (id, first_name, last_name),
+        profiles:assigned_employee_id (id, full_name)
       ),
       plan_session_exercises (id),
       session_logs (id, status)
@@ -127,8 +132,21 @@ export async function getTodaySessionsAction() {
     .eq('training_plans.status', 'active')
     .order('session_time', { ascending: true, nullsFirst: false })
 
-  if (error) return { error: error.message, sessions: [] }
-  return { sessions: data ?? [] }
+  if (error) return { error: error.message, sessions: [], currentUserId }
+
+  // Ordenar: sesiones del empleado logueado primero, resto por empleado
+  const sessions = (data ?? []).sort((a: any, b: any) => {
+    const aIsMe = a.training_plans?.assigned_employee_id === currentUserId
+    const bIsMe = b.training_plans?.assigned_employee_id === currentUserId
+    if (aIsMe && !bIsMe) return -1
+    if (!aIsMe && bIsMe) return 1
+    // Mismo grupo: ordenar por hora
+    const aTime = a.session_time ?? '99:99'
+    const bTime = b.session_time ?? '99:99'
+    return aTime.localeCompare(bTime)
+  })
+
+  return { sessions, currentUserId }
 }
 
 export async function getSessionDetailAction(planSessionId: string) {

@@ -22,6 +22,7 @@ type Exercise = {
 type Item = { id: string; name: string }
 type Cycle = { id: string; start_date: string; notes: string | null }
 type GroupDay = { date: string; session_label: 'A' | 'B' | 'C' }
+type Employee = { id: string; full_name: string }
 
 const SESSION_LABEL_COLORS = { A: 'bg-blue-500', B: 'bg-purple-500', C: 'bg-green-500' }
 
@@ -38,6 +39,7 @@ interface Props {
   equipment: Item[]
   objectives: Item[]
   cycles: Cycle[]
+  employees: Employee[]
 }
 
 const WEEKDAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
@@ -71,7 +73,7 @@ function getMonthsInRange(startDate: string, months: number): { year: number; mo
   return result
 }
 
-export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, movementPatterns, equipment, objectives, cycles }: Props) {
+export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, movementPatterns, equipment, objectives, cycles, employees }: Props) {
   const router = useRouter()
   const [step, setStep] = useState(1)
   const [saving, setSaving] = useState(false)
@@ -79,6 +81,7 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
 
   // Form state
   const [clientId, setClientId] = useState('')
+  const [assignedEmployeeId, setAssignedEmployeeId] = useState('')
   const [planType, setPlanType] = useState<'individual' | 'group'>('individual')
   const [selectedCycleId, setSelectedCycleId] = useState<string>('')
   const [level, setLevel] = useState<number | null>(null)
@@ -172,6 +175,7 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
     if (planType === 'group') {
       result = await createGroupPlanAction({
         client_id: clientId,
+        assigned_employee_id: assignedEmployeeId,
         level: level ?? 1,
         duration_months: durationMonths,
         weekly_frequency: weeklyFreq,
@@ -184,6 +188,7 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
     } else {
       result = await createPlanAction({
         client_id: clientId,
+        assigned_employee_id: assignedEmployeeId,
         level: level!,
         duration_months: durationMonths,
         weekly_frequency: weeklyFreq,
@@ -236,7 +241,7 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
       {step === 1 && (
         <div className="bg-white rounded-2xl border border-[#E5E5E5] p-6">
           <h2 className="text-lg font-bold text-[#1C1C1C] mb-4">Selecciona el cliente</h2>
-          <div className="flex flex-col gap-2 max-h-80 overflow-y-auto">
+          <div className="flex flex-col gap-2 max-h-64 overflow-y-auto mb-6">
             {clients.map(c => (
               <button
                 key={c.id}
@@ -253,8 +258,30 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
               </button>
             ))}
           </div>
+
+          <div className="border-t border-[#E5E5E5] pt-5">
+            <h3 className="text-sm font-semibold text-[#1C1C1C] mb-3">Entrenador asignado</h3>
+            <div className="flex flex-wrap gap-2">
+              {employees.map(e => (
+                <button
+                  key={e.id}
+                  onClick={() => setAssignedEmployeeId(e.id)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm transition-colors ${
+                    assignedEmployeeId === e.id ? 'border-[#FF914D] bg-orange-50 text-[#FF914D] font-medium' : 'border-[#E5E5E5] text-[#666666] hover:border-[#FF914D]/50'
+                  }`}
+                >
+                  <div className="w-6 h-6 rounded-full bg-[#FF914D]/10 flex items-center justify-center text-[10px] font-bold text-[#FF914D]">
+                    {e.full_name.split(' ').map((n: string) => n[0]).slice(0, 2).join('')}
+                  </div>
+                  {e.full_name}
+                  {assignedEmployeeId === e.id && <Check className="h-3.5 w-3.5" />}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="flex justify-end mt-6">
-            <Button onClick={() => setStep(2)} disabled={!clientId} className="bg-[#FF914D] hover:bg-[#e07a3a] text-white gap-2">
+            <Button onClick={() => setStep(2)} disabled={!clientId || !assignedEmployeeId} className="bg-[#FF914D] hover:bg-[#e07a3a] text-white gap-2">
               Siguiente <ArrowRight className="h-4 w-4" />
             </Button>
           </div>

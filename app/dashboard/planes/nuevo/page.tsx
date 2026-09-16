@@ -16,6 +16,7 @@ export default async function NuevoPlanPage() {
     { data: objectives },
     { data: muscleLinks },
     { data: cycles },
+    { data: employees },
   ] = await Promise.all([
     supabase.from('clients').select('id, first_name, last_name').eq('is_active', true).order('first_name'),
     supabase.from('exercises').select('id, name, technical_name, level, technical_level, body_zone_id, movement_pattern_id, equipment_id, objective_id').order('name'),
@@ -26,6 +27,7 @@ export default async function NuevoPlanPage() {
     supabase.from('objectives').select('id, name').order('name'),
     supabase.from('exercise_muscle_groups').select('exercise_id, muscle_group_id'),
     supabase.from('group_cycles').select('id, start_date, notes').order('start_date', { ascending: false }),
+    supabase.from('profiles').select('id, full_name').neq('full_name', null).order('full_name'),
   ])
 
   // Enriquecer ejercicios con grupos musculares
@@ -46,6 +48,7 @@ export default async function NuevoPlanPage() {
       equipment={equipment ?? []}
       objectives={objectives ?? []}
       cycles={cycles ?? []}
+      employees={employees ?? []}
     />
   )
 }

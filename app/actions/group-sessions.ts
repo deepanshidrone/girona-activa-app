@@ -26,6 +26,7 @@ export type CreateGroupCycleData = {
 
 export type CreateGroupPlanData = {
   client_id: string
+  assigned_employee_id: string
   level: number
   duration_months: number
   weekly_frequency: number
@@ -189,6 +190,7 @@ export async function createGroupPlanAction(data: CreateGroupPlanData) {
     .from('training_plans')
     .insert({
       client_id: data.client_id,
+      assigned_employee_id: data.assigned_employee_id,
       type: 'group',
       cycle_id: data.cycle_id,
       level: data.level,
