@@ -39,14 +39,18 @@ export default async function HoyPage() {
   }
 
   // Separar mis sesiones del resto
-  const mySessions = sessions.filter((s: any) => s.training_plans?.assigned_employee_id === currentUserId)
-  const otherSessions = sessions.filter((s: any) => s.training_plans?.assigned_employee_id !== currentUserId)
+  const getPlan = (s: any) => Array.isArray(s.training_plans) ? s.training_plans[0] : s.training_plans
+
+  const mySessions = sessions.filter((s: any) => getPlan(s)?.assigned_employee_id === currentUserId)
+  const otherSessions = sessions.filter((s: any) => getPlan(s)?.assigned_employee_id !== currentUserId)
 
   // Agrupar el resto por entrenador
   const byEmployee = new Map<string, { name: string; sessions: any[] }>()
   for (const s of otherSessions) {
-    const empId = s.training_plans?.assigned_employee_id ?? 'unassigned'
-    const empName = (s.training_plans?.profiles as any)?.full_name ?? 'Sin asignar'
+    const plan = getPlan(s)
+    const empId = plan?.assigned_employee_id ?? 'unassigned'
+    const profiles = plan?.profiles
+    const empName = (Array.isArray(profiles) ? profiles[0] : profiles)?.full_name ?? 'Sin asignar'
     if (!byEmployee.has(empId)) byEmployee.set(empId, { name: empName, sessions: [] })
     byEmployee.get(empId)!.sessions.push(s)
   }
