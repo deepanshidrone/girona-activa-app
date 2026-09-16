@@ -37,7 +37,8 @@ type ExistingLog = {
     sets_done: number | null
     reps_done: number | null
     load_kg: number | null
-    effort: number | null
+    rpe: number | null
+    rir: number | null
     notes: string | null
     skipped: boolean
   }[]
@@ -47,7 +48,8 @@ type ExerciseFormState = {
   sets_done: string
   reps_done: string
   load_kg: string
-  effort: string
+  rpe: string
+  rir: string
   notes: string
   skipped: boolean
   saved: boolean
@@ -71,7 +73,8 @@ function initExerciseState(exercise: ExerciseItem, log: ExistingLog | null): Exe
       sets_done: existing.sets_done?.toString() ?? '',
       reps_done: existing.reps_done?.toString() ?? '',
       load_kg: existing.load_kg?.toString() ?? '',
-      effort: existing.effort?.toString() ?? '',
+      rpe: existing.rpe?.toString() ?? '',
+      rir: existing.rir?.toString() ?? '',
       notes: existing.notes ?? '',
       skipped: existing.skipped ?? false,
       saved: true,
@@ -81,7 +84,8 @@ function initExerciseState(exercise: ExerciseItem, log: ExistingLog | null): Exe
     sets_done: exercise.sets?.toString() ?? '',
     reps_done: exercise.reps?.toString() ?? '',
     load_kg: exercise.weight_kg?.toString() ?? '',
-    effort: '',
+    rpe: '',
+    rir: '',
     notes: '',
     skipped: false,
     saved: false,
@@ -129,7 +133,8 @@ export function SessionRunner({ planSessionId, sessionDate, sessionTime, client,
       sets_done: form.sets_done ? parseInt(form.sets_done) : undefined,
       reps_done: form.reps_done ? parseInt(form.reps_done) : undefined,
       load_kg: form.load_kg ? parseFloat(form.load_kg) : undefined,
-      effort: form.effort ? parseInt(form.effort) : undefined,
+      rpe: form.rpe ? parseInt(form.rpe) : undefined,
+      rir: form.rir ? parseInt(form.rir) : undefined,
       notes: form.notes || undefined,
       skipped: form.skipped,
     })
@@ -259,7 +264,7 @@ export function SessionRunner({ planSessionId, sessionDate, sessionTime, client,
               {/* Formulario expandido */}
               {isExpanded && isActive && (
                 <div className="px-4 pb-4 border-t border-white/5">
-                  <div className="grid grid-cols-2 gap-3 mt-3">
+                  <div className="grid grid-cols-2 gap-3 mt-3 [&>div:nth-child(n+4)]:col-span-2">
                     <NumericField
                       label="Series realizadas"
                       value={form.sets_done}
@@ -280,18 +285,39 @@ export function SessionRunner({ planSessionId, sessionDate, sessionTime, client,
                       decimal
                     />
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs text-white/50">Esfuerzo (1-10)</label>
+                      <label className="text-xs text-white/50">RPE (1-10)</label>
                       <div className="flex gap-1 flex-wrap">
                         {[1,2,3,4,5,6,7,8,9,10].map(n => (
                           <button
                             key={n}
                             type="button"
-                            onClick={() => updateField(exercise.id, 'effort', n.toString())}
+                            onClick={() => updateField(exercise.id, 'rpe', n.toString())}
                             className={`w-7 h-7 rounded text-xs font-bold transition-colors
-                              ${form.effort === n.toString()
+                              ${form.rpe === n.toString()
                                 ? n <= 3 ? 'bg-green-500 text-white'
                                   : n <= 6 ? 'bg-yellow-500 text-white'
                                   : 'bg-red-500 text-white'
+                                : 'bg-white/5 text-white/40 hover:bg-white/10'
+                              }`}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs text-white/50">RIR (0-10)</label>
+                      <div className="flex gap-1 flex-wrap">
+                        {[0,1,2,3,4,5,6,7,8,9,10].map(n => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => updateField(exercise.id, 'rir', n.toString())}
+                            className={`w-7 h-7 rounded text-xs font-bold transition-colors
+                              ${form.rir === n.toString()
+                                ? n <= 2 ? 'bg-red-500 text-white'
+                                  : n <= 5 ? 'bg-yellow-500 text-white'
+                                  : 'bg-green-500 text-white'
                                 : 'bg-white/5 text-white/40 hover:bg-white/10'
                               }`}
                           >

@@ -9,7 +9,8 @@ export type ExerciseLogInput = {
   sets_done?: number
   reps_done?: number
   load_kg?: number
-  effort?: number
+  rpe?: number
+  rir?: number
   notes?: string
   skipped?: boolean
 }
@@ -67,7 +68,8 @@ export async function saveExerciseLogAction(
         sets_done: exerciseLog.sets_done ?? null,
         reps_done: exerciseLog.reps_done ?? null,
         load_kg: exerciseLog.load_kg ?? null,
-        effort: exerciseLog.effort ?? null,
+        rpe: exerciseLog.rpe ?? null,
+        rir: exerciseLog.rir ?? null,
         notes: exerciseLog.notes ?? null,
         skipped: exerciseLog.skipped ?? false,
       })
@@ -83,7 +85,8 @@ export async function saveExerciseLogAction(
         sets_done: exerciseLog.sets_done ?? null,
         reps_done: exerciseLog.reps_done ?? null,
         load_kg: exerciseLog.load_kg ?? null,
-        effort: exerciseLog.effort ?? null,
+        rpe: exerciseLog.rpe ?? null,
+        rir: exerciseLog.rir ?? null,
         notes: exerciseLog.notes ?? null,
         skipped: exerciseLog.skipped ?? false,
       })
@@ -146,7 +149,7 @@ export async function getSessionDetailAction(planSessionId: string) {
       session_logs (
         id, status, notes,
         exercise_logs (
-          id, plan_exercise_id, sets_done, reps_done, load_kg, effort, notes, skipped
+          id, plan_exercise_id, sets_done, reps_done, load_kg, rpe, rir, notes, skipped
         )
       )
     `)
