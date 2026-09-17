@@ -74,9 +74,9 @@ export default function NuevoClientePage() {
           <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
             <UserPlus className="h-8 w-8 text-green-600" />
           </div>
-          <h2 className="text-xl font-bold text-[#1C1C1C] mb-1">Cliente creado correctamente</h2>
-          <p className="text-[#666666] text-sm">Se ha enviado un email al cliente para establecer su contraseña.</p>
-          <p className="text-[#666666] text-xs mt-2">Redirigiendo...</p>
+          <h2 className="text-xl font-bold text-white mb-1">Cliente creado correctamente</h2>
+          <p className="text-white/50 text-sm">Se ha enviado un email al cliente para establecer su contraseña.</p>
+          <p className="text-white/30 text-xs mt-2">Redirigiendo...</p>
         </div>
       </div>
     )
@@ -86,7 +86,7 @@ export default function NuevoClientePage() {
     <div className="p-6 max-w-2xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <Link href="/dashboard/clientes" className="text-[#666666] hover:text-[#1C1C1C] transition-colors">
+        <Link href="/dashboard/clientes" className="text-white/40 hover:text-white transition-colors">
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div>
@@ -95,7 +95,7 @@ export default function NuevoClientePage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-[#E5E5E5] p-6 flex flex-col gap-5">
+      <form onSubmit={handleSubmit} className="bg-[#1C1C1C] rounded-2xl border border-white/10 p-6 flex flex-col gap-5">
 
         {/* Nombre y Apellido */}
         <div className="grid grid-cols-2 gap-4">
@@ -154,7 +154,7 @@ export default function NuevoClientePage() {
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="email">Email <span className="text-red-500">*</span></Label>
           <Input id="email" name="email" type="email" value={form.email} onChange={handleChange} placeholder="cliente@email.com" required />
-          <p className="text-xs text-[#666666]">Se enviará un email al cliente para que establezca su contraseña de acceso.</p>
+          <p className="text-xs text-white/40">Se enviará un email al cliente para que establezca su contraseña de acceso.</p>
         </div>
 
         {/* Comentarios */}

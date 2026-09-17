@@ -27,7 +27,7 @@ export function DeleteClientButton({ clientId, clientName }: { clientId: string;
   if (confirming) {
     return (
       <div className="flex items-center gap-2">
-        <span className="text-sm text-[#666666]">¿Eliminar a {clientName}?</span>
+        <span className="text-sm text-white/60">¿Eliminar a {clientName}?</span>
         <button
           onClick={handleDelete}
           disabled={loading}
@@ -37,7 +37,7 @@ export function DeleteClientButton({ clientId, clientName }: { clientId: string;
         </button>
         <button
           onClick={() => setConfirming(false)}
-          className="text-sm font-medium text-[#666666] hover:text-[#1C1C1C] px-3 py-1.5 rounded-lg transition-colors"
+          className="text-sm font-medium text-white/40 hover:text-white px-3 py-1.5 rounded-lg transition-colors"
         >
           Cancelar
         </button>

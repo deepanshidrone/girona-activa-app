@@ -39,7 +39,7 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
     <div className="p-6 max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
-        <Link href="/dashboard/clientes" className="text-[#666666] hover:text-[#1C1C1C] transition-colors">
+        <Link href="/dashboard/clientes" className="text-white/40 hover:text-white transition-colors">
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div className="flex items-center gap-3">
@@ -47,11 +47,11 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
             <User className="h-6 w-6 text-[#FF914D]" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-[#1C1C1C]">
+            <h1 className="text-2xl font-bold text-white">
               {cliente.first_name} {cliente.last_name}
             </h1>
             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-              cliente.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+              cliente.is_active ? 'bg-green-500/15 text-green-400' : 'bg-white/5 text-white/40'
             }`}>
               {cliente.is_active ? 'Activo' : 'Inactivo'}
             </span>
@@ -65,8 +65,8 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Datos personales */}
-        <div className="md:col-span-1 bg-white rounded-2xl border border-[#E5E5E5] p-5">
-          <h2 className="font-semibold text-[#1C1C1C] mb-4">Datos personales</h2>
+        <div className="md:col-span-1 bg-[#1C1C1C] rounded-2xl border border-white/10 p-5">
+          <h2 className="font-semibold text-white mb-4">Datos personales</h2>
           <dl className="flex flex-col gap-3">
             <DataRow label="Sexo" value={sexoLabel} />
             {edad && <DataRow label="Edad" value={`${edad} años`} />}
@@ -81,9 +81,9 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
           </dl>
 
           {cliente.notes && (
-            <div className="mt-4 pt-4 border-t border-[#E5E5E5]">
-              <p className="text-xs font-medium text-[#666666] mb-1">Notas</p>
-              <p className="text-sm text-[#1C1C1C]">{cliente.notes}</p>
+            <div className="mt-4 pt-4 border-t border-white/10">
+              <p className="text-xs font-medium text-white/40 mb-1">Notas</p>
+              <p className="text-sm text-white/70">{cliente.notes}</p>
             </div>
           )}
         </div>
@@ -91,13 +91,13 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
         {/* Planes */}
         <div className="md:col-span-2 flex flex-col gap-4">
           {/* Plan activo */}
-          <div className="bg-white rounded-2xl border border-[#E5E5E5] p-5">
+          <div className="bg-[#1C1C1C] rounded-2xl border border-white/10 p-5">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-[#1C1C1C]">Plan activo</h2>
+              <h2 className="font-semibold text-white">Plan activo</h2>
               <div className="flex items-center gap-3">
                 {planActivo && (
                   <Link href={`/dashboard/planes/${planActivo.id}/editar`}
-                    className="text-sm font-medium text-[#666666] hover:text-[#1C1C1C] transition-colors">
+                    className="text-sm font-medium text-white/40 hover:text-white transition-colors">
                     Editar
                   </Link>
                 )}
@@ -110,8 +110,8 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
 
             {!planActivo ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
-                <Dumbbell className="h-8 w-8 text-[#E5E5E5] mb-2" />
-                <p className="text-sm text-[#666666]">Este cliente no tiene plan activo</p>
+                <Dumbbell className="h-8 w-8 text-white/10 mb-2" />
+                <p className="text-sm text-white/40">Este cliente no tiene plan activo</p>
               </div>
             ) : (
               <PlanCard plan={planActivo} active />
@@ -120,8 +120,8 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
 
           {/* Historial */}
           {planesAnteriores.length > 0 && (
-            <div className="bg-white rounded-2xl border border-[#E5E5E5] p-5">
-              <h2 className="font-semibold text-[#1C1C1C] mb-4">Historial de planes</h2>
+            <div className="bg-[#1C1C1C] rounded-2xl border border-white/10 p-5">
+              <h2 className="font-semibold text-white mb-4">Historial de planes</h2>
               <div className="flex flex-col gap-3">
                 {planesAnteriores.map(plan => (
                   <PlanCard key={plan.id} plan={plan} active={false} />
@@ -138,8 +138,8 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
 function DataRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between items-center">
-      <dt className="text-sm text-[#666666]">{label}</dt>
-      <dd className="text-sm font-medium text-[#1C1C1C]">{value}</dd>
+      <dt className="text-sm text-white/40">{label}</dt>
+      <dd className="text-sm font-medium text-white">{value}</dd>
     </div>
   )
 }
@@ -153,18 +153,18 @@ function PlanCard({ plan, active }: { plan: any; active: boolean }) {
   const levelLabel = ['', 'Principiante', 'Intermedio', 'Avanzado'][plan.level] ?? '—'
 
   return (
-    <div className={`rounded-xl p-4 ${active ? 'bg-[#FF914D]/5 border border-[#FF914D]/20' : 'bg-[#F5F5F5]'}`}>
+    <div className={`rounded-xl p-4 ${active ? 'bg-[#FF914D]/10 border border-[#FF914D]/20' : 'bg-white/5 border border-white/5'}`}>
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="flex items-center gap-2">
-          <ClipboardList className={`h-4 w-4 ${active ? 'text-[#FF914D]' : 'text-[#666666]'}`} />
-          <span className="font-medium text-[#1C1C1C] text-sm capitalize">{plan.type === 'individual' ? 'Individual' : 'Grupal'} · {levelLabel}</span>
+          <ClipboardList className={`h-4 w-4 ${active ? 'text-[#FF914D]' : 'text-white/30'}`} />
+          <span className="font-medium text-white text-sm capitalize">{plan.type === 'individual' ? 'Individual' : 'Grupal'} · {levelLabel}</span>
         </div>
         {!active && (
-          <span className="text-xs text-[#666666] bg-white px-2 py-0.5 rounded-full border border-[#E5E5E5]">Completado</span>
+          <span className="text-xs text-white/30 bg-white/5 px-2 py-0.5 rounded-full border border-white/10">Completado</span>
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-2 text-xs text-[#666666]">
+      <div className="grid grid-cols-2 gap-2 text-xs text-white/40">
         <div className="flex items-center gap-1.5">
           <Calendar className="h-3.5 w-3.5" />
           <span>{new Date(plan.start_date + 'T12:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })} → {new Date(plan.end_date + 'T12:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}</span>

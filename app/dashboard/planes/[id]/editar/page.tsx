@@ -43,12 +43,12 @@ export default async function EditarPlanPage({ params }: { params: Promise<{ id:
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="flex items-center gap-4 mb-6">
-        <Link href={`/dashboard/clientes/${plan.client_id}`} className="text-[#666666] hover:text-[#1C1C1C] transition-colors">
+        <Link href={`/dashboard/clientes/${plan.client_id}`} className="text-white/40 hover:text-white transition-colors">
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-[#1C1C1C]">Editar plan</h1>
-          <p className="text-sm text-[#666666]">{client?.first_name} {client?.last_name}</p>
+          <h1 className="text-2xl font-bold text-white">Editar plan</h1>
+          <p className="text-sm text-white/50">{client?.first_name} {client?.last_name}</p>
         </div>
       </div>
 
