@@ -3,7 +3,8 @@ import { PlanWizard } from './wizard'
 
 export const dynamic = 'force-dynamic'
 
-export default async function NuevoPlanPage() {
+export default async function NuevoPlanPage({ searchParams }: { searchParams: Promise<{ client?: string }> }) {
+  const { client: preselectedClientId } = await searchParams
   const supabase = createAdminClient()
 
   const [
@@ -49,6 +50,7 @@ export default async function NuevoPlanPage() {
       objectives={objectives ?? []}
       cycles={cycles ?? []}
       employees={employees ?? []}
+      preselectedClientId={preselectedClientId}
     />
   )
 }

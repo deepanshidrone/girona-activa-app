@@ -40,6 +40,7 @@ interface Props {
   objectives: Item[]
   cycles: Cycle[]
   employees: Employee[]
+  preselectedClientId?: string
 }
 
 const WEEKDAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
@@ -73,14 +74,14 @@ function getMonthsInRange(startDate: string, months: number): { year: number; mo
   return result
 }
 
-export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, movementPatterns, equipment, objectives, cycles, employees }: Props) {
+export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, movementPatterns, equipment, objectives, cycles, employees, preselectedClientId }: Props) {
   const router = useRouter()
-  const [step, setStep] = useState(1)
+  const [step, setStep] = useState(preselectedClientId ? 2 : 1)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
   // Form state
-  const [clientId, setClientId] = useState('')
+  const [clientId, setClientId] = useState(preselectedClientId ?? '')
   const [assignedEmployeeId, setAssignedEmployeeId] = useState('')
   const [planType, setPlanType] = useState<'individual' | 'group'>('individual')
   const [selectedCycleId, setSelectedCycleId] = useState<string>('')
