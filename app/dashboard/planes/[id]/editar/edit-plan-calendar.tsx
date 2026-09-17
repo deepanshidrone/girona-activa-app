@@ -8,10 +8,18 @@ import {
   deleteSessionExerciseAction,
   addSessionExerciseAction,
 } from '@/app/actions/edit-plan'
+import { ExercisePickerModal } from '@/app/dashboard/planes/nuevo/exercise-picker-modal'
 
 const MONTHS_ES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
 
-type Exercise = { id: string; name: string }
+type Item = { id: string; name: string }
+type Exercise = {
+  id: string; name: string; technical_name: string | null
+  level: number | null; technical_level: string | null
+  body_zone_id: string | null; movement_pattern_id: string | null
+  equipment_id: string | null; objective_id: string | null
+  muscle_group_ids: string[]
+}
 type SessionExercise = {
   id: string; sets: number; reps: number; weight_kg: number | null
   notes: string | null; order_index: number; exercises: Exercise | null
@@ -27,6 +35,11 @@ interface Props {
   startDate: string
   durationMonths: number
   allExercises: Exercise[]
+  bodyZones: Item[]
+  muscleGroups: Item[]
+  movementPatterns: Item[]
+  equipment: Item[]
+  objectives: Item[]
 }
 
 function getMonthsInRange(startDate: string, months: number) {
@@ -40,7 +53,7 @@ function getMonthsInRange(startDate: string, months: number) {
   return result
 }
 
-export function EditPlanCalendar({ sessions: initialSessions, startDate, durationMonths, allExercises }: Props) {
+export function EditPlanCalendar({ sessions: initialSessions, startDate, durationMonths, allExercises, bodyZones, muscleGroups, movementPatterns, equipment, objectives }: Props) {
   const [sessions, setSessions] = useState<Session[]>(initialSessions)
   const [currentMonthIdx, setCurrentMonthIdx] = useState(0)
   const [selectedSession, setSelectedSession] = useState<Session | null>(null)
@@ -51,9 +64,8 @@ export function EditPlanCalendar({ sessions: initialSessions, startDate, duratio
   const [movingDate, setMovingDate] = useState('')
   const [showMovePanel, setShowMovePanel] = useState(false)
 
-  // Add exercise panel
-  const [showAddExercise, setShowAddExercise] = useState(false)
-  const [newEx, setNewEx] = useState({ exerciseId: '', sets: 3, reps: 10, weight_kg: '', notes: '' })
+  // Add exercise modal
+  const [showExercisePicker, setShowExercisePicker] = useState(false)
 
   // Edit exercise inline
   const [editingExId, setEditingExId] = useState<string | null>(null)
@@ -128,29 +140,24 @@ export function EditPlanCalendar({ sessions: initialSessions, startDate, duratio
     })
   }
 
-  // Add exercise
-  function handleAddExercise() {
-    if (!selectedSession || !newEx.exerciseId) return
+  // Add exercise via modal
+  function handleAddExercise(exercise: Exercise, sets: number, reps: number, weight_kg: string, notes: string) {
+    if (!selectedSession) return
     const orderIndex = selectedSession.plan_session_exercises.length
-    const sets = Number(newEx.sets)
-    const reps = Number(newEx.reps)
-    const weight = newEx.weight_kg ? Number(newEx.weight_kg) : null
+    const weight = weight_kg ? Number(weight_kg) : null
     startTransition(async () => {
       const result = await addSessionExerciseAction(
-        selectedSession.id, newEx.exerciseId, sets, reps, weight, newEx.notes || null, orderIndex
+        selectedSession.id, exercise.id, sets, reps, weight, notes || null, orderIndex
       )
       if (result.error) { setError(result.error); return }
-      const exercise = allExercises.find(e => e.id === newEx.exerciseId) ?? null
       const updated = {
         ...selectedSession,
         plan_session_exercises: [
           ...selectedSession.plan_session_exercises,
-          { id: Date.now().toString(), sets, reps, weight_kg: weight, notes: newEx.notes || null, order_index: orderIndex, exercises: exercise },
+          { id: Date.now().toString(), sets, reps, weight_kg: weight, notes: notes || null, order_index: orderIndex, exercises: exercise },
         ],
       }
       updateSessionInState(updated)
-      setNewEx({ exerciseId: '', sets: 3, reps: 10, weight_kg: '', notes: '' })
-      setShowAddExercise(false)
     })
   }
 
@@ -235,7 +242,7 @@ export function EditPlanCalendar({ sessions: initialSessions, startDate, duratio
       {/* Panel sesión */}
       {selectedSession && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end">
-          <div className="flex-1 bg-black/40" onClick={() => { setSelectedSession(null); setShowMovePanel(false); setShowAddExercise(false); setEditingExId(null) }} />
+          <div className="flex-1 bg-black/40" onClick={() => { setSelectedSession(null); setShowMovePanel(false); setShowExercisePicker(false); setEditingExId(null) }} />
           <div className="bg-white rounded-t-3xl max-h-[85vh] overflow-y-auto">
             <div className="flex justify-center pt-3 pb-1">
               <div className="w-10 h-1 rounded-full bg-[#E5E5E5]" />
@@ -252,7 +259,7 @@ export function EditPlanCalendar({ sessions: initialSessions, startDate, duratio
                   </h3>
                   <p className="text-sm text-[#666666]">{selectedSession.plan_session_exercises.length} ejercicio{selectedSession.plan_session_exercises.length !== 1 ? 's' : ''}</p>
                 </div>
-                <button onClick={() => { setSelectedSession(null); setShowMovePanel(false); setShowAddExercise(false); setEditingExId(null) }}
+                <button onClick={() => { setSelectedSession(null); setShowMovePanel(false); setShowExercisePicker(false); setEditingExId(null) }}
                   className="p-2 rounded-full hover:bg-[#F5F5F5]">
                   <X className="h-5 w-5 text-[#666666]" />
                 </button>
@@ -347,42 +354,49 @@ export function EditPlanCalendar({ sessions: initialSessions, startDate, duratio
               </div>
 
               {/* Añadir ejercicio */}
-              {!showAddExercise ? (
-                <button onClick={() => setShowAddExercise(true)}
-                  className="flex items-center gap-2 text-sm font-medium text-[#FF914D] hover:text-[#e07a3a] transition-colors">
-                  <Plus className="h-4 w-4" />
-                  Añadir ejercicio
-                </button>
-              ) : (
-                <div className="bg-[#F5F5F5] rounded-2xl p-4 flex flex-col gap-3">
-                  <p className="text-sm font-medium text-[#1C1C1C]">Añadir ejercicio</p>
-                  <select value={newEx.exerciseId} onChange={e => setNewEx(p => ({ ...p, exerciseId: e.target.value }))}
-                    className="border border-[#E5E5E5] rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF914D] bg-white">
-                    <option value="">Selecciona ejercicio...</option>
-                    {allExercises.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-                  </select>
-                  <div className="flex gap-2">
-                    <input type="number" value={newEx.sets} onChange={e => setNewEx(p => ({ ...p, sets: Number(e.target.value) }))}
-                      placeholder="Series" className="w-20 border border-[#E5E5E5] rounded-lg px-2 py-1.5 text-sm outline-none focus:border-[#FF914D] bg-white" />
-                    <input type="number" value={newEx.reps} onChange={e => setNewEx(p => ({ ...p, reps: Number(e.target.value) }))}
-                      placeholder="Reps" className="w-20 border border-[#E5E5E5] rounded-lg px-2 py-1.5 text-sm outline-none focus:border-[#FF914D] bg-white" />
-                    <input type="number" value={newEx.weight_kg} onChange={e => setNewEx(p => ({ ...p, weight_kg: e.target.value }))}
-                      placeholder="Kg (opt.)" className="w-24 border border-[#E5E5E5] rounded-lg px-2 py-1.5 text-sm outline-none focus:border-[#FF914D] bg-white" />
-                  </div>
-                  <input type="text" value={newEx.notes} onChange={e => setNewEx(p => ({ ...p, notes: e.target.value }))}
-                    placeholder="Nota (opcional)" className="border border-[#E5E5E5] rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF914D] bg-white" />
-                  <div className="flex gap-2">
-                    <button onClick={handleAddExercise} disabled={!newEx.exerciseId || isPending}
-                      className="bg-[#FF914D] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#e07a3a] disabled:opacity-60 transition-colors">
-                      Añadir
-                    </button>
-                    <button onClick={() => setShowAddExercise(false)} className="text-sm text-[#666666]">Cancelar</button>
-                  </div>
-                </div>
-              )}
+              <button onClick={() => setShowExercisePicker(true)}
+                className="flex items-center gap-2 text-sm font-medium text-[#FF914D] hover:text-[#e07a3a] transition-colors">
+                <Plus className="h-4 w-4" />
+                Añadir ejercicio
+              </button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal galería de ejercicios */}
+      {showExercisePicker && selectedSession && (
+        <ExercisePickerModal
+          exercises={allExercises}
+          exerciseCatalog={allExercises}
+          existingExercises={selectedSession.plan_session_exercises.map((ex, i) => ({
+            exercise_id: ex.exercises?.id ?? '',
+            sets: ex.sets,
+            reps: ex.reps,
+            weight_kg: ex.weight_kg ?? undefined,
+            notes: ex.notes ?? undefined,
+            order_index: i,
+          }))}
+          bodyZones={bodyZones}
+          movementPatterns={movementPatterns}
+          muscleGroups={muscleGroups}
+          equipment={equipment}
+          objectives={objectives}
+          dayLabel={new Date(selectedSession.session_date + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+          onAdd={(exercise, sets, reps, weight_kg, notes) => handleAddExercise(exercise, sets, reps, weight_kg, notes)}
+          onRemove={(index) => {
+            const ex = selectedSession.plan_session_exercises[index]
+            if (ex) handleDeleteExercise(ex.id)
+          }}
+          onUpdate={(index, sets, reps, weight_kg, notes) => {
+            const ex = selectedSession.plan_session_exercises[index]
+            if (!ex) return
+            setEditingExId(ex.id)
+            setEditExData({ sets, reps, weight_kg, notes })
+            handleUpdateExercise(ex.id)
+          }}
+          onClose={() => setShowExercisePicker(false)}
+        />
       )}
     </>
   )

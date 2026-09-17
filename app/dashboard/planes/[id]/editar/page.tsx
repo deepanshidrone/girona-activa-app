@@ -26,10 +26,30 @@ export default async function EditarPlanPage({ params }: { params: Promise<{ id:
 
   if (!plan) notFound()
 
-  const { data: exercises } = await supabase
-    .from('exercises')
-    .select('id, name')
-    .order('name')
+  const [
+    { data: exercises },
+    { data: bodyZones },
+    { data: muscleGroups },
+    { data: movementPatterns },
+    { data: equipment },
+    { data: objectives },
+    { data: muscleLinks },
+  ] = await Promise.all([
+    supabase.from('exercises').select('id, name, technical_name, level, technical_level, body_zone_id, movement_pattern_id, equipment_id, objective_id').order('name'),
+    supabase.from('body_zones').select('id, name').order('name'),
+    supabase.from('muscle_groups').select('id, name').order('name'),
+    supabase.from('movement_patterns').select('id, name').order('name'),
+    supabase.from('equipment').select('id, name').order('name'),
+    supabase.from('objectives').select('id, name').order('name'),
+    supabase.from('exercise_muscle_groups').select('exercise_id, muscle_group_id'),
+  ])
+
+  const exercisesWithMuscles = (exercises ?? []).map((ex: any) => ({
+    ...ex,
+    muscle_group_ids: (muscleLinks ?? [])
+      .filter((ml: any) => ml.exercise_id === ex.id)
+      .map((ml: any) => ml.muscle_group_id),
+  }))
 
   const sessions = (plan.plan_sessions ?? []).map((s: any) => ({
     ...s,
@@ -57,7 +77,12 @@ export default async function EditarPlanPage({ params }: { params: Promise<{ id:
         sessions={sessions}
         startDate={plan.start_date}
         durationMonths={plan.duration_months}
-        allExercises={exercises ?? []}
+        allExercises={exercisesWithMuscles}
+        bodyZones={bodyZones ?? []}
+        muscleGroups={muscleGroups ?? []}
+        movementPatterns={movementPatterns ?? []}
+        equipment={equipment ?? []}
+        objectives={objectives ?? []}
       />
     </div>
   )
