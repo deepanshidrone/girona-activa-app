@@ -108,7 +108,7 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
     } else {
       setPlanDays(dates.map(date => ({ date, session_time: sessionTime || undefined, exercises: [] })))
     }
-    setStep(5)
+    setStep(6)
   }
 
   function toggleWeekday(dow: number) {
@@ -227,13 +227,13 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
         </Link>
         <div>
           <h1 className="text-2xl font-bold text-white">Nuevo plan de entrenamiento</h1>
-          <p className="text-[#666666] text-sm mt-0.5">Paso {step} de 5</p>
+          <p className="text-[#666666] text-sm mt-0.5">Paso {step} de 6</p>
         </div>
       </div>
 
       {/* Progress bar */}
       <div className="flex gap-1 mb-8">
-        {[1, 2, 3, 4, 5].map(s => (
+        {[1, 2, 3, 4, 5, 6].map(s => (
           <div key={s} className={`h-1.5 flex-1 rounded-full transition-colors ${s <= step ? 'bg-[#FF914D]' : 'bg-[#E5E5E5]'}`} />
         ))}
       </div>
@@ -260,37 +260,49 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
             ))}
           </div>
 
-          <div className="border-t border-[#E5E5E5] pt-5">
-            <h3 className="text-sm font-semibold text-[#1C1C1C] mb-3">Entrenador asignado</h3>
-            <div className="flex flex-wrap gap-2">
-              {employees.map(e => (
-                <button
-                  key={e.id}
-                  onClick={() => setAssignedEmployeeId(e.id)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm transition-colors ${
-                    assignedEmployeeId === e.id ? 'border-[#FF914D] bg-orange-50 text-[#FF914D] font-medium' : 'border-[#E5E5E5] text-[#666666] hover:border-[#FF914D]/50'
-                  }`}
-                >
-                  <div className="w-6 h-6 rounded-full bg-[#FF914D]/10 flex items-center justify-center text-[10px] font-bold text-[#FF914D]">
-                    {e.full_name.split(' ').map((n: string) => n[0]).slice(0, 2).join('')}
-                  </div>
-                  {e.full_name}
-                  {assignedEmployeeId === e.id && <Check className="h-3.5 w-3.5" />}
-                </button>
-              ))}
-            </div>
-          </div>
-
           <div className="flex justify-end mt-6">
-            <Button onClick={() => setStep(2)} disabled={!clientId || !assignedEmployeeId} className="bg-[#FF914D] hover:bg-[#e07a3a] text-white gap-2">
+            <Button onClick={() => setStep(2)} disabled={!clientId} className="bg-[#FF914D] hover:bg-[#e07a3a] text-white gap-2">
               Siguiente <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
         </div>
       )}
 
-      {/* STEP 2 — Tipo */}
+      {/* STEP 2 — Entrenador */}
       {step === 2 && (
+        <div className="bg-white rounded-2xl border border-[#E5E5E5] p-6">
+          <h2 className="text-lg font-bold text-[#1C1C1C] mb-1">Entrenador asignado</h2>
+          <p className="text-[#666666] text-sm mb-4">¿Quién llevará este plan?</p>
+          <div className="flex flex-col gap-2">
+            {employees.map(e => (
+              <button
+                key={e.id}
+                onClick={() => setAssignedEmployeeId(e.id)}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors text-left ${
+                  assignedEmployeeId === e.id ? 'border-[#FF914D] bg-orange-50' : 'border-[#E5E5E5] hover:border-[#FF914D]/50'
+                }`}
+              >
+                <div className="w-9 h-9 rounded-full bg-[#FF914D]/10 flex items-center justify-center text-xs font-bold text-[#FF914D] shrink-0">
+                  {e.full_name.split(' ').map((n: string) => n[0]).slice(0, 2).join('')}
+                </div>
+                <span className="font-medium text-[#1C1C1C]">{e.full_name}</span>
+                {assignedEmployeeId === e.id && <Check className="h-4 w-4 text-[#FF914D] ml-auto" />}
+              </button>
+            ))}
+          </div>
+          <div className="flex justify-between mt-6">
+            <Button variant="outline" onClick={() => setStep(1)}>
+              <ArrowLeft className="h-4 w-4 mr-2" /> Atrás
+            </Button>
+            <Button onClick={() => setStep(3)} disabled={!assignedEmployeeId} className="bg-[#FF914D] hover:bg-[#e07a3a] text-white gap-2">
+              Siguiente <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* STEP 3 — Tipo */}
+      {step === 3 && (
         <div className="bg-white rounded-2xl border border-[#E5E5E5] p-6">
           <h2 className="text-lg font-bold text-[#1C1C1C] mb-4">Tipo de entrenamiento</h2>
           <div className="grid grid-cols-2 gap-3">
@@ -351,11 +363,11 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
             </div>
           )}
           <div className="flex justify-between mt-6">
-            <Button variant="outline" onClick={() => setStep(1)}>
+            <Button variant="outline" onClick={() => setStep(2)}>
               <ArrowLeft className="h-4 w-4 mr-2" /> Atrás
             </Button>
             <Button
-              onClick={() => setStep(3)}
+              onClick={() => setStep(4)}
               disabled={planType === 'group' && !selectedCycleId}
               className="bg-[#FF914D] hover:bg-[#e07a3a] text-white gap-2"
             >
@@ -365,8 +377,8 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
         </div>
       )}
 
-      {/* STEP 3 — Nivel */}
-      {step === 3 && (
+      {/* STEP 4 — Nivel */}
+      {step === 4 && (
         <div className="bg-white rounded-2xl border border-[#E5E5E5] p-6">
           <h2 className="text-lg font-bold text-[#1C1C1C] mb-1">Nivel del cliente</h2>
           <p className="text-[#666666] text-sm mb-1">Para <strong>{selectedClient?.first_name} {selectedClient?.last_name}</strong></p>
@@ -394,18 +406,18 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
             ))}
           </div>
           <div className="flex justify-between mt-6">
-            <Button variant="outline" onClick={() => setStep(2)}>
+            <Button variant="outline" onClick={() => setStep(3)}>
               <ArrowLeft className="h-4 w-4 mr-2" /> Atrás
             </Button>
-            <Button onClick={() => setStep(4)} disabled={!level} className="bg-[#FF914D] hover:bg-[#e07a3a] text-white gap-2">
+            <Button onClick={() => setStep(5)} disabled={!level} className="bg-[#FF914D] hover:bg-[#e07a3a] text-white gap-2">
               Siguiente <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
         </div>
       )}
 
-      {/* STEP 4 — Parámetros + días de la semana */}
-      {step === 4 && (
+      {/* STEP 5 — Parámetros + días de la semana */}
+      {step === 5 && (
         <div className="bg-white rounded-2xl border border-[#E5E5E5] p-6">
           <h2 className="text-lg font-bold text-[#1C1C1C] mb-5">Parámetros del ciclo</h2>
           <div className="flex flex-col gap-5">
@@ -494,7 +506,7 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
           </div>
 
           <div className="flex justify-between mt-6">
-            <Button variant="outline" onClick={() => setStep(3)}>
+            <Button variant="outline" onClick={() => setStep(4)}>
               <ArrowLeft className="h-4 w-4 mr-2" /> Atrás
             </Button>
             <Button
@@ -508,8 +520,8 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
         </div>
       )}
 
-      {/* STEP 5 — Calendario */}
-      {step === 5 && (
+      {/* STEP 6 — Calendario */}
+      {step === 6 && (
         <div className="flex flex-col gap-4">
           <div className="bg-white rounded-2xl border border-[#E5E5E5] p-4">
             <div className="flex items-center justify-between">
@@ -523,7 +535,7 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
                   {planType === 'group' && ' (A/B/C rotación)'}
                 </p>
               </div>
-              <Button variant="outline" onClick={() => setStep(4)} className="text-sm">
+              <Button variant="outline" onClick={() => setStep(5)} className="text-sm">
                 <ArrowLeft className="h-3.5 w-3.5 mr-1.5" /> Editar
               </Button>
             </div>
@@ -562,7 +574,7 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
           }
 
           <div className="flex justify-between">
-            <Button variant="outline" onClick={() => setStep(4)}>
+            <Button variant="outline" onClick={() => setStep(5)}>
               <ArrowLeft className="h-4 w-4 mr-2" /> Atrás
             </Button>
             <Button
