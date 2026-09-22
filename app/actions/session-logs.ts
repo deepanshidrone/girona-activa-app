@@ -119,11 +119,10 @@ export async function getTodaySessionsAction() {
   const { data, error } = await adminSupabase
     .from('plan_sessions')
     .select(`
-      id, session_date, session_time, session_label, order_index,
+      id, session_date, session_time, session_label,
       training_plans!inner (
         id, type, level, client_id, assigned_employee_id,
-        clients (id, first_name, last_name),
-        profiles:assigned_employee_id (id, full_name)
+        clients (id, first_name, last_name)
       ),
       plan_session_exercises (id),
       session_logs (id, status)
@@ -134,8 +133,28 @@ export async function getTodaySessionsAction() {
 
   if (error) return { error: error.message, sessions: [], currentUserId }
 
+  // Fetch employee names separately (no FK declared between training_plans and profiles)
+  const { data: profiles } = await adminSupabase
+    .from('profiles')
+    .select('id, full_name')
+
+  const profileMap = new Map((profiles ?? []).map((p: any) => [p.id, p.full_name]))
+
+  // Inyectar full_name del empleado en cada sesión
+  const enriched = (data ?? []).map((s: any) => {
+    const plan = Array.isArray(s.training_plans) ? s.training_plans[0] : s.training_plans
+    const empId = plan?.assigned_employee_id
+    return {
+      ...s,
+      training_plans: {
+        ...plan,
+        profiles: empId ? { id: empId, full_name: profileMap.get(empId) ?? 'Sin asignar' } : null,
+      },
+    }
+  })
+
   // Ordenar: sesiones del empleado logueado primero, resto por empleado
-  const sessions = (data ?? []).sort((a: any, b: any) => {
+  const sessions = enriched.sort((a: any, b: any) => {
     const aIsMe = a.training_plans?.assigned_employee_id === currentUserId
     const bIsMe = b.training_plans?.assigned_employee_id === currentUserId
     if (aIsMe && !bIsMe) return -1
