@@ -325,9 +325,77 @@ git push origin dev
 - [ ] **Zones d'exercici pendents:** rodilla, cadera, columna/core, hombro (venen d'Excels del client)
 - [ ] **Gràfics d'evolució:** RPE/RIR/carga per exercici al llarg del temps (diferit)
 - [ ] **Long press al calendari (wizard):** click llarg sobre un dia de sessió → modal de confirmació per eliminar-lo (alternativa a la cruceta actual, més adequada per mòbil)
-- [ ] **TrainWall:** display d'exercicis en pantalla (pantalla gran al gimnàs). Nova conversa/feature — context pendent de definir amb el client.
+- [ ] **TrainWall:** display d'exercicis en pantalla (pantalla gran al gimnàs). Arquitectura HW/SW ja dissenyada — veure [CLAUDE-TW.md](./CLAUDE-TW.md). Pendent: confirmar amb el client i implementar.
 - [ ] **Gestió de plans:** veure actiu/historial des del perfil del client (millora UX)
 - [ ] **Més empleats:** afegir entrenadors nous quan s'incorporin
+
+---
+
+---
+
+## TrainWall — sistema de pantallas en sala
+
+**TrainWall** és el nom comercial de la feature de pantallas físiques al centre. Es ven com a mòdul opcional de **BrotaFit** (nom comercial de questa app quan es ven a tercers). Els documents de venda (`comercial/brotafit.html`, `comercial/trainwall.html`) viuen al repo `brota-ai`, no aquí.
+
+**Arxius de disseny (referència, NO implementat encara):**
+- `docs/context-pantallas.md` — context de negoci original
+- `docs/arquitectura-pantallas.md` — arquitectura hardware/software detallada
+
+### Què fa
+
+Mostra en pantalles físiques del centre l'entrenament actiu de cada client (individual o grupal) quan l'entrenador fa el check-in. La pantalla s'actualitza en temps real via Supabase Realtime, sense recarregar.
+
+### Decisions clau
+
+- **Check-in**: manual per l'empleat al MVP (no QR/NFC). L'empleat selecciona el client o classe grupal, confirma la sessió (auto-suggerida per data, editable), i tria la pantalla destí.
+- **Hardware (x4 pantalles):** Monitor 32" LED/LCD (no Smart, no OLED) + Android TV box (~50€) + Fully Kiosk Browser Plus (7,90€/dispositiu, pagament únic). Cost total estimat ~750-950€.
+- **Gestió remota:** des de qualsevol ordinador a la xarxa del centre via `http://<ip>:2323` — no cal cap unitat central física.
+- **Temps real:** Supabase Realtime (`postgres_changes` sobre `screen_assignments`, filtrat per `screen_id`).
+- **Pantalla grupal:** mostra 3 columnes (regressió / base / progressió) perquè diverses persones de nivell diferent comparteixen la mateixa pantalla.
+- **Seguretat:** lectura via RLS de només lectura (sense emails/telèfons del client). Cap escriptura possible des del token de pantalla. Check-in sempre via Server Actions autenticades.
+
+### Model de dades (noves taules pendents de crear)
+
+```sql
+screens
+  id uuid pk
+  name text              -- "Pantalla 1", "Zona funcional", etc.
+  location text          -- opcional
+  access_token text      -- secret no endevinable, va a la URL del dispositiu
+  created_at
+
+screen_assignments
+  id uuid pk
+  screen_id uuid         -- FK screens
+  session_type text      -- 'individual' | 'group'
+  client_id uuid         -- FK clients (només individual)
+  plan_session_id uuid   -- FK plan_sessions (només individual)
+  group_session_id uuid  -- FK group_cycle_sessions (només group) ← nom real de la taula
+  assigned_by uuid       -- FK profiles (empleat que fa check-in)
+  started_at timestamptz
+  ended_at timestamptz   -- null mentre activa; una sola activa per screen_id
+```
+
+⚠️ `docs/arquitectura-pantallas.md` usa `group_sessions` però la taula real és **`group_cycle_sessions`**.
+
+### Ruta de pantalla
+
+`/pantalla/[screenId]?token=<access_token>` — ruta pública (no requereix login), protegida per token no endevinable. Al carregar, s'subscriu a Realtime. Estat idle: logo del centre.
+
+### Preguntes obertes (sense decidir)
+
+- "Finalizar sesión": botó manual de l'empleat o tancament automàtic passat `session_duration`?
+- Connexió Ethernet o WiFi per a les pantalles? (depèn de si hi ha presa de xarxa a cada ubicació)
+- Número real de pantalles i mida — confirmar amb Girona Activa abans de comprar hardware.
+
+### Pròxims passos TrainWall
+
+- [ ] Confirmar número/mida de pantalles amb el client
+- [ ] Crear taules `screens` i `screen_assignments` a Supabase
+- [ ] Server Actions: `createScreenAssignmentAction`, `endScreenAssignmentAction`
+- [ ] Ruta `/pantalla/[screenId]` amb Supabase Realtime i estat idle
+- [ ] UI de check-in al dashboard (`/dashboard/pantallas`)
+- [ ] RLS de només lectura per a la ruta de pantalla
 
 ---
 
