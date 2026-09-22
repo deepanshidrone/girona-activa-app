@@ -1,7 +1,7 @@
 # CLAUDE.md — Girona Activa App
 
 Contexte complet del projecte per a Claude Code. Es carrega automàticament a l'inici de cada sessió.
-**Última actualització:** 2026-09-17
+**Última actualització:** 2026-09-22
 
 ---
 
@@ -302,6 +302,20 @@ git push origin dev
 
 ---
 
+## Canvis recents (2026-09-22)
+
+- **Wizard 6 passos:** pas 2 dedicat a la selecció d'entrenador (separat del pas 1 de client)
+- **ExercisePickerModal a editar pla:** substituït `<select>` per la galeria amb filtres
+- **Cruceta per eliminar sessió del calendari (wizard pas 6):** botó `×` vermell a la cantonada superior dreta de cada dia de sessió
+- **Agenda "Hoy" arreglada:** fallava per join `profiles:assigned_employee_id` sense FK declarada → fetch separat de profiles i merge en JS
+- **Adherència al perfil del client:** stats completada/expirada/pendiente + % adherència al bloc del pla actiu i historial
+- **Estats al calendari d'editar pla:** colors verd (completada), taronja (pendent), gris (expirada)
+- **`components/ui/input.tsx`:** `bg-white text-[#1C1C1C]` (era `bg-transparent`, invisible en fons fosc)
+- **`components/ui/label.tsx`:** `text-white` afegit
+- **`components/ui/select.tsx`:** `bg-white text-[#1C1C1C]` (era `bg-transparent`)
+
+---
+
 ## Pendent (roadmap MVP)
 
 - [ ] **DNS:** configurar `app.gironaactiva.com` → Vercel
@@ -311,6 +325,7 @@ git push origin dev
 - [ ] **Zones d'exercici pendents:** rodilla, cadera, columna/core, hombro (venen d'Excels del client)
 - [ ] **Gràfics d'evolució:** RPE/RIR/carga per exercici al llarg del temps (diferit)
 - [ ] **Long press al calendari (wizard):** click llarg sobre un dia de sessió → modal de confirmació per eliminar-lo (alternativa a la cruceta actual, més adequada per mòbil)
+- [ ] **TrainWall:** display d'exercicis en pantalla (pantalla gran al gimnàs). Nova conversa/feature — context pendent de definir amb el client.
 - [ ] **Gestió de plans:** veure actiu/historial des del perfil del client (millora UX)
 - [ ] **Més empleats:** afegir entrenadors nous quan s'incorporin
 
