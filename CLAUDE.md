@@ -310,6 +310,7 @@ git push origin dev
 - [ ] **Imatges d'exercicis:** Supabase Storage — mostrar foto/vídeo a la galeria
 - [ ] **Zones d'exercici pendents:** rodilla, cadera, columna/core, hombro (venen d'Excels del client)
 - [ ] **Gràfics d'evolució:** RPE/RIR/carga per exercici al llarg del temps (diferit)
+- [ ] **Long press al calendari (wizard):** click llarg sobre un dia de sessió → modal de confirmació per eliminar-lo (alternativa a la cruceta actual, més adequada per mòbil)
 - [ ] **Gestió de plans:** veure actiu/historial des del perfil del client (millora UX)
 - [ ] **Més empleats:** afegir entrenadors nous quan s'incorporin
 

@@ -719,6 +719,15 @@ function MonthCalendar({ year, month, planDays, onToggleDay, onEditDay }: {
                   <span className="text-[8px] opacity-80">{planDays.find(d => d.date === dateStr)?.exercises.length} ej.</span>
                 )}
               </button>
+              {isTraining && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onToggleDay(dateStr) }}
+                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center transition-colors z-10"
+                  title="Quitar sesión"
+                >
+                  <span className="text-[9px] font-bold leading-none">×</span>
+                </button>
+              )}
             </div>
           )
         })}
