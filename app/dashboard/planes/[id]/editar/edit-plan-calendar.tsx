@@ -24,9 +24,11 @@ type SessionExercise = {
   id: string; sets: number; reps: number; weight_kg: number | null
   notes: string | null; order_index: number; exercises: Exercise | null
 }
+type SessionLog = { id: string; status: string }
 type Session = {
   id: string; session_date: string; notes: string | null
   plan_session_exercises: SessionExercise[]
+  session_logs: SessionLog[]
 }
 
 interface Props {
@@ -190,25 +192,32 @@ export function EditPlanCalendar({ sessions: initialSessions, startDate, duratio
             if (!day) return <div key={i} />
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
             const session = sessionMap.get(dateStr)
-            const hasExercises = (session?.plan_session_exercises?.length ?? 0) > 0
             const isToday = dateStr === today
+
+            const completed = session?.session_logs?.some(l => l.status === 'completed') ?? false
+            const expired = !completed && !!session && dateStr < today
+            const hasExercises = (session?.plan_session_exercises?.length ?? 0) > 0
 
             return (
               <button key={i}
                 onClick={() => session && setSelectedSession(session)}
                 disabled={!session}
-                className={`aspect-square rounded-xl text-sm font-medium transition-all flex flex-col items-center justify-center gap-0.5
-                  ${session
-                    ? hasExercises
-                      ? 'bg-[#FF914D] text-white shadow-sm active:scale-95 cursor-pointer'
-                      : 'bg-orange-100 text-[#FF914D] border border-[#FF914D] cursor-pointer'
-                    : isToday
-                      ? 'bg-[#1C1C1C] text-white'
-                      : 'text-[#1C1C1C]'
+                className={`relative aspect-square rounded-xl text-sm font-medium transition-all flex flex-col items-center justify-center gap-0.5
+                  ${!session
+                    ? isToday ? 'bg-[#1C1C1C] text-white' : 'text-[#1C1C1C]'
+                    : completed
+                      ? 'bg-green-500 text-white shadow-sm active:scale-95 cursor-pointer'
+                      : expired
+                        ? 'bg-[#E5E5E5] text-[#999] cursor-pointer'
+                        : hasExercises
+                          ? 'bg-[#FF914D] text-white shadow-sm active:scale-95 cursor-pointer'
+                          : 'bg-orange-100 text-[#FF914D] border border-[#FF914D] cursor-pointer'
                   }`}
               >
                 {day}
-                {session && hasExercises && (
+                {session && completed && <span className="text-[8px] opacity-80">✓</span>}
+                {session && expired && <span className="text-[8px] opacity-60">exp.</span>}
+                {session && !completed && !expired && hasExercises && (
                   <span className="text-[8px] opacity-80">{session.plan_session_exercises.length}ej</span>
                 )}
               </button>
@@ -217,7 +226,11 @@ export function EditPlanCalendar({ sessions: initialSessions, startDate, duratio
         </div>
 
         {/* Leyenda */}
-        <div className="flex items-center gap-3 mt-4 pt-3 border-t border-[#E5E5E5]">
+        <div className="flex flex-wrap items-center gap-3 mt-4 pt-3 border-t border-[#E5E5E5]">
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded bg-green-500" />
+            <span className="text-xs text-[#666666]">Completada</span>
+          </div>
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded bg-[#FF914D]" />
             <span className="text-xs text-[#666666]">Con ejercicios</span>
@@ -225,6 +238,10 @@ export function EditPlanCalendar({ sessions: initialSessions, startDate, duratio
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded bg-orange-100 border border-[#FF914D]" />
             <span className="text-xs text-[#666666]">Sin ejercicios</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded bg-[#E5E5E5]" />
+            <span className="text-xs text-[#666666]">Expirada</span>
           </div>
         </div>
       </div>

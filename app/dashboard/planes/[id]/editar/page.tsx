@@ -18,7 +18,8 @@ export default async function EditarPlanPage({ params }: { params: Promise<{ id:
         plan_session_exercises (
           id, sets, reps, weight_kg, notes, order_index,
           exercises (id, name)
-        )
+        ),
+        session_logs (id, status)
       )
     `)
     .eq('id', id)
