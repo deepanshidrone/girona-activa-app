@@ -211,8 +211,8 @@ export function PlanWizard({ clients, exercises, bodyZones, muscleGroups, moveme
           <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
             <Check className="h-8 w-8 text-green-600" />
           </div>
-          <h2 className="text-xl font-bold text-[#1C1C1C]">Plan creado correctamente</h2>
-          <p className="text-[#666666] text-xs mt-2">Redirigiendo...</p>
+          <h2 className="text-xl font-bold text-white">Plan creado correctamente</h2>
+          <p className="text-white/50 text-xs mt-2">Redirigiendo...</p>
         </div>
       </div>
     )
