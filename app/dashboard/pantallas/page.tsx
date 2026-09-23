@@ -10,11 +10,11 @@ export default async function PantallasPage() {
   const today = new Date().toISOString().split('T')[0]
 
   const [
-    { data: screensData },
-    { data: clientsData },
-    { data: activeAssignments },
-    { data: planSessionsData },
-    { data: plansData },
+    screensResult,
+    clientsResult,
+    assignmentsResult,
+    planSessionsResult,
+    plansResult,
   ] = await Promise.all([
     adminSupabase.from('screens').select('*').order('name'),
     adminSupabase.from('profiles').select('id, full_name').eq('role', 'client').order('full_name'),
@@ -31,7 +31,19 @@ export default async function PantallasPage() {
       .select('id, client_id'),
   ])
 
-  // Map plan_id -> client_id
+  // Surface errors in UI during development
+  const errors = [
+    screensResult.error && `screens: ${screensResult.error.message}`,
+    clientsResult.error && `clients: ${clientsResult.error.message}`,
+    assignmentsResult.error && `assignments: ${assignmentsResult.error.message}`,
+  ].filter(Boolean)
+
+  const screensData = screensResult.data
+  const clientsData = clientsResult.data
+  const activeAssignments = assignmentsResult.data
+  const planSessionsData = planSessionsResult.data
+  const plansData = plansResult.data
+
   const planClientMap = new Map((plansData ?? []).map((p: any) => [p.id, p.client_id]))
   const profileMap = new Map((clientsData ?? []).map((p: any) => [p.id, p.full_name]))
   const assignmentByScreen = new Map((activeAssignments ?? []).map((a: any) => [a.screen_id, a]))
@@ -60,7 +72,6 @@ export default async function PantallasPage() {
 
   const clients = (clientsData ?? []).map((c: any) => ({ id: c.id, full_name: c.full_name }))
 
-  // Group today's sessions by client
   const todaySessions = clients.map((client: any) => {
     const sessions = (planSessionsData ?? [])
       .filter((s: any) => planClientMap.get(s.plan_id) === client.id)
@@ -83,6 +94,19 @@ export default async function PantallasPage() {
         <h1 className="text-white text-2xl font-bold mb-1">Pantallas</h1>
         <p className="text-white/40 text-sm">Gestiona les pantalles del centre i fes check-in de sessions.</p>
       </div>
+
+      {errors.length > 0 && (
+        <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs font-mono">
+          {errors.map((e, i) => <div key={i}>{e}</div>)}
+        </div>
+      )}
+
+      {screens.length === 0 && errors.length === 0 && (
+        <div className="text-white/30 text-sm p-4 bg-white/5 rounded-xl border border-white/10">
+          No s&apos;han trobat pantalles. Comprova que la taula <code>screens</code> existeix i té files.
+          {screensResult.error && <div className="mt-1 text-red-400">{screensResult.error.message}</div>}
+        </div>
+      )}
 
       <PantallasClient
         screens={screens}
