@@ -8,7 +8,6 @@ export async function GET(
   const adminSupabase = createAdminClient()
   const { screenId } = await params
 
-  // Get active assignment for this screen
   const { data: assignment } = await adminSupabase
     .from('screen_assignments')
     .select('*')
@@ -28,7 +27,6 @@ export async function GET(
         .from('plan_sessions')
         .select(`
           session_date,
-          training_plans (name, assigned_employee_id),
           plan_session_exercises (
             id, sets, reps, weight_kg, notes, order_index,
             exercises (id, name)
@@ -48,14 +46,10 @@ export async function GET(
         .single(),
     ])
 
-    const plan: any = Array.isArray(planSession?.training_plans)
-      ? planSession?.training_plans[0]
-      : planSession?.training_plans
-
     const rawExercises = (planSession?.plan_session_exercises ?? []) as any[]
     const exercises = rawExercises
-      .sort((a, b) => a.order_index - b.order_index)
-      .map((pse, idx) => {
+      .sort((a: any, b: any) => a.order_index - b.order_index)
+      .map((pse: any, idx: number) => {
         const ex = Array.isArray(pse.exercises) ? pse.exercises[0] : pse.exercises
         return {
           id: pse.id,
@@ -75,12 +69,11 @@ export async function GET(
         clientName: client?.full_name ?? 'Cliente',
         sessionDate: planSession?.session_date ?? '',
         employeeName: assignedEmployee?.full_name ?? 'Entrenador',
-        planName: plan?.name ?? 'Pla d\'entrenament',
+        planName: "Pla d'entrenament",
         exercises,
       },
     })
   }
 
-  // Group session — placeholder until group sessions are implemented
   return NextResponse.json({ sessionData: null })
 }
