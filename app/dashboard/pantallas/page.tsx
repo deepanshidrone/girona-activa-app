@@ -7,6 +7,8 @@ export const dynamic = 'force-dynamic'
 export default async function PantallasPage() {
   const adminSupabase = createAdminClient()
 
+  const today = new Date().toISOString().split('T')[0]
+
   const [
     { data: screensData },
     { data: clientsData },
@@ -19,14 +21,13 @@ export default async function PantallasPage() {
       .from('screen_assignments')
       .select('id, screen_id, session_type, client_id, plan_session_id, assigned_by, started_at')
       .is('ended_at', null),
-    // Sessions for today
+    // Today's sessions joined with their plan to get client_id
     adminSupabase
       .from('plan_sessions')
-      .select('id, session_date, client_id, training_plans (name)')
-      .eq('session_date', new Date().toISOString().split('T')[0]),
+      .select('id, session_date, plan_id, training_plans!inner(client_id)')
+      .eq('session_date', today),
   ])
 
-  // Build profileMap for client names in assignments
   const profileMap = new Map((clientsData ?? []).map((p: any) => [p.id, p.full_name]))
   const assignmentByScreen = new Map((activeAssignments ?? []).map((a: any) => [a.screen_id, a]))
 
@@ -54,18 +55,18 @@ export default async function PantallasPage() {
 
   const clients = (clientsData ?? []).map((c: any) => ({ id: c.id, full_name: c.full_name }))
 
-  // Group today's sessions by client
+  // Group today's sessions by client_id (via training_plans join)
   const todaySessions = clients.map((client: any) => {
     const sessions = (planSessionsData ?? [])
-      .filter((s: any) => s.client_id === client.id)
-      .map((s: any) => {
+      .filter((s: any) => {
         const plan: any = Array.isArray(s.training_plans) ? s.training_plans[0] : s.training_plans
-        return {
-          id: s.id,
-          session_date: s.session_date,
-          plan_name: plan?.name ?? 'Pla',
-        }
+        return plan?.client_id === client.id
       })
+      .map((s: any) => ({
+        id: s.id,
+        session_date: s.session_date,
+        plan_name: 'Sessió',
+      }))
     return { clientId: client.id, sessions }
   })
 
