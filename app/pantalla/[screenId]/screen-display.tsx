@@ -248,12 +248,23 @@ function GroupView({ data }: { data: Extract<SessionData, { type: 'group' }> }) 
   )
 }
 
+async function fetchData(screenId: string): Promise<SessionData> {
+  const res = await fetch(`/pantalla/${screenId}/data`, { cache: 'no-store' })
+  if (!res.ok) return null
+  const json = await res.json()
+  return json.sessionData
+}
+
 export default function ScreenDisplay({ screenId, initialData }: Props) {
   const [data, setData] = useState<SessionData>(initialData)
   const supabase = createClient()
 
+  // Always fetch fresh data on mount (SSR data may be stale)
   useEffect(() => {
-    // Subscribe to changes on screen_assignments for this screen
+    fetchData(screenId).then(fresh => { if (fresh !== undefined) setData(fresh) })
+  }, [screenId])
+
+  useEffect(() => {
     const channel = supabase
       .channel(`screen-${screenId}`)
       .on(
