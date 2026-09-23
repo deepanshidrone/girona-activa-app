@@ -113,7 +113,7 @@ function IndividualView({ data }: { data: Extract<SessionData, { type: 'individu
           </div>
         </div>
         <div className="text-right text-sm" style={{ color: 'rgba(242,242,240,0.35)' }}>
-          <div className="font-semibold" style={{ color: 'rgba(242,242,240,0.7)' }}>Parte Principal</div>
+          <div className="font-semibold" style={{ color: 'rgba(242,242,240,0.7)' }}>Part Principal</div>
           <div>{data.exercises.length} exercicis</div>
         </div>
       </div>
@@ -196,7 +196,7 @@ function GroupView({ data }: { data: Extract<SessionData, { type: 'group' }> }) 
           </div>
         </div>
         <div className="text-right text-sm" style={{ color: 'rgba(242,242,240,0.35)' }}>
-          <div className="font-semibold" style={{ color: 'rgba(242,242,240,0.7)' }}>Parte Principal</div>
+          <div className="font-semibold" style={{ color: 'rgba(242,242,240,0.7)' }}>Part Principal</div>
           <div>Adaptat per nivell</div>
         </div>
       </div>
