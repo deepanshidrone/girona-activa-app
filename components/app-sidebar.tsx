@@ -13,7 +13,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
-import { Users, Dumbbell, CalendarDays, LogOut, UserCircle, LayoutGrid, CalendarClock } from 'lucide-react'
+import { Users, Dumbbell, CalendarDays, LogOut, UserCircle, LayoutGrid, CalendarClock, Monitor } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
@@ -23,6 +23,7 @@ const navItems = [
   { title: 'Ejercicios', href: '/dashboard/ejercicios', icon: Dumbbell },
   { title: 'Planes', href: '/dashboard/planes', icon: CalendarDays },
   { title: 'Sesiones grupales', href: '/dashboard/sesiones', icon: LayoutGrid },
+  { title: 'Pantallas', href: '/dashboard/pantallas', icon: Monitor },
 ]
 
 interface UserInfo {

@@ -391,11 +391,23 @@ screen_assignments
 ### Pròxims passos TrainWall
 
 - [ ] Confirmar número/mida de pantalles amb el client
-- [ ] Crear taules `screens` i `screen_assignments` a Supabase
-- [ ] Server Actions: `createScreenAssignmentAction`, `endScreenAssignmentAction`
-- [ ] Ruta `/pantalla/[screenId]` amb Supabase Realtime i estat idle
-- [ ] UI de check-in al dashboard (`/dashboard/pantallas`)
-- [ ] RLS de només lectura per a la ruta de pantalla
+- [x] Crear taules `screens` i `screen_assignments` a Supabase — SQL a `supabase/trainwall-tables.sql` (**pendent d'executar al dashboard de Supabase**)
+- [x] Server Actions: `createScreenAssignmentAction`, `endScreenAssignmentAction` — a `app/actions/screens.ts`
+- [x] Ruta `/pantalla/[screenId]` amb Supabase Realtime i estat idle — `app/pantalla/[screenId]/page.tsx` + `screen-display.tsx`
+- [x] API route `/pantalla/[screenId]/data` per refetch en temps real — `app/pantalla/[screenId]/data/route.ts`
+- [x] UI de check-in al dashboard (`/dashboard/pantallas`) — `app/dashboard/pantallas/`
+- [x] RLS de només lectura per a la ruta de pantalla — inclòs al SQL
+- [x] "Pantallas" afegit al sidebar de navegació
+
+### Display TV (pantalla física)
+
+- **Tipografia en pantalla:** font-size en `vw` (3.2vw per al nom del client, 1.35vw per als exercicis) — escala automàticament a TV de 32"
+- **Sessió individual:** taula 5 columnes (bloc, exercici, sèries, reps, càrrega), agrupada per blocs (A1/A2, B, C1/C2...)
+- **Sessió grupal:** 3 columnes (Regresión=groc, Base=vermell, Progresión=verd), cadascuna amb blocs i exercicis per nivell
+- **Estat idle:** logo centrat a baixa opacitat quan no hi ha sessió activa
+- **Logo GA:** fix bottom-right sempre visible, opacitat 50%
+- **Realtime:** subscripció via `supabase_realtime` a `screen_assignments` filtrada per `screen_id` — quan l'entrenador fa check-in, la pantalla es refresca automàticament sense reload
+- **Seguretat:** URL protegida per `access_token` en query param — si el token no coincideix, retorna 404
 
 ---
 
