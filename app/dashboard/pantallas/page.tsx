@@ -14,6 +14,7 @@ export default async function PantallasPage() {
     { data: clientsData },
     { data: activeAssignments },
     { data: planSessionsData },
+    { data: plansData },
   ] = await Promise.all([
     adminSupabase.from('screens').select('*').order('name'),
     adminSupabase.from('profiles').select('id, full_name').eq('role', 'client').order('full_name'),
@@ -21,13 +22,17 @@ export default async function PantallasPage() {
       .from('screen_assignments')
       .select('id, screen_id, session_type, client_id, plan_session_id, assigned_by, started_at')
       .is('ended_at', null),
-    // Today's sessions joined with their plan to get client_id
     adminSupabase
       .from('plan_sessions')
-      .select('id, session_date, plan_id, training_plans!inner(client_id)')
+      .select('id, session_date, plan_id')
       .eq('session_date', today),
+    adminSupabase
+      .from('training_plans')
+      .select('id, client_id'),
   ])
 
+  // Map plan_id -> client_id
+  const planClientMap = new Map((plansData ?? []).map((p: any) => [p.id, p.client_id]))
   const profileMap = new Map((clientsData ?? []).map((p: any) => [p.id, p.full_name]))
   const assignmentByScreen = new Map((activeAssignments ?? []).map((a: any) => [a.screen_id, a]))
 
@@ -55,13 +60,10 @@ export default async function PantallasPage() {
 
   const clients = (clientsData ?? []).map((c: any) => ({ id: c.id, full_name: c.full_name }))
 
-  // Group today's sessions by client_id (via training_plans join)
+  // Group today's sessions by client
   const todaySessions = clients.map((client: any) => {
     const sessions = (planSessionsData ?? [])
-      .filter((s: any) => {
-        const plan: any = Array.isArray(s.training_plans) ? s.training_plans[0] : s.training_plans
-        return plan?.client_id === client.id
-      })
+      .filter((s: any) => planClientMap.get(s.plan_id) === client.id)
       .map((s: any) => ({
         id: s.id,
         session_date: s.session_date,
