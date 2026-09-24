@@ -244,7 +244,7 @@ export default function CycleEditor({ cycle, exercises }: Props) {
       if (result.row) {
         setSessionExercises(prev => ({
           ...prev,
-          [sessionId]: (prev[sessionId] ?? []).map(e => e.id === tempId ? (result.row as GSE) : e),
+          [sessionId]: (prev[sessionId] ?? []).map(e => e.id === tempId ? (result.row as unknown as GSE) : e),
         }))
       }
     })
