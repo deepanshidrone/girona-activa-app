@@ -42,18 +42,15 @@ function CycleCalendar({ startDate }: { startDate: string }) {
                 const isPast = date < today && !isToday
                 const color = SESSION_COLORS[session]
                 return (
-                  <div key={di} className="flex-1 flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-1"
-                    style={{ background: isToday ? `${color}18` : 'rgba(255,255,255,0.03)', border: `1px solid ${isToday ? color + '40' : 'rgba(255,255,255,0.06)'}` }}
+                  <div key={di} className="flex-1 flex flex-col items-center gap-1.5 rounded-lg py-2 px-1"
+                    style={{ background: isToday ? 'rgba(255,145,77,0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${isToday ? 'rgba(255,145,77,0.3)' : 'rgba(255,255,255,0.06)'}` }}
                   >
-                    <span className="text-[9px] font-semibold tracking-wider uppercase"
-                      style={{ color: isPast ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.4)' }}>
-                      {dayLabel}
+                    <span className="text-[10px] font-medium tabular-nums"
+                      style={{ color: isPast ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.45)' }}>
+                      {dayLabel} {date.getDate()}
                     </span>
-                    <span className="text-[11px] font-medium tabular-nums"
-                      style={{ color: isPast ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.55)' }}>
-                      {date.getDate()}
-                    </span>
-                    <span className="text-[10px] font-bold" style={{ color: isPast ? 'rgba(255,255,255,0.2)' : color }}>
+                    <span className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
+                      style={{ background: isPast ? 'rgba(255,255,255,0.1)' : '#FF914D' }}>
                       {session}
                     </span>
                   </div>
