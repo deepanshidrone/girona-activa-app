@@ -40,7 +40,7 @@ export default async function SesionesPage() {
   const { cycles } = await getGroupCyclesAction()
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white">Sesiones grupales</h1>
@@ -110,9 +110,9 @@ export default async function SesionesPage() {
                 </Link>
 
                 {/* Cuadrícula 3×3 */}
-                <div className="p-5">
+                <div className="p-4">
                   {/* Header columnas */}
-                  <div className="grid grid-cols-4 gap-3 mb-2">
+                  <div className="grid gap-3 mb-2" style={{ gridTemplateColumns: '48px 1fr 1fr 1fr' }}>
                     <div />
                     {(['regression', 'base', 'progression'] as const).map(diff => (
                       <div key={diff} className="text-center">
@@ -126,10 +126,10 @@ export default async function SesionesPage() {
 
                   {/* Filas A, B, C */}
                   {(['A', 'B', 'C'] as const).map(label => (
-                    <div key={label} className="grid grid-cols-4 gap-3 mb-3">
+                    <div key={label} className="grid gap-3 mb-3" style={{ gridTemplateColumns: '48px 1fr 1fr 1fr' }}>
                       {/* Label sesión */}
-                      <div className="flex items-center justify-center">
-                        <span className="w-8 h-8 rounded-full bg-[#FF914D] text-white text-sm font-bold flex items-center justify-center">
+                      <div className="flex items-center justify-center pt-2">
+                        <span className="w-7 h-7 rounded-full bg-[#FF914D] text-white text-xs font-bold flex items-center justify-center shrink-0">
                           {label}
                         </span>
                       </div>
@@ -152,16 +152,13 @@ export default async function SesionesPage() {
                                 </span>
                               )}
                             </div>
-                            {exercises.slice(0, 2).map((ex: any, i: number) => (
-                              <p key={i} className="text-[11px] text-white/40 truncate leading-snug">
+                            {exercises.map((ex: any, i: number) => (
+                              <p key={i} className="text-[11px] text-white/50 leading-snug py-0.5" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 {ex.exercises?.name ?? '—'}
                               </p>
                             ))}
-                            {exercises.length > 2 && (
-                              <p className="text-[10px] text-white/20 mt-0.5">+{exercises.length - 2} más</p>
-                            )}
                             {exercises.length === 0 && (
-                              <p className="text-[11px] text-white/20 italic">Sin ejercicios</p>
+                              <p className="text-[11px] text-white/20 italic">Sense exercicis</p>
                             )}
                           </div>
                         )
