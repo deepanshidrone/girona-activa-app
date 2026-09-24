@@ -221,6 +221,100 @@ export async function createGroupPlanAction(data: CreateGroupPlanData) {
   return { success: true, plan_id: plan.id }
 }
 
+export async function getGroupCycleByIdAction(id: string) {
+  const adminSupabase = createAdminClient()
+  const { data, error } = await adminSupabase
+    .from('group_cycles')
+    .select(`
+      id, start_date, notes,
+      group_sessions(id, label, difficulty, notes,
+        group_session_exercises(id, exercise_id, sets, reps, weight_kg, notes, order_index,
+          exercises(id, name, technical_name)
+        )
+      )
+    `)
+    .eq('id', id)
+    .single()
+
+  if (error) return { error: error.message, cycle: null }
+  return { cycle: data }
+}
+
+export async function updateGroupSessionExerciseAction(
+  gseId: string,
+  data: { sets?: number; reps?: number; weight_kg?: number | null; notes?: string | null }
+) {
+  const adminSupabase = createAdminClient()
+  const supabase = await createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) return { error: 'No autorizado' }
+
+  const { error } = await adminSupabase
+    .from('group_session_exercises')
+    .update(data)
+    .eq('id', gseId)
+
+  if (error) return { error: error.message }
+  return { success: true }
+}
+
+export async function addGroupSessionExerciseAction(
+  sessionId: string,
+  exerciseId: string,
+  data: { sets: number; reps: number; weight_kg?: number | null; order_index: number }
+) {
+  const adminSupabase = createAdminClient()
+  const supabase = await createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) return { error: 'No autorizado' }
+
+  const { data: row, error } = await adminSupabase
+    .from('group_session_exercises')
+    .insert({
+      session_id: sessionId,
+      exercise_id: exerciseId,
+      sets: data.sets,
+      reps: data.reps,
+      weight_kg: data.weight_kg ?? null,
+      order_index: data.order_index,
+    })
+    .select('id, exercise_id, sets, reps, weight_kg, notes, order_index, exercises(id, name, technical_name)')
+    .single()
+
+  if (error) return { error: error.message }
+  return { success: true, row }
+}
+
+export async function deleteGroupSessionExerciseAction(gseId: string) {
+  const adminSupabase = createAdminClient()
+  const supabase = await createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) return { error: 'No autorizado' }
+
+  const { error } = await adminSupabase
+    .from('group_session_exercises')
+    .delete()
+    .eq('id', gseId)
+
+  if (error) return { error: error.message }
+  return { success: true }
+}
+
+export async function swapGroupSessionExerciseAction(gseId: string, newExerciseId: string) {
+  const adminSupabase = createAdminClient()
+  const supabase = await createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) return { error: 'No autorizado' }
+
+  const { error } = await adminSupabase
+    .from('group_session_exercises')
+    .update({ exercise_id: newExerciseId })
+    .eq('id', gseId)
+
+  if (error) return { error: error.message }
+  return { success: true }
+}
+
 export async function getGroupCyclesAction() {
   const adminSupabase = createAdminClient()
   const { data, error } = await adminSupabase

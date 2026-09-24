@@ -95,7 +95,7 @@ export default async function SesionesPage() {
             return (
               <div key={cycle.id} className="bg-[#1C1C1C] rounded-2xl border border-white/10 overflow-hidden">
                 {/* Header */}
-                <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+                <Link href={`/dashboard/sesiones/${cycle.id}`} className="flex items-center justify-between px-5 py-4 border-b border-white/10 hover:bg-white/[0.02] transition-colors">
                   <div className="flex items-center gap-3">
                     <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${status.color}`}>
                       {status.label}
@@ -107,7 +107,7 @@ export default async function SesionesPage() {
                     <Dumbbell className="h-3.5 w-3.5" />
                     {baseCount} ejerc. base
                   </div>
-                </div>
+                </Link>
 
                 {/* Cuadrícula 3×3 */}
                 <div className="p-5">
