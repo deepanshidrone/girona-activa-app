@@ -4,6 +4,69 @@ import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
+// Fixed 2-week session pattern (start_date = Monday of week 1)
+// Week 1: Mon=A, Tue=A, Wed=B, Thu=B, Fri=C
+// Week 2: Mon=B, Tue=B, Wed=B, Thu=B, Fri=A
+const CYCLE_PATTERN: ('A' | 'B' | 'C')[][] = [
+  ['A', 'A', 'B', 'B', 'C'],
+  ['B', 'B', 'B', 'B', 'A'],
+]
+const DAY_LABELS = ['Dl', 'Dt', 'Dc', 'Dj', 'Dv']
+const SESSION_COLORS = { A: '#FF914D', B: '#60a5fa', C: '#c084fc' }
+
+function getCycleDays(startDate: string) {
+  const start = new Date(startDate + 'T12:00:00')
+  return CYCLE_PATTERN.map((week, wi) =>
+    week.map((session, di) => {
+      const d = new Date(start)
+      d.setDate(start.getDate() + wi * 7 + di)
+      return { date: d, session, dayLabel: DAY_LABELS[di] }
+    })
+  )
+}
+
+function CycleCalendar({ startDate }: { startDate: string }) {
+  const weeks = getCycleDays(startDate)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  return (
+    <div className="px-4 pt-4 pb-2">
+      <div className="flex flex-col gap-1.5">
+        {weeks.map((week, wi) => (
+          <div key={wi} className="flex items-center gap-1.5">
+            <span className="text-[10px] text-white/25 w-14 shrink-0 font-medium">Setmana {wi + 1}</span>
+            <div className="flex gap-1.5 flex-1">
+              {week.map(({ date, session, dayLabel }, di) => {
+                const isToday = date.toDateString() === today.toDateString()
+                const isPast = date < today && !isToday
+                const color = SESSION_COLORS[session]
+                return (
+                  <div key={di} className="flex-1 flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-1"
+                    style={{ background: isToday ? `${color}18` : 'rgba(255,255,255,0.03)', border: `1px solid ${isToday ? color + '40' : 'rgba(255,255,255,0.06)'}` }}
+                  >
+                    <span className="text-[9px] font-semibold tracking-wider uppercase"
+                      style={{ color: isPast ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.4)' }}>
+                      {dayLabel}
+                    </span>
+                    <span className="text-[11px] font-medium tabular-nums"
+                      style={{ color: isPast ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.55)' }}>
+                      {date.getDate()}
+                    </span>
+                    <span className="text-[10px] font-bold" style={{ color: isPast ? 'rgba(255,255,255,0.2)' : color }}>
+                      {session}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function getCycleStatus(startDate: string): { label: string; color: string } {
   const start = new Date(startDate)
   const end = new Date(startDate)
@@ -108,6 +171,12 @@ export default async function SesionesPage() {
                     {baseCount} ejerc. base
                   </div>
                 </Link>
+
+                {/* Calendari del cicle */}
+                <CycleCalendar startDate={cycle.start_date} />
+
+                {/* Divisor */}
+                <div className="mx-4 border-t border-white/[0.06]" />
 
                 {/* Cuadrícula 3×3 */}
                 <div className="p-4">
