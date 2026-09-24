@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 // Week 2: Mon=B, Tue=B, Wed=B, Thu=B, Fri=A
 const CYCLE_PATTERN: ('A' | 'B' | 'C')[][] = [
   ['A', 'A', 'B', 'B', 'C'],
-  ['B', 'B', 'B', 'B', 'A'],
+  ['B', 'B', 'C', 'C', 'A'],
 ]
 const DAY_LABELS = ['Dl', 'Dt', 'Dc', 'Dj', 'Dv']
 const SESSION_COLORS = { A: '#FF914D', B: '#60a5fa', C: '#c084fc' }
