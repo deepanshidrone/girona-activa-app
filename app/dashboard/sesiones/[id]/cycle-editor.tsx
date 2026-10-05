@@ -76,6 +76,14 @@ const DAY_NAMES  = ['Dilluns', 'Dimarts', 'Dimecres', 'Dijous', 'Divendres']
 const DAY_SHORT  = ['Dl', 'Dt', 'Dc', 'Dj', 'Dv']
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+function timeRange(time: string): string {
+  // "07:00:00" or "07:00" → "07:00–08:00"
+  const [h, m] = time.split(':').map(Number)
+  const endH = (h + 1) % 24
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(h)}:${pad(m)}–${pad(endH)}:${pad(m)}`
+}
+
 function formatDateRange(startDate: string) {
   const start = new Date(startDate)
   const end   = new Date(startDate)
@@ -253,7 +261,7 @@ function SlotDrawer({
             {slot.block_label}
           </span>
           <div className="flex-1 min-w-0">
-            <p className="text-white font-semibold">{slot.session_time} · Bloc {slot.block_label}</p>
+            <p className="text-white font-semibold">{timeRange(slot.session_time)} · Bloc {slot.block_label}</p>
             <p className="text-white/30 text-xs">Dia {slot.day_index + 1} del cicle</p>
           </div>
           <button onClick={onClose} className="text-white/40 hover:text-white p-1"><X className="h-5 w-5" /></button>
@@ -518,7 +526,7 @@ function PlanningTab({ cycle, exercises, employees, clients, sessionExercises, o
                               <span className={`w-4 h-4 rounded-full ${BLOCK_COLORS[slot.block_label] ?? 'bg-white/20'} text-white text-[9px] font-bold flex items-center justify-center shrink-0`}>
                                 {slot.block_label}
                               </span>
-                              <span className="text-[10px] text-white/70 font-medium flex-1">{slot.session_time}</span>
+                              <span className="text-[10px] text-white/70 font-medium flex-1">{timeRange(slot.session_time)}</span>
                               <ChevronRight className="h-3 w-3 text-white/15 group-hover:text-white/40 shrink-0" />
                             </div>
                             {/* Employee */}
