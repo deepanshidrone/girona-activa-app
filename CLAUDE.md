@@ -156,6 +156,38 @@ girona-activa-app/
 
 ## Base de dades — taules principals
 
+### Model de dades — Sessions unificades (octubre 2026)
+
+Totes les sessions (individuals i grupals) estan unificades a `training_sessions` i `training_session_clients`. Les taules legacy `plan_sessions` i `group_cycle_slots` es mantenen per compatibilitat però ja no s'usen per a nova funcionalitat.
+
+**`training_sessions`** — event/ocurrència concreta al calendari:
+```
+id UUID PK
+type                  'individual' | 'group'
+session_date DATE     ← sempre data absoluta (no day_index sol)
+session_time TIME
+assigned_employee_id  → profiles
+session_label         'A' | 'B' | 'C'
+cycle_id              → group_cycles   (sessions grupals)
+plan_id               → training_plans (sessions individuals)
+day_index INTEGER     0-19 (dins del cicle, per sessions grupals)
+max_clients INTEGER   (sessions grupals, normalment 6)
+status                'scheduled' | 'completed' | 'cancelled'
+notes TEXT
+```
+
+**`training_session_clients`** — participació d'un client en una sessió (junction amb atributs):
+```
+id UUID PK
+session_id  → training_sessions
+client_id   → clients
+difficulty  'regression' | 'base' | 'progression'   ← per client, progressiu
+UNIQUE(session_id, client_id)
+```
+
+Per a sessions individuals: 1 fila a `training_session_clients`.
+Per a sessions grupals: fins a `max_clients` files, cadascuna amb el seu `difficulty` (el nivell pot canviar sessió a sessió per registrar la progressió del client).
+
 ### Taules existents
 
 | Taula | Descripció |
@@ -169,14 +201,17 @@ girona-activa-app/
 | `objectives` | Catàleg d'objectius |
 | `exercises` | `name`, `technical_name`, `level` (1-3), `technical_level`, `body_zone_id`, `movement_pattern_id`, `equipment_id`, `objective_id`, `regression_id` (FK self), `progression_id` (FK self) |
 | `exercise_muscle_groups` | Junction exercici ↔ grup muscular |
-| `group_cycles` | Cicles de sessions grupals: `start_date`, `notes` |
-| `group_cycle_sessions` | Sessions d'un cicle: `session_label` (A/B/C), `session_time` |
-| `group_cycle_session_exercises` | Exercicis d'una sessió de cicle: `exercise_id`, `sets`, `reps`, `weight_kg` |
-| `training_plans` | `client_id`, `assigned_employee_id`, `type` (individual/group), `level` (1-3), `status` (active/completed), `duration_months`, `weekly_frequency`, `session_duration`, `start_date`, `end_date` |
-| `plan_sessions` | `training_plan_id`, `session_date`, `session_time`, `session_label` (A/B/C per a grupals), `notes` |
-| `plan_session_exercises` | `plan_session_id`, `exercise_id`, `sets`, `reps`, `weight_kg`, `notes`, `order_index` |
-| `session_logs` | `plan_session_id`, `client_id`, `started_at`, `completed_at`, `status` (in_progress/completed) |
-| `exercise_logs` | `session_log_id`, `plan_exercise_id`, `exercise_id`, `sets_done`, `reps_done`, `load_kg`, `rpe` (1-10), `rir` (0-10), `notes`, `skipped` |
+| `group_cycles` | Cicles de sessions grupals (4 setmanes): `start_date`, `notes` |
+| `group_sessions` | Plantilla d'exercicis per bloc A/B/C × dificultat regression/base/progression |
+| `group_session_exercises` | Exercicis de la plantilla: `exercise_id`, `sets`, `reps`, `weight_kg`, `order_index` |
+| `training_sessions` | **Taula unificada** — totes les sessions individuals i grupals com a events concrets al calendari |
+| `training_session_clients` | **Junction** — quin client participa en quina sessió i a quin nivell (`difficulty`) |
+| `training_plans` | Contracte de subscripció del client: `client_id`, `assigned_employee_id`, `type`, `level`, `status`, `duration_months`, `weekly_frequency`, `session_duration`, `start_date`, `end_date` |
+| `plan_sessions` | ⚠️ Legacy — sessions individuals (migrades a `training_sessions`) |
+| `group_cycle_slots` | ⚠️ Legacy — slots de cicles grupals (migrats a `training_sessions`) |
+| `plan_session_exercises` | Exercicis de sessions individuals |
+| `session_logs` | Registre d'execució: `started_at`, `completed_at`, `status` |
+| `exercise_logs` | `sets_done`, `reps_done`, `load_kg`, `rpe` (1-10), `rir` (0-10), `skipped` |
 
 ### Convencions RLS
 

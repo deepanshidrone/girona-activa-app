@@ -185,7 +185,25 @@ export async function createGroupCycleAction(data: CreateGroupCycleData) {
     }
   }
 
-  await adminSupabase.from('group_cycle_slots').insert(slotsToInsert)
+  // Insert into unified training_sessions table
+  const sessionsToInsert = slotsToInsert.map(slot => {
+    const week   = Math.floor(slot.day_index / 5)
+    const dow    = slot.day_index % 5
+    const d      = new Date(data.start_date + 'T12:00:00')
+    d.setDate(d.getDate() + week * 7 + dow)
+    return {
+      type:          'group' as const,
+      session_date:  d.toISOString().split('T')[0],
+      session_time:  slot.session_time,
+      session_label: slot.block_label,
+      cycle_id:      slot.cycle_id,
+      day_index:     slot.day_index,
+      max_clients:   slot.max_clients,
+      status:        'scheduled' as const,
+    }
+  })
+
+  await adminSupabase.from('training_sessions').insert(sessionsToInsert)
 
   return { success: true, cycle_id: cycle.id }
 }
@@ -253,41 +271,64 @@ export async function getGroupCycleByIdAction(id: string) {
           exercises(id, name, technical_name)
         )
       ),
-      group_cycle_slots(
-        id, day_index, session_time, block_label, max_clients, assigned_employee_id,
-        group_cycle_slot_clients(client_id, clients(id, first_name, last_name))
+      training_sessions(
+        id, day_index, session_time, session_label, max_clients, assigned_employee_id, session_date,
+        training_session_clients(client_id, difficulty, clients(id, first_name, last_name))
       )
     `)
     .eq('id', id)
     .single()
 
   if (error) return { error: error.message, cycle: null }
-  return { cycle: data }
+
+  // Reshape to match component expectations (block_label → session_label)
+  const cycle = {
+    ...data,
+    group_cycle_slots: (data?.training_sessions ?? []).map((ts: any) => ({
+      id:                      ts.id,
+      day_index:               ts.day_index,
+      session_time:            ts.session_time,
+      block_label:             ts.session_label,
+      max_clients:             ts.max_clients,
+      assigned_employee_id:    ts.assigned_employee_id,
+      group_cycle_slot_clients: (ts.training_session_clients ?? []).map((tsc: any) => ({
+        client_id: tsc.client_id,
+        clients:   tsc.clients,
+      })),
+    })),
+  }
+
+  return { cycle }
 }
 
 export async function updateSlotAssignmentAction(
   slotId: string,
   employeeId: string | null,
-  clientIds: string[]
+  clientIds: string[],
+  difficulties?: Record<string, 'regression' | 'base' | 'progression'>
 ) {
   const adminSupabase = createAdminClient()
   const supabase = await createClient()
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) return { error: 'No autorizado' }
 
-  const { error: slotError } = await adminSupabase
-    .from('group_cycle_slots')
+  const { error: sessionError } = await adminSupabase
+    .from('training_sessions')
     .update({ assigned_employee_id: employeeId })
     .eq('id', slotId)
 
-  if (slotError) return { error: slotError.message }
+  if (sessionError) return { error: sessionError.message }
 
-  await adminSupabase.from('group_cycle_slot_clients').delete().eq('slot_id', slotId)
+  await adminSupabase.from('training_session_clients').delete().eq('session_id', slotId)
 
   if (clientIds.length > 0) {
     const { error: clientError } = await adminSupabase
-      .from('group_cycle_slot_clients')
-      .insert(clientIds.map(cid => ({ slot_id: slotId, client_id: cid })))
+      .from('training_session_clients')
+      .insert(clientIds.map(cid => ({
+        session_id: slotId,
+        client_id:  cid,
+        difficulty: difficulties?.[cid] ?? 'base',
+      })))
     if (clientError) return { error: clientError.message }
   }
 
@@ -372,55 +413,29 @@ export async function swapGroupSessionExerciseAction(gseId: string, newExerciseI
 export async function getTodayGroupSlotsAction() {
   const adminSupabase = createAdminClient()
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const todayStr = new Date().toISOString().split('T')[0]
 
-  // 4-week cycle: last working day is start + 25 calendar days (week 4 Fri)
-  const earliestStart = new Date(today)
-  earliestStart.setDate(today.getDate() - 25)
+  const { data: sessions } = await adminSupabase
+    .from('training_sessions')
+    .select(`
+      id, session_time, session_label, max_clients, cycle_id, assigned_employee_id,
+      training_session_clients(client_id, difficulty, clients(id, first_name, last_name))
+    `)
+    .eq('type', 'group')
+    .eq('session_date', todayStr)
+    .order('session_time', { ascending: true })
 
-  const { data: cycles } = await adminSupabase
-    .from('group_cycles')
-    .select('id, start_date')
-    .gte('start_date', earliestStart.toISOString().split('T')[0])
-    .lte('start_date', today.toISOString().split('T')[0])
-
-  if (!cycles?.length) return { slots: [] }
-
-  const targets: { cycle_id: string; day_index: number }[] = []
-  for (const cycle of cycles) {
-    const day_index = getTodayDayIndex(cycle.start_date)
-    if (day_index !== null) targets.push({ cycle_id: cycle.id, day_index })
-  }
-
-  if (!targets.length) return { slots: [] }
-
-  const allSlots: any[] = []
-  for (const { cycle_id, day_index } of targets) {
-    const { data: slots } = await adminSupabase
-      .from('group_cycle_slots')
-      .select(`
-        id, day_index, session_time, block_label, max_clients, cycle_id,
-        assigned_employee_id,
-        group_cycle_slot_clients(client_id, clients(id, first_name, last_name))
-      `)
-      .eq('cycle_id', cycle_id)
-      .eq('day_index', day_index)
-      .order('session_time', { ascending: true })
-
-    if (slots) allSlots.push(...slots)
-  }
+  if (!sessions?.length) return { slots: [] }
 
   const { data: profiles } = await adminSupabase.from('profiles').select('id, full_name')
   const profileMap = new Map((profiles ?? []).map((p: any) => [p.id, p.full_name]))
 
   return {
-    slots: allSlots.map(slot => ({
-      ...slot,
-      employee_name: slot.assigned_employee_id
-        ? (profileMap.get(slot.assigned_employee_id) ?? null)
-        : null,
-      clients: (slot.group_cycle_slot_clients ?? []).map((sc: any) => sc.clients),
+    slots: sessions.map(s => ({
+      ...s,
+      block_label:   s.session_label,
+      employee_name: s.assigned_employee_id ? (profileMap.get(s.assigned_employee_id) ?? null) : null,
+      clients:       (s.training_session_clients ?? []).map((tsc: any) => tsc.clients),
     })),
   }
 }
