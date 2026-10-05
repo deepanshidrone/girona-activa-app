@@ -256,6 +256,13 @@ create trigger on_auth_user_created after insert on auth.users ...
 - Crea cicles amb sessions A, B, C
 - Cada sessió: exercicis amb sèries, reps, pes
 
+#### Requisits funcionals de sessions grupals (definits a l'octubre 2026)
+- **Múltiples sessions per dia:** en un dia d'un cicle hi pot haver més d'una sessió grupal. Es defineix en crear el cicle ("Nuevo ciclo").
+- **Empleat per sessió:** cada sessió grupal concreta pot tenir un empleat diferent assignat.
+- **Override de bloc:** en un dia concret on per defecte toca el bloc A, una de les sessions grupals pot ser del bloc B (o C). L'usuari tria el bloc per a cada sessió en definir el cicle.
+- **Màxim 6 clients per sessió:** cada sessió grupal té un límit de 6 clients. Es configura al crear el cicle.
+- **Visibilitat a "Hoy":** les sessions grupals han d'aparèixer individualment a la pàgina de "Hoy", amb l'empleat assignat i el bloc corresponent.
+
 ---
 
 ## Patrons importants de codi

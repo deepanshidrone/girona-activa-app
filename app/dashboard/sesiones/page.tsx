@@ -4,12 +4,12 @@ import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
-// Fixed 2-week session pattern (start_date = Monday of week 1)
-// Week 1: Mon=A, Tue=A, Wed=B, Thu=B, Fri=C
-// Week 2: Mon=B, Tue=B, Wed=B, Thu=B, Fri=A
+// 4-week cycle pattern (Mon-Fri per week)
 const CYCLE_PATTERN: ('A' | 'B' | 'C')[][] = [
-  ['A', 'A', 'B', 'B', 'C'],
-  ['B', 'B', 'C', 'C', 'A'],
+  ['A', 'A', 'B', 'B', 'C'], // week 1
+  ['B', 'B', 'C', 'C', 'A'], // week 2
+  ['C', 'C', 'A', 'A', 'B'], // week 3
+  ['A', 'A', 'B', 'B', 'C'], // week 4 (deload)
 ]
 const DAY_LABELS = ['Dl', 'Dt', 'Dc', 'Dj', 'Dv']
 const SESSION_COLORS = { A: '#FF914D', B: '#60a5fa', C: '#c084fc' }
@@ -35,7 +35,9 @@ function CycleCalendar({ startDate }: { startDate: string }) {
       <div className="flex flex-col gap-1.5">
         {weeks.map((week, wi) => (
           <div key={wi} className="flex items-center gap-1.5">
-            <span className="text-[10px] text-white/25 w-14 shrink-0 font-medium">Setmana {wi + 1}</span>
+            <span className="text-[10px] text-white/25 w-16 shrink-0 font-medium">
+              S{wi + 1}{wi === 3 ? ' ↓' : ''}
+            </span>
             <div className="flex gap-1.5 flex-1">
               {week.map(({ date, session, dayLabel }, di) => {
                 const isToday = date.toDateString() === today.toDateString()
@@ -67,7 +69,7 @@ function CycleCalendar({ startDate }: { startDate: string }) {
 function getCycleStatus(startDate: string): { label: string; color: string } {
   const start = new Date(startDate)
   const end = new Date(startDate)
-  end.setDate(end.getDate() + 14)
+  end.setDate(end.getDate() + 28) // 4 weeks
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
@@ -79,7 +81,7 @@ function getCycleStatus(startDate: string): { label: string; color: string } {
 function formatDateRange(startDate: string) {
   const start = new Date(startDate)
   const end = new Date(startDate)
-  end.setDate(end.getDate() + 13)
+  end.setDate(end.getDate() + 27) // 4 weeks
   const fmt = (d: Date) => d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
   return `${fmt(start)} — ${fmt(end)}`
 }

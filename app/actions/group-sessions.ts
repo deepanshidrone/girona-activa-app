@@ -2,6 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
+import { CYCLE_PATTERN_20, NEXT_BLOCK, DAY_SLOT_TEMPLATE, getTodayDayIndex } from '@/lib/cycle-utils'
 
 export type GroupSessionExercise = {
   exercise_id: string
@@ -166,6 +167,26 @@ export async function createGroupCycleAction(data: CreateGroupCycleData) {
     }
   }
 
+  // Auto-generate slots for all 20 working days based on predefined template
+  const slotsToInsert: {
+    cycle_id: string; day_index: number; session_time: string
+    block_label: string; max_clients: number
+  }[] = []
+
+  for (let day_index = 0; day_index < 20; day_index++) {
+    const primaryBlock = CYCLE_PATTERN_20[day_index]
+    const nextBlock    = NEXT_BLOCK[primaryBlock]
+    const dayOfWeek    = day_index % 5
+    for (const { time, hasOverlap } of DAY_SLOT_TEMPLATE[dayOfWeek]) {
+      slotsToInsert.push({ cycle_id: cycle.id, day_index, session_time: time, block_label: primaryBlock, max_clients: 6 })
+      if (hasOverlap) {
+        slotsToInsert.push({ cycle_id: cycle.id, day_index, session_time: time, block_label: nextBlock, max_clients: 6 })
+      }
+    }
+  }
+
+  await adminSupabase.from('group_cycle_slots').insert(slotsToInsert)
+
   return { success: true, cycle_id: cycle.id }
 }
 
@@ -231,6 +252,10 @@ export async function getGroupCycleByIdAction(id: string) {
         group_session_exercises(id, exercise_id, sets, reps, weight_kg, notes, order_index,
           exercises(id, name, technical_name)
         )
+      ),
+      group_cycle_slots(
+        id, day_index, session_time, block_label, max_clients, assigned_employee_id,
+        group_cycle_slot_clients(client_id, clients(id, first_name, last_name))
       )
     `)
     .eq('id', id)
@@ -238,6 +263,35 @@ export async function getGroupCycleByIdAction(id: string) {
 
   if (error) return { error: error.message, cycle: null }
   return { cycle: data }
+}
+
+export async function updateSlotAssignmentAction(
+  slotId: string,
+  employeeId: string | null,
+  clientIds: string[]
+) {
+  const adminSupabase = createAdminClient()
+  const supabase = await createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) return { error: 'No autorizado' }
+
+  const { error: slotError } = await adminSupabase
+    .from('group_cycle_slots')
+    .update({ assigned_employee_id: employeeId })
+    .eq('id', slotId)
+
+  if (slotError) return { error: slotError.message }
+
+  await adminSupabase.from('group_cycle_slot_clients').delete().eq('slot_id', slotId)
+
+  if (clientIds.length > 0) {
+    const { error: clientError } = await adminSupabase
+      .from('group_cycle_slot_clients')
+      .insert(clientIds.map(cid => ({ slot_id: slotId, client_id: cid })))
+    if (clientError) return { error: clientError.message }
+  }
+
+  return { success: true }
 }
 
 export async function updateGroupSessionExerciseAction(
@@ -313,6 +367,62 @@ export async function swapGroupSessionExerciseAction(gseId: string, newExerciseI
 
   if (error) return { error: error.message }
   return { success: true }
+}
+
+export async function getTodayGroupSlotsAction() {
+  const adminSupabase = createAdminClient()
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  // 4-week cycle: last working day is start + 25 calendar days (week 4 Fri)
+  const earliestStart = new Date(today)
+  earliestStart.setDate(today.getDate() - 25)
+
+  const { data: cycles } = await adminSupabase
+    .from('group_cycles')
+    .select('id, start_date')
+    .gte('start_date', earliestStart.toISOString().split('T')[0])
+    .lte('start_date', today.toISOString().split('T')[0])
+
+  if (!cycles?.length) return { slots: [] }
+
+  const targets: { cycle_id: string; day_index: number }[] = []
+  for (const cycle of cycles) {
+    const day_index = getTodayDayIndex(cycle.start_date)
+    if (day_index !== null) targets.push({ cycle_id: cycle.id, day_index })
+  }
+
+  if (!targets.length) return { slots: [] }
+
+  const allSlots: any[] = []
+  for (const { cycle_id, day_index } of targets) {
+    const { data: slots } = await adminSupabase
+      .from('group_cycle_slots')
+      .select(`
+        id, day_index, session_time, block_label, max_clients, cycle_id,
+        assigned_employee_id,
+        group_cycle_slot_clients(client_id, clients(id, first_name, last_name))
+      `)
+      .eq('cycle_id', cycle_id)
+      .eq('day_index', day_index)
+      .order('session_time', { ascending: true })
+
+    if (slots) allSlots.push(...slots)
+  }
+
+  const { data: profiles } = await adminSupabase.from('profiles').select('id, full_name')
+  const profileMap = new Map((profiles ?? []).map((p: any) => [p.id, p.full_name]))
+
+  return {
+    slots: allSlots.map(slot => ({
+      ...slot,
+      employee_name: slot.assigned_employee_id
+        ? (profileMap.get(slot.assigned_employee_id) ?? null)
+        : null,
+      clients: (slot.group_cycle_slot_clients ?? []).map((sc: any) => sc.clients),
+    })),
+  }
 }
 
 export async function getGroupCyclesAction() {

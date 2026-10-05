@@ -1,4 +1,5 @@
 import { getTodaySessionsAction } from '@/app/actions/session-logs'
+import { getTodayGroupSlotsAction } from '@/app/actions/group-sessions'
 import { CalendarClock, Clock, Dumbbell, Users, CheckCircle2, Circle, User } from 'lucide-react'
 import Link from 'next/link'
 
@@ -17,7 +18,10 @@ function formatTime(time: string | null) {
 }
 
 export default async function HoyPage() {
-  const { sessions, error, currentUserId } = await getTodaySessionsAction()
+  const [{ sessions, error, currentUserId }, { slots: groupSlots }] = await Promise.all([
+    getTodaySessionsAction(),
+    getTodayGroupSlotsAction(),
+  ])
 
   const today = new Date().toLocaleDateString('es-ES', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
@@ -57,6 +61,7 @@ export default async function HoyPage() {
 
   const completed = sessions.filter((s: any) => s.session_logs?.[0]?.status === 'completed').length
   const pending = sessions.length - completed
+  const totalToday = sessions.length + groupSlots.length
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
@@ -65,10 +70,10 @@ export default async function HoyPage() {
         <p className="text-white/40 text-sm mt-0.5">Agenda de sesiones de hoy</p>
       </div>
 
-      {sessions.length > 0 && (
+      {totalToday > 0 && (
         <div className="grid grid-cols-3 gap-3 mb-6">
           <div className="bg-[#1C1C1C] rounded-xl border border-white/10 p-3 text-center">
-            <p className="text-2xl font-bold text-white">{sessions.length}</p>
+            <p className="text-2xl font-bold text-white">{totalToday}</p>
             <p className="text-xs text-white/40 mt-0.5">Total</p>
           </div>
           <div className="bg-[#1C1C1C] rounded-xl border border-white/10 p-3 text-center">
@@ -82,7 +87,7 @@ export default async function HoyPage() {
         </div>
       )}
 
-      {sessions.length === 0 ? (
+      {totalToday === 0 ? (
         <div className="bg-[#1C1C1C] rounded-2xl border border-white/10 p-12 text-center">
           <CalendarClock className="h-10 w-10 text-white/20 mx-auto mb-3" />
           <p className="text-white/50 font-medium">No hay sesiones programadas hoy</p>
@@ -90,7 +95,22 @@ export default async function HoyPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-6">
-          {/* Mis sesiones */}
+          {/* Sesiones grupales */}
+          {groupSlots.length > 0 && (
+            <section>
+              <div className="flex items-center gap-2 mb-3">
+                <Users className="h-3.5 w-3.5 text-[#FF914D]" />
+                <span className="text-xs font-semibold text-[#FF914D] uppercase tracking-wider">Clases grupales</span>
+                <div className="flex-1 h-px bg-[#FF914D]/20" />
+                <span className="text-xs text-white/30">{groupSlots.length}</span>
+              </div>
+              <div className="flex flex-col gap-2">
+                {groupSlots.map((slot: any) => <GroupSlotCard key={slot.id} slot={slot} />)}
+              </div>
+            </section>
+          )}
+
+          {/* Mis sesiones individuales */}
           {mySessions.length > 0 && (
             <section>
               <div className="flex items-center gap-2 mb-3">
@@ -118,12 +138,62 @@ export default async function HoyPage() {
               </div>
             </section>
           ))}
-
-          {/* Sin entrenador asignado (planes viejos) */}
-          {otherSessions.length === 0 && mySessions.length === sessions.length && null}
         </div>
       )}
     </div>
+  )
+}
+
+function GroupSlotCard({ slot }: { slot: any }) {
+  const time = formatTime(slot.session_time)
+  const clientCount = slot.clients?.length ?? 0
+
+  return (
+    <Link
+      href={`/dashboard/sesiones/${slot.cycle_id}`}
+      className="block rounded-2xl border border-white/10 bg-[#1C1C1C] hover:border-white/20 transition-colors overflow-hidden"
+    >
+      <div className="flex items-center gap-4 p-4">
+        <div className="flex flex-col items-center justify-center w-14 shrink-0">
+          {time ? (
+            <>
+              <Clock className="h-3.5 w-3.5 text-white/30 mb-1" />
+              <span className="text-sm font-bold text-white">{time}</span>
+            </>
+          ) : (
+            <span className="text-xs text-white/20 text-center leading-tight">Sin hora</span>
+          )}
+        </div>
+
+        <div className="w-px h-12 bg-white/10 shrink-0" />
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-6 h-6 rounded-full bg-[#FF914D] text-white text-xs font-bold flex items-center justify-center shrink-0">
+              {slot.block_label}
+            </span>
+            <p className="text-white font-semibold">Clase grupal</p>
+          </div>
+          <div className="flex items-center gap-3 text-xs text-white/40">
+            <span className="flex items-center gap-1">
+              <Users className="h-3 w-3" />
+              {clientCount}/{slot.max_clients} clientes
+            </span>
+            {slot.employee_name && (
+              <span className="flex items-center gap-1">
+                <User className="h-3 w-3" />
+                {slot.employee_name}
+              </span>
+            )}
+          </div>
+          {clientCount > 0 && (
+            <p className="text-[11px] text-white/25 mt-1 truncate">
+              {slot.clients.map((c: any) => `${c.first_name} ${c.last_name}`).join(' · ')}
+            </p>
+          )}
+        </div>
+      </div>
+    </Link>
   )
 }
 

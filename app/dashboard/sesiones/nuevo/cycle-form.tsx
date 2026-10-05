@@ -31,15 +31,9 @@ interface Props {
 type SessionLabel = 'A' | 'B' | 'C'
 
 const SESSION_COLORS: Record<SessionLabel, string> = {
-  A: 'bg-blue-500',
-  B: 'bg-purple-500',
-  C: 'bg-green-500',
-}
-
-const SESSION_LABELS: Record<SessionLabel, string> = {
-  A: 'Sesión A',
-  B: 'Sesión B',
-  C: 'Sesión C',
+  A: 'bg-[#FF914D]',
+  B: 'bg-blue-500',
+  C: 'bg-purple-500',
 }
 
 export function CycleForm({ exercises, bodyZones, muscleGroups, movementPatterns, equipment, objectives }: Props) {
@@ -57,7 +51,6 @@ export function CycleForm({ exercises, bodyZones, muscleGroups, movementPatterns
     A: '', B: '', C: '',
   })
 
-  // Which session's picker is open
   const [openPicker, setOpenPicker] = useState<SessionLabel | null>(null)
 
   function addExercise(label: SessionLabel, exercise: Exercise, sets: number, reps: number, weight_kg: string, notes: string) {
@@ -65,8 +58,7 @@ export function CycleForm({ exercises, bodyZones, muscleGroups, movementPatterns
       ...prev,
       [label]: [...prev[label], {
         exercise_id: exercise.id,
-        sets,
-        reps,
+        sets, reps,
         weight_kg: weight_kg ? parseFloat(weight_kg) : undefined,
         notes: notes || undefined,
         order_index: prev[label].length,
@@ -84,13 +76,7 @@ export function CycleForm({ exercises, bodyZones, muscleGroups, movementPatterns
   function updateExercise(label: SessionLabel, index: number, sets: number, reps: number, weight_kg: string, notes: string) {
     setSessionExercises(prev => {
       const updated = [...prev[label]]
-      updated[index] = {
-        ...updated[index],
-        sets,
-        reps,
-        weight_kg: weight_kg ? parseFloat(weight_kg) : undefined,
-        notes: notes || undefined,
-      }
+      updated[index] = { ...updated[index], sets, reps, weight_kg: weight_kg ? parseFloat(weight_kg) : undefined, notes: notes || undefined }
       return { ...prev, [label]: updated }
     })
   }
@@ -117,7 +103,7 @@ export function CycleForm({ exercises, bodyZones, muscleGroups, movementPatterns
   }
 
   const endDate = new Date(startDate)
-  endDate.setDate(endDate.getDate() + 13)
+  endDate.setDate(endDate.getDate() + 27) // 4 weeks = 28 days
   const endDateStr = endDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
 
   if (saved) {
@@ -128,7 +114,7 @@ export function CycleForm({ exercises, bodyZones, muscleGroups, movementPatterns
             <Check className="h-8 w-8 text-green-600" />
           </div>
           <h2 className="text-xl font-bold text-white">Ciclo creado correctamente</h2>
-          <p className="text-white/50 text-xs mt-2">Redirigiendo...</p>
+          <p className="text-white/50 text-xs mt-2">Las clases intradía se han generado automáticamente. Redirigiendo...</p>
         </div>
       </div>
     )
@@ -142,7 +128,7 @@ export function CycleForm({ exercises, bodyZones, muscleGroups, movementPatterns
         </Link>
         <div>
           <h1 className="text-2xl font-bold text-white">Nuevo ciclo de sesiones</h1>
-          <p className="text-white/50 text-sm mt-0.5">Define las 3 sesiones del ciclo de 2 semanas</p>
+          <p className="text-white/50 text-sm mt-0.5">4 semanas · Sesiones A, B, C · Planificación intradía automática</p>
         </div>
       </div>
 
@@ -151,7 +137,7 @@ export function CycleForm({ exercises, bodyZones, muscleGroups, movementPatterns
         <h2 className="text-sm font-semibold text-white mb-4">Periodo del ciclo</h2>
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-1.5">
-            <Label className="text-white/60 text-xs">Fecha de inicio</Label>
+            <Label className="text-white/60 text-xs">Fecha de inicio (lunes)</Label>
             <input
               type="date"
               value={startDate}
@@ -180,11 +166,16 @@ export function CycleForm({ exercises, bodyZones, muscleGroups, movementPatterns
       {/* Info auto-generación */}
       <div className="flex items-start gap-3 bg-white/5 border border-white/10 rounded-xl p-4 mb-5 text-sm text-white/50">
         <Zap className="h-4 w-4 text-[#FF914D] shrink-0 mt-0.5" />
-        <p>
-          Define solo las <strong className="text-white/70">sesiones base</strong> (A, B, C).
-          Las versiones de <strong className="text-white/70">regresión</strong> (Nivel 1) y <strong className="text-white/70">progresión</strong> (Nivel 3)
-          se generarán automáticamente usando los campos de regresión/progresión de cada ejercicio.
-        </p>
+        <div>
+          <p>
+            Define solo las <strong className="text-white/70">sesiones base</strong> (A, B, C).
+            Al guardar se generarán automáticamente las versiones de <strong className="text-white/70">regresión</strong> y <strong className="text-white/70">progresión</strong>,
+            y la <strong className="text-white/70">planificación intradía</strong> de las 4 semanas con el horario predefinido del centro.
+          </p>
+          <p className="mt-1.5 text-white/30 text-xs">
+            Semana 1: A,A,B,B,C · Semana 2: B,B,C,C,A · Semana 3: C,C,A,A,B · Semana 4: A,A,B,B,C (deload)
+          </p>
+        </div>
       </div>
 
       {/* Las 3 sesiones */}
@@ -193,17 +184,14 @@ export function CycleForm({ exercises, bodyZones, muscleGroups, movementPatterns
           const exList = sessionExercises[label]
           return (
             <div key={label} className="bg-[#1C1C1C] rounded-2xl border border-white/10 overflow-hidden">
-              {/* Session header */}
               <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10">
                 <span className={`w-7 h-7 rounded-full ${SESSION_COLORS[label]} text-white text-sm font-bold flex items-center justify-center shrink-0`}>
                   {label}
                 </span>
-                <span className="font-semibold text-white flex-1">{SESSION_LABELS[label]}</span>
+                <span className="font-semibold text-white flex-1">Sesión {label}</span>
                 <span className="text-white/30 text-xs">{exList.length} ejercicio{exList.length !== 1 ? 's' : ''}</span>
               </div>
-
               <div className="p-5">
-                {/* Notes */}
                 <div className="mb-4">
                   <Input
                     value={sessionNotes[label]}
@@ -212,8 +200,6 @@ export function CycleForm({ exercises, bodyZones, muscleGroups, movementPatterns
                     className="bg-white/5 border-white/10 text-white placeholder:text-white/20 text-sm"
                   />
                 </div>
-
-                {/* Exercise list */}
                 {exList.length > 0 && (
                   <div className="flex flex-col gap-2 mb-4">
                     {exList.map((ex, i) => (
@@ -221,28 +207,16 @@ export function CycleForm({ exercises, bodyZones, muscleGroups, movementPatterns
                         <Dumbbell className="h-3.5 w-3.5 text-white/30 shrink-0" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm text-white font-medium truncate">{getExerciseName(ex.exercise_id)}</p>
-                          <p className="text-xs text-white/40">
-                            {ex.sets}×{ex.reps}
-                            {ex.weight_kg ? ` · ${ex.weight_kg}kg` : ''}
-                          </p>
+                          <p className="text-xs text-white/40">{ex.sets}×{ex.reps}{ex.weight_kg ? ` · ${ex.weight_kg}kg` : ''}</p>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => removeExercise(label, i)}
-                          className="text-white/20 hover:text-red-400 transition-colors"
-                        >
+                        <button type="button" onClick={() => removeExercise(label, i)} className="text-white/20 hover:text-red-400 transition-colors">
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
                     ))}
                   </div>
                 )}
-
-                <button
-                  type="button"
-                  onClick={() => setOpenPicker(label)}
-                  className="flex items-center gap-2 text-sm text-[#FF914D] hover:underline"
-                >
+                <button type="button" onClick={() => setOpenPicker(label)} className="flex items-center gap-2 text-sm text-[#FF914D] hover:underline">
                   <Plus className="h-3.5 w-3.5" />
                   Añadir ejercicio
                 </button>
@@ -252,21 +226,13 @@ export function CycleForm({ exercises, bodyZones, muscleGroups, movementPatterns
         })}
       </div>
 
-      {/* Save */}
       <div className="flex gap-3">
-        <Button
-          onClick={handleSave}
-          disabled={saving}
-          className="bg-[#FF914D] hover:bg-[#e07a3a] text-white font-semibold flex-1"
-        >
+        <Button onClick={handleSave} disabled={saving} className="bg-[#FF914D] hover:bg-[#e07a3a] text-white font-semibold flex-1">
           {saving ? 'Guardando...' : 'Guardar ciclo'}
         </Button>
-        <Button variant="outline" onClick={() => router.back()}>
-          Cancelar
-        </Button>
+        <Button variant="outline" onClick={() => router.back()}>Cancelar</Button>
       </div>
 
-      {/* Exercise picker modal (one per session, opened on demand) */}
       {openPicker && (
         <ExercisePickerModal
           exercises={exercises}
@@ -278,10 +244,8 @@ export function CycleForm({ exercises, bodyZones, muscleGroups, movementPatterns
           equipment={equipment}
           objectives={objectives}
           dayLabel={`Sesión ${openPicker}`}
-          onAdd={(exercise, sets, reps, weight_kg, notes) => {
-            addExercise(openPicker, exercise, sets, reps, weight_kg, notes)
-          }}
-          onRemove={(index) => removeExercise(openPicker, index)}
+          onAdd={(exercise, sets, reps, weight_kg, notes) => addExercise(openPicker, exercise, sets, reps, weight_kg, notes)}
+          onRemove={index => removeExercise(openPicker, index)}
           onUpdate={(index, sets, reps, weight_kg, notes) => updateExercise(openPicker, index, sets, reps, weight_kg, notes)}
           onClose={() => setOpenPicker(null)}
         />
