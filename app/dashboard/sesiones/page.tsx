@@ -1,6 +1,7 @@
 import { getGroupCyclesAction } from '@/app/actions/group-sessions'
 import { Plus, CalendarDays, Dumbbell, Zap } from 'lucide-react'
 import Link from 'next/link'
+import { SesionesTabs } from './sesiones-tabs'
 
 export const dynamic = 'force-dynamic'
 
@@ -103,10 +104,10 @@ export default async function SesionesPage() {
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Sesiones grupales</h1>
-          <p className="text-white/50 text-sm mt-0.5">Ciclos de 2 semanas · 3 sesiones × 3 dificultades</p>
+          <p className="text-white/50 text-sm mt-0.5">Ciclos de 4 semanas · Bloques A, B, C</p>
         </div>
         <Link
           href="/dashboard/sesiones/nuevo"
@@ -116,6 +117,8 @@ export default async function SesionesPage() {
           Nuevo ciclo
         </Link>
       </div>
+
+      <SesionesTabs />
 
       {/* Leyenda niveles */}
       <div className="flex items-center gap-4 mb-5 text-xs text-white/40">
