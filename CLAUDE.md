@@ -1,7 +1,7 @@
 # CLAUDE.md — Girona Activa App
 
 Contexte complet del projecte per a Claude Code. Es carrega automàticament a l'inici de cada sessió.
-**Última actualització:** 2026-09-22
+**Última actualització:** 2026-10-07
 
 ---
 
@@ -106,7 +106,9 @@ girona-activa-app/
 │   ├── actions/                          # Server Actions (TOTS els fitxers d'aquesta carpeta
 │   │   ├── clients.ts                    # createClientAction, getClientsAction
 │   │   ├── plans.ts                      # createPlanAction (plans individuals)
-│   │   ├── group-sessions.ts             # createGroupPlanAction, createGroupCycleAction
+│   │   ├── group-sessions.ts             # createGroupPlanAction, createGroupCycleAction (accepta template_id)
+│   ├── cycle-templates.ts            # getTemplatesAction, createTemplateAction, updateTemplateAction,
+│   │                                 # deleteTemplateAction, duplicateTemplateAction
 │   │   ├── edit-plan.ts                  # moveSessionAction, addSessionExerciseAction, etc.
 │   │   ├── session-logs.ts               # startSessionLogAction, saveExerciseLogAction,
 │   │   │                                 # completeSessionLogAction, getTodaySessionsAction,
@@ -138,7 +140,14 @@ girona-activa-app/
 │       │       ├── page.tsx              # Server component — carrega sessió per editar
 │       │       └── edit-plan-calendar.tsx # Client component — calendari interactiu d'edició
 │       └── sesiones/
-│           └── nuevo/page.tsx            # Creació de cicles de sessions grupals (A/B/C)
+│           ├── page.tsx                  # Llistat de cicles + pestanya tabs
+│           ├── sesiones-tabs.tsx         # Client component — tabs "Ciclos" | "Plantillas"
+│           ├── plantilles/
+│           │   ├── page.tsx              # Pàgina de plantilles
+│           │   └── plantillas-client.tsx # Client component — CRUD plantilles + editor
+│           └── nuevo/
+│               ├── page.tsx              # Server component — carrega exercicis + plantilles
+│               └── cycle-form.tsx        # Client component — 2 passos: plantilla + configuració
 ├── components/
 │   ├── app-sidebar.tsx                   # Sidebar amb: Hoy, Clientes, Ejercicios, Planes, Sesiones grupales
 │   └── ui/                              # Components shadcn/ui
@@ -207,6 +216,9 @@ Per a sessions grupals: fins a `max_clients` files, cadascuna amb el seu `diffic
 | `training_sessions` | **Taula unificada** — totes les sessions individuals i grupals com a events concrets al calendari |
 | `training_session_clients` | **Junction** — quin client participa en quina sessió i a quin nivell (`difficulty`) |
 | `training_plans` | Contracte de subscripció del client: `client_id`, `assigned_employee_id`, `type`, `level`, `status`, `duration_months`, `weekly_frequency`, `session_duration`, `start_date`, `end_date` |
+| `cycle_templates` | Plantilles predefinides per crear cicles: `name`, `notes`, `is_default`, `created_by` |
+| `cycle_template_days` | Patró mensual de la plantilla: 20 files (day_index 0-19) amb `block_label` A/B/C |
+| `cycle_template_slots` | Franges intradía de la plantilla per dia de la setmana: `day_of_week` (0-4), `session_time`, `has_overlap`, `max_clients` |
 | `plan_sessions` | ⚠️ Legacy — sessions individuals (migrades a `training_sessions`) |
 | `group_cycle_slots` | ⚠️ Legacy — slots de cicles grupals (migrats a `training_sessions`) |
 | `plan_session_exercises` | Exercicis de sessions individuals |
@@ -287,9 +299,31 @@ create trigger on_auth_user_created after insert on auth.users ...
 - RIR: vermell ≤ 2, groc ≤ 5, verd > 5 (lògica invertida)
 - "Completar sesión" només actiu quan tots els exercicis estan guardats
 
-### Cicles de sessions grupals (`/dashboard/sesiones/nuevo`)
-- Crea cicles amb sessions A, B, C
-- Cada sessió: exercicis amb sèries, reps, pes
+### Cicles de sessions grupals (`/dashboard/sesiones`)
+
+#### Llista de cicles (`/dashboard/sesiones`)
+- Mostra tots els cicles amb calendari de 4 setmanes i status (Activo / Próximo / Expirado)
+- Pestanya "Ciclos" | "Plantillas" (`sesiones-tabs.tsx`)
+
+#### Plantilles de cicle (`/dashboard/sesiones/plantillas`)
+- Llistat de plantilles predefinides amb preview del patró mensual A/B/C
+- Crear / editar / duplicar / eliminar plantilles (la plantilla per defecte no es pot eliminar)
+- Editor de plantilla: grid de 4 setmanes × 5 dies (clic per ciclar A→B→C→A) + gestor de franges intradía
+- Franges: es poden afegir/eliminar per dia de la setmana, configurar solapament i màxim clients
+- Plantilla per defecte: "Plantilla estàndard" (`id: 00000000-0000-0000-0000-000000000001`)
+- Accions CRUD a `app/actions/cycle-templates.ts`
+
+#### Creació de cicle (`/dashboard/sesiones/nuevo`)
+- **Pas 1** — Selecció de plantilla (patró mensual + franges intradía)
+- **Pas 2** — Data d'inici, notes i exercicis de cada sessió A/B/C
+- Al guardar: `createGroupCycleAction` carrega el patró i les franges de la plantilla seleccionada des de la DB (fallback: `CYCLE_PATTERN_20` i `DAY_SLOT_TEMPLATE` hardcodejats)
+- Genera `training_sessions` automàticament per als 20 dies laborables del cicle
+
+#### Editor de cicle (`/dashboard/sesiones/[id]`)
+- Pestanya "Exercicis": exercicis dels 3 blocs A/B/C × 3 dificultats
+- Pestanya "Planificació": calendari de 4 setmanes × 5 dies
+  - Cada slot és clicable → abre drawer lateral
+  - Drawer: editar exercicis del bloc + assignar empleat + assignar clients (màx 6)
 
 #### Requisits funcionals de sessions grupals (definits a l'octubre 2026)
 - **Múltiples sessions per dia:** en un dia d'un cicle hi pot haver més d'una sessió grupal. Es defineix en crear el cicle ("Nuevo ciclo").

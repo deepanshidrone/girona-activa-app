@@ -7,8 +7,20 @@ import { ExercisePickerModal } from '@/app/dashboard/planes/nuevo/exercise-picke
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, Check, Dumbbell, Plus, Trash2, Zap } from 'lucide-react'
+import { ArrowLeft, Check, ChevronRight, Dumbbell, Plus, Star, Trash2, Zap } from 'lucide-react'
 import Link from 'next/link'
+
+type TemplateDay  = { day_index: number; block_label: 'A' | 'B' | 'C' }
+type TemplateSlot = { day_of_week: number; session_time: string; has_overlap: boolean; max_clients: number }
+type CycleTemplate = {
+  id: string; name: string; notes: string | null; is_default: boolean
+  cycle_template_days: TemplateDay[]
+  cycle_template_slots: TemplateSlot[]
+}
+
+const BLOCK_COLORS: Record<string, string> = { A: 'bg-[#FF914D]', B: 'bg-blue-500', C: 'bg-purple-500' }
+const WEEK_LABELS = ['S1', 'S2', 'S3', 'S4↓']
+const DAY_SHORT   = ['Dl', 'Dt', 'Dc', 'Dj', 'Dv']
 
 type Exercise = {
   id: string; name: string; technical_name: string | null
@@ -26,6 +38,7 @@ interface Props {
   movementPatterns: Item[]
   equipment: Item[]
   objectives: Item[]
+  templates: CycleTemplate[]
 }
 
 type SessionLabel = 'A' | 'B' | 'C'
@@ -36,10 +49,14 @@ const SESSION_COLORS: Record<SessionLabel, string> = {
   C: 'bg-purple-500',
 }
 
-export function CycleForm({ exercises, bodyZones, muscleGroups, movementPatterns, equipment, objectives }: Props) {
+export function CycleForm({ exercises, bodyZones, muscleGroups, movementPatterns, equipment, objectives, templates }: Props) {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [step, setStep] = useState<'template' | 'configure'>(templates.length > 0 ? 'template' : 'configure')
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(
+    templates.find(t => t.is_default)?.id ?? templates[0]?.id ?? ''
+  )
 
   const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0])
   const [cycleNotes, setCycleNotes] = useState('')
@@ -90,6 +107,7 @@ export function CycleForm({ exercises, bodyZones, muscleGroups, movementPatterns
     const result = await createGroupCycleAction({
       start_date: startDate,
       notes: cycleNotes || undefined,
+      template_id: selectedTemplateId || undefined,
       sessions: (['A', 'B', 'C'] as SessionLabel[]).map(label => ({
         label,
         notes: sessionNotes[label] || undefined,
@@ -105,6 +123,75 @@ export function CycleForm({ exercises, bodyZones, muscleGroups, movementPatterns
   const endDate = new Date(startDate)
   endDate.setDate(endDate.getDate() + 27) // 4 weeks = 28 days
   const endDateStr = endDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
+
+  const selectedTemplate = templates.find(t => t.id === selectedTemplateId)
+
+  // Step 1: template selection
+  if (step === 'template') {
+    return (
+      <div className="p-6 max-w-2xl mx-auto">
+        <div className="flex items-center gap-3 mb-6">
+          <Link href="/dashboard/sesiones" className="text-white/40 hover:text-white transition-colors">
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-white">Nuevo ciclo de sesiones</h1>
+            <p className="text-white/50 text-sm mt-0.5">Paso 1 de 2 — Escoge la plantilla</p>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3 mb-6">
+          {templates.map(t => {
+            const days = [...t.cycle_template_days].sort((a,b) => a.day_index - b.day_index)
+            const selected = t.id === selectedTemplateId
+            return (
+              <button key={t.id} onClick={() => setSelectedTemplateId(t.id)}
+                className={`text-left bg-[#1C1C1C] rounded-2xl border p-5 transition-all ${selected ? 'border-[#FF914D]/60 ring-1 ring-[#FF914D]/30' : 'border-white/10 hover:border-white/20'}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    {t.is_default && <Star className="h-3.5 w-3.5 text-[#FF914D] fill-[#FF914D]" />}
+                    <span className="text-white font-semibold">{t.name}</span>
+                    {t.is_default && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#FF914D]/15 text-[#FF914D]">Por defecto</span>}
+                  </div>
+                  {selected && <div className="w-5 h-5 rounded-full bg-[#FF914D] flex items-center justify-center"><Check className="h-3 w-3 text-white" /></div>}
+                </div>
+                {t.notes && <p className="text-xs text-white/40 mb-3">{t.notes}</p>}
+                {/* Pattern mini-preview */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-1 mb-0.5">
+                    <span className="w-6" />
+                    {DAY_SHORT.map(d => <span key={d} className="flex-1 text-center text-[9px] text-white/25">{d}</span>)}
+                  </div>
+                  {[0,1,2,3].map(week => (
+                    <div key={week} className="flex items-center gap-1">
+                      <span className="text-[9px] text-white/25 w-6 text-right">{WEEK_LABELS[week]}</span>
+                      {[0,1,2,3,4].map(dow => {
+                        const day = days.find(d => d.day_index === week*5+dow)
+                        return (
+                          <div key={dow} className="flex-1 flex items-center justify-center">
+                            {day
+                              ? <span className={`w-5 h-5 rounded-full ${BLOCK_COLORS[day.block_label]} text-white text-[9px] font-bold flex items-center justify-center`}>{day.block_label}</span>
+                              : <span className="text-white/10 text-[9px]">—</span>}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[11px] text-white/30 mt-2">{t.cycle_template_slots.length} franjas intradía</p>
+              </button>
+            )
+          })}
+        </div>
+
+        <button onClick={() => setStep('configure')} disabled={!selectedTemplateId}
+          className="w-full flex items-center justify-center gap-2 bg-[#FF914D] hover:bg-[#e07a3a] disabled:opacity-40 text-white text-sm font-semibold py-3 rounded-xl transition-colors">
+          Continuar con "{selectedTemplate?.name}"
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+    )
+  }
 
   if (saved) {
     return (
@@ -123,12 +210,15 @@ export function CycleForm({ exercises, bodyZones, muscleGroups, movementPatterns
   return (
     <div className="p-6 max-w-3xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
-        <Link href="/dashboard/sesiones" className="text-white/40 hover:text-white transition-colors">
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
+        {templates.length > 0
+          ? <button onClick={() => setStep('template')} className="text-white/40 hover:text-white transition-colors"><ArrowLeft className="h-5 w-5" /></button>
+          : <Link href="/dashboard/sesiones" className="text-white/40 hover:text-white transition-colors"><ArrowLeft className="h-5 w-5" /></Link>
+        }
         <div>
           <h1 className="text-2xl font-bold text-white">Nuevo ciclo de sesiones</h1>
-          <p className="text-white/50 text-sm mt-0.5">4 semanas · Sesiones A, B, C · Planificación intradía automática</p>
+          <p className="text-white/50 text-sm mt-0.5">
+            {selectedTemplate ? <>Plantilla: <span className="text-[#FF914D]">{selectedTemplate.name}</span></> : '4 semanas · Sesiones A, B, C'}
+          </p>
         </div>
       </div>
 
@@ -172,9 +262,11 @@ export function CycleForm({ exercises, bodyZones, muscleGroups, movementPatterns
             Al guardar se generarán automáticamente las versiones de <strong className="text-white/70">regresión</strong> y <strong className="text-white/70">progresión</strong>,
             y la <strong className="text-white/70">planificación intradía</strong> de las 4 semanas con el horario predefinido del centro.
           </p>
-          <p className="mt-1.5 text-white/30 text-xs">
-            Semana 1: A,A,B,B,C · Semana 2: B,B,C,C,A · Semana 3: C,C,A,A,B · Semana 4: A,A,B,B,C (deload)
-          </p>
+          {selectedTemplate && (
+            <p className="mt-1.5 text-white/30 text-xs">
+              {selectedTemplate.cycle_template_slots.length} franjas intradía · plantilla &quot;{selectedTemplate.name}&quot;
+            </p>
+          )}
         </div>
       </div>
 

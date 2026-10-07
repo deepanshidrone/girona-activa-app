@@ -14,6 +14,7 @@ export default async function NuevoSesionesPage() {
     { data: equipment },
     { data: objectives },
     { data: muscleLinks },
+    { data: templates },
   ] = await Promise.all([
     supabase.from('exercises').select('id, name, technical_name, level, technical_level, body_zone_id, movement_pattern_id, equipment_id, objective_id').order('name'),
     supabase.from('body_zones').select('id, name').order('name'),
@@ -22,6 +23,10 @@ export default async function NuevoSesionesPage() {
     supabase.from('equipment').select('id, name').order('name'),
     supabase.from('objectives').select('id, name').order('name'),
     supabase.from('exercise_muscle_groups').select('exercise_id, muscle_group_id'),
+    supabase.from('cycle_templates')
+      .select('id, name, notes, is_default, cycle_template_days(day_index, block_label), cycle_template_slots(day_of_week, session_time, has_overlap, max_clients)')
+      .order('is_default', { ascending: false })
+      .order('created_at', { ascending: true }),
   ])
 
   const exercisesWithMuscles = (exercises ?? []).map(ex => ({
@@ -39,6 +44,7 @@ export default async function NuevoSesionesPage() {
       movementPatterns={movementPatterns ?? []}
       equipment={equipment ?? []}
       objectives={objectives ?? []}
+      templates={templates ?? []}
     />
   )
 }

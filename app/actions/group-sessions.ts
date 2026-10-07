@@ -22,6 +22,7 @@ export type GroupSessionData = {
 export type CreateGroupCycleData = {
   start_date: string
   notes?: string
+  template_id?: string
   sessions: GroupSessionData[]
 }
 
@@ -167,20 +168,50 @@ export async function createGroupCycleAction(data: CreateGroupCycleData) {
     }
   }
 
-  // Auto-generate slots for all 20 working days based on predefined template
+  // Load template pattern and slots (from DB if template_id given, else hardcoded fallback)
+  let cyclePattern: ('A' | 'B' | 'C')[] = CYCLE_PATTERN_20
+  type SlotDef = { time: string; hasOverlap: boolean; maxClients: number }
+  let slotsByDow: Record<number, SlotDef[]> = Object.fromEntries(
+    [0,1,2,3,4].map(dow => [dow, DAY_SLOT_TEMPLATE[dow].map(s => ({ time: s.time, hasOverlap: s.hasOverlap, maxClients: 6 }))])
+  )
+
+  if (data.template_id) {
+    const { data: tmpl } = await adminSupabase
+      .from('cycle_templates')
+      .select('cycle_template_days(day_index, block_label), cycle_template_slots(day_of_week, session_time, has_overlap, max_clients)')
+      .eq('id', data.template_id)
+      .single()
+
+    if (tmpl) {
+      const sortedDays = [...(tmpl.cycle_template_days as any[])].sort((a, b) => a.day_index - b.day_index)
+      if (sortedDays.length === 20) {
+        cyclePattern = sortedDays.map(d => d.block_label as 'A' | 'B' | 'C')
+      }
+      const slotsByDowRaw: Record<number, SlotDef[]> = { 0: [], 1: [], 2: [], 3: [], 4: [] }
+      for (const s of (tmpl.cycle_template_slots as any[])) {
+        slotsByDowRaw[s.day_of_week as number]?.push({
+          time: s.session_time,
+          hasOverlap: s.has_overlap,
+          maxClients: s.max_clients,
+        })
+      }
+      slotsByDow = slotsByDowRaw
+    }
+  }
+
   const slotsToInsert: {
     cycle_id: string; day_index: number; session_time: string
     block_label: string; max_clients: number
   }[] = []
 
   for (let day_index = 0; day_index < 20; day_index++) {
-    const primaryBlock = CYCLE_PATTERN_20[day_index]
+    const primaryBlock = cyclePattern[day_index]
     const nextBlock    = NEXT_BLOCK[primaryBlock]
     const dayOfWeek    = day_index % 5
-    for (const { time, hasOverlap } of DAY_SLOT_TEMPLATE[dayOfWeek]) {
-      slotsToInsert.push({ cycle_id: cycle.id, day_index, session_time: time, block_label: primaryBlock, max_clients: 6 })
+    for (const { time, hasOverlap, maxClients } of (slotsByDow[dayOfWeek] ?? [])) {
+      slotsToInsert.push({ cycle_id: cycle.id, day_index, session_time: time, block_label: primaryBlock, max_clients: maxClients })
       if (hasOverlap) {
-        slotsToInsert.push({ cycle_id: cycle.id, day_index, session_time: time, block_label: nextBlock, max_clients: 6 })
+        slotsToInsert.push({ cycle_id: cycle.id, day_index, session_time: time, block_label: nextBlock, max_clients: maxClients })
       }
     }
   }
