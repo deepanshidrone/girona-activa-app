@@ -3,6 +3,8 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { CYCLE_PATTERN_20, NEXT_BLOCK, DAY_SLOT_TEMPLATE, getTodayDayIndex } from '@/lib/cycle-utils'
+import { generateCycleDates } from '@/lib/calendar-utils'
+import { getActiveHolidayDatesAction } from './holidays'
 
 export type GroupSessionExercise = {
   exercise_id: string
@@ -199,40 +201,45 @@ export async function createGroupCycleAction(data: CreateGroupCycleData) {
     }
   }
 
-  const slotsToInsert: {
-    cycle_id: string; day_index: number; session_time: string
-    block_label: string; max_clients: number
-  }[] = []
+  // Get active holidays to skip them during date generation
+  const startYear  = parseInt(data.start_date.slice(0, 4))
+  const endYear    = startYear + 1
+  const [holidaySetA, holidaySetB] = await Promise.all([
+    getActiveHolidayDatesAction(startYear),
+    getActiveHolidayDatesAction(endYear),
+  ])
+  const holidaySet = new Set([...holidaySetA, ...holidaySetB])
+
+  // Generate the actual calendar dates for the 20 working days,
+  // respecting the start_date (which may be mid-week) and skipping holidays
+  const workingDayDates = generateCycleDates(data.start_date, 20, holidaySet)
+
+  const sessionsToInsert: object[] = []
 
   for (let day_index = 0; day_index < 20; day_index++) {
+    const sessionDate  = workingDayDates[day_index]
+    if (!sessionDate) continue
+
     const primaryBlock = cyclePattern[day_index]
     const nextBlock    = NEXT_BLOCK[primaryBlock]
-    const dayOfWeek    = day_index % 5
-    for (const { time, hasOverlap, maxClients } of (slotsByDow[dayOfWeek] ?? [])) {
-      slotsToInsert.push({ cycle_id: cycle.id, day_index, session_time: time, block_label: primaryBlock, max_clients: maxClients })
+    const dow          = new Date(sessionDate + 'T12:00:00').getDay() - 1  // 0=Mon … 4=Fri
+    const dowKey       = dow >= 0 && dow <= 4 ? dow : 4
+
+    for (const { time, hasOverlap, maxClients } of (slotsByDow[dowKey] ?? [])) {
+      sessionsToInsert.push({
+        type: 'group', session_date: sessionDate, session_time: time,
+        session_label: primaryBlock, cycle_id: cycle.id,
+        day_index, max_clients: maxClients, status: 'scheduled',
+      })
       if (hasOverlap) {
-        slotsToInsert.push({ cycle_id: cycle.id, day_index, session_time: time, block_label: nextBlock, max_clients: maxClients })
+        sessionsToInsert.push({
+          type: 'group', session_date: sessionDate, session_time: time,
+          session_label: nextBlock, cycle_id: cycle.id,
+          day_index, max_clients: maxClients, status: 'scheduled',
+        })
       }
     }
   }
-
-  // Insert into unified training_sessions table
-  const sessionsToInsert = slotsToInsert.map(slot => {
-    const week   = Math.floor(slot.day_index / 5)
-    const dow    = slot.day_index % 5
-    const d      = new Date(data.start_date + 'T12:00:00')
-    d.setDate(d.getDate() + week * 7 + dow)
-    return {
-      type:          'group' as const,
-      session_date:  d.toISOString().split('T')[0],
-      session_time:  slot.session_time,
-      session_label: slot.block_label,
-      cycle_id:      slot.cycle_id,
-      day_index:     slot.day_index,
-      max_clients:   slot.max_clients,
-      status:        'scheduled' as const,
-    }
-  })
 
   await adminSupabase.from('training_sessions').insert(sessionsToInsert)
 

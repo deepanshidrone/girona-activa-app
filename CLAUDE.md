@@ -1,7 +1,7 @@
 # CLAUDE.md — Girona Activa App
 
 Contexte complet del projecte per a Claude Code. Es carrega automàticament a l'inici de cada sessió.
-**Última actualització:** 2026-10-07
+**Última actualització:** 2026-10-09
 
 ---
 
@@ -109,6 +109,8 @@ girona-activa-app/
 │   │   ├── group-sessions.ts             # createGroupPlanAction, createGroupCycleAction (accepta template_id)
 │   ├── cycle-templates.ts            # getTemplatesAction, createTemplateAction, updateTemplateAction,
 │   │                                 # deleteTemplateAction, duplicateTemplateAction
+│   └── holidays.ts                   # getHolidaysAction, getActiveHolidayDatesAction,
+│                                     # toggleHolidayAction, addHolidayAction, syncHolidaysFromApiAction
 │   │   ├── edit-plan.ts                  # moveSessionAction, addSessionExerciseAction, etc.
 │   │   ├── session-logs.ts               # startSessionLogAction, saveExerciseLogAction,
 │   │   │                                 # completeSessionLogAction, getTodaySessionsAction,
@@ -152,6 +154,7 @@ girona-activa-app/
 │   ├── app-sidebar.tsx                   # Sidebar amb: Hoy, Clientes, Ejercicios, Planes, Sesiones grupales
 │   └── ui/                              # Components shadcn/ui
 ├── lib/
+│   ├── calendar-utils.ts             # generateCycleDates() — genera dates laborables saltant festius i fins de setmana
 │   ├── supabase/
 │   │   ├── client.ts                    # createClient() — Client Components
 │   │   ├── server.ts                    # createClient() — Server Components
@@ -216,6 +219,7 @@ Per a sessions grupals: fins a `max_clients` files, cadascuna amb el seu `diffic
 | `training_sessions` | **Taula unificada** — totes les sessions individuals i grupals com a events concrets al calendari |
 | `training_session_clients` | **Junction** — quin client participa en quina sessió i a quin nivell (`difficulty`) |
 | `training_plans` | Contracte de subscripció del client: `client_id`, `assigned_employee_id`, `type`, `level`, `status`, `duration_months`, `weekly_frequency`, `session_duration`, `start_date`, `end_date` |
+| `public_holidays` | Festius: `date` (PK), `name`, `scope` (national/catalonia/girona), `is_active`, `is_override` |
 | `cycle_templates` | Plantilles predefinides per crear cicles: `name`, `notes`, `is_default`, `created_by` |
 | `cycle_template_days` | Patró mensual de la plantilla: 20 files (day_index 0-19) amb `block_label` A/B/C |
 | `cycle_template_slots` | Franges intradía de la plantilla per dia de la setmana: `day_of_week` (0-4), `session_time`, `has_overlap`, `max_clients` |
@@ -313,17 +317,27 @@ create trigger on_auth_user_created after insert on auth.users ...
 - Plantilla per defecte: "Plantilla estàndard" (`id: 00000000-0000-0000-0000-000000000001`)
 - Accions CRUD a `app/actions/cycle-templates.ts`
 
+#### Festius (`public_holidays`)
+- 16 festius de 2026 pre-carregats: nacionals espanyols + Catalunya + Sant Narcís (Girona)
+- `is_active = false` → el festiu s'ignora en la generació de cicles (el dia passa a ser laboral)
+- `is_override = true` → marcat manualment per un empleat (no el sobreescriu `syncHolidaysFromApiAction`)
+- `toggleHolidayAction(date)`: canvia `is_active` i posa `is_override = true`
+- `syncHolidaysFromApiAction(year)`: crida Nager.Date API (ES + ES-CT) i fa upsert. Pendent: integrar a una pàgina de Configuració
+- La gestió completa de festius (afegir festius locals nous, puentes, etc.) anirà a una futura secció **Configuració**
+
 #### Creació de cicle (`/dashboard/sesiones/nuevo`)
 - **Pas 1** — Selecció de plantilla (patró mensual + franges intradía)
 - **Pas 2** — Data d'inici, notes i exercicis de cada sessió A/B/C
 - Al guardar: `createGroupCycleAction` carrega el patró i les franges de la plantilla seleccionada des de la DB (fallback: `CYCLE_PATTERN_20` i `DAY_SLOT_TEMPLATE` hardcodejats)
 - Genera `training_sessions` automàticament per als 20 dies laborables del cicle
+- La generació de dates usa `generateCycleDates()` de `lib/calendar-utils.ts`: comença a `start_date` (pot ser qualsevol dia laborable, no necessàriament dilluns), avança dia a dia saltant caps de setmana i festius actius de `public_holidays`
 
 #### Editor de cicle (`/dashboard/sesiones/[id]`)
 - Pestanya "Exercicis": exercicis dels 3 blocs A/B/C × 3 dificultats
 - Pestanya "Planificació": calendari de 4 setmanes × 5 dies
   - Cada slot és clicable → abre drawer lateral
   - Drawer: editar exercicis del bloc + assignar empleat + assignar clients (màx 6)
+  - Celdas de festiu: apareixen en gris amb nom del festiu + botó "Revertir" que crida `toggleHolidayAction` (canvi local optimista)
 
 #### Requisits funcionals de sessions grupals (definits a l'octubre 2026)
 - **Múltiples sessions per dia:** en un dia d'un cicle hi pot haver més d'una sessió grupal. Es defineix en crear el cicle ("Nuevo ciclo").

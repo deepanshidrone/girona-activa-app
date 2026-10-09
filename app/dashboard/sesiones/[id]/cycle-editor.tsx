@@ -13,6 +13,8 @@ import {
   swapGroupSessionExerciseAction,
   updateSlotAssignmentAction,
 } from '@/app/actions/group-sessions'
+import { toggleHolidayAction } from '@/app/actions/holidays'
+import { generateCycleDates } from '@/lib/calendar-utils'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Exercise = { id: string; name: string; technical_name?: string | null }
@@ -57,11 +59,20 @@ type Cycle = {
   group_cycle_slots: Slot[]
 }
 
+type Holiday = {
+  date: string
+  name: string
+  scope: string
+  is_active: boolean
+  is_override: boolean
+}
+
 type Props = {
   cycle: Cycle
   exercises: Exercise[]
   employees: Employee[]
   clients: Client[]
+  holidays: Holiday[]
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -407,11 +418,12 @@ function SlotDrawer({
 }
 
 // ─── Planning tab ─────────────────────────────────────────────────────────────
-function PlanningTab({ cycle, exercises, employees, clients, sessionExercises, onUpdateGSE, onDeleteGSE, onAddGSE, onSwapGSE }: {
+function PlanningTab({ cycle, exercises, employees, clients, holidays, sessionExercises, onUpdateGSE, onDeleteGSE, onAddGSE, onSwapGSE }: {
   cycle: Cycle
   exercises: Exercise[]
   employees: Employee[]
   clients: Client[]
+  holidays: Holiday[]
   sessionExercises: Record<string, GSE[]>
   onUpdateGSE: (gseId: string, data: Partial<Pick<GSE, 'sets' | 'reps' | 'weight_kg'>>) => void
   onDeleteGSE: (sessionId: string, gseId: string) => void
@@ -420,8 +432,15 @@ function PlanningTab({ cycle, exercises, employees, clients, sessionExercises, o
 }) {
   const [slots, setSlots] = useState<Slot[]>(cycle.group_cycle_slots ?? [])
   const [openSlot, setOpenSlot] = useState<Slot | null>(null)
+  const [localHolidays, setLocalHolidays] = useState<Holiday[]>(holidays)
 
-  const employeeMap = new Map(employees.map(e => [e.id, e.full_name]))
+  const employeeMap  = new Map(employees.map(e => [e.id, e.full_name]))
+  const holidayMap   = new Map(localHolidays.filter(h => h.is_active).map(h => [h.date, h]))
+  const holidayAllMap = new Map(localHolidays.map(h => [h.date, h]))
+
+  // Build the working-day dates for this cycle, respecting start day and holidays
+  const holidaySet = new Set(localHolidays.filter(h => h.is_active).map(h => h.date))
+  const workingDayDates = generateCycleDates(cycle.start_date, 20, holidaySet)
 
   const slotsByDay = new Map<number, Slot[]>()
   for (const slot of slots) {
@@ -439,7 +458,6 @@ function PlanningTab({ cycle, exercises, employees, clients, sessionExercises, o
         return { client_id: cid, clients: c ?? { id: cid, first_name: '?', last_name: '' } }
       }),
     }))
-    // Refresh the open slot state so the drawer shows updated data
     setOpenSlot(prev => {
       if (!prev || prev.id !== slotId) return prev
       return {
@@ -453,10 +471,58 @@ function PlanningTab({ cycle, exercises, employees, clients, sessionExercises, o
     })
   }
 
+  async function handleToggleHoliday(date: string) {
+    await toggleHolidayAction(date)
+    setLocalHolidays(prev => {
+      const existing = prev.find(h => h.date === date)
+      if (existing) {
+        return prev.map(h => h.date === date ? { ...h, is_active: !h.is_active, is_override: true } : h)
+      }
+      return [...prev, { date, name: 'Festivo añadido', scope: 'girona', is_active: true, is_override: true }]
+    })
+  }
+
   const today = new Date()
   today.setHours(0, 0, 0, 0)
+  const todayStr = today.toISOString().split('T')[0]
 
   const weekLabels = ['Setmana 1', 'Setmana 2', 'Setmana 3', 'Setmana 4 (deload)']
+
+  // Build full calendar grid: for each week, what dates occupy each column position
+  // We need to show the actual calendar week (Mon-Fri) for each of the 4 cycle weeks.
+  // Detect which calendar weeks are spanned by workingDayDates.
+  // Group workingDayDates by ISO week, then display week by week.
+  const weekGroups: Array<{ label: string; days: Array<{ date: string | null; dayIndex: number | null; holidayName: string | null; isSkipped: boolean }> }> = []
+
+  if (workingDayDates.length === 20) {
+    // For each of the 4 cycle weeks (groups of 5 working days), find the Mon–Fri span
+    for (let w = 0; w < 4; w++) {
+      const weekDates = workingDayDates.slice(w * 5, w * 5 + 5)
+      // Find the Monday of the week containing the first working day
+      const firstDate = new Date(weekDates[0] + 'T12:00:00')
+      const dow0 = firstDate.getDay() === 0 ? 6 : firstDate.getDay() - 1  // 0=Mon
+      const monday = new Date(firstDate)
+      monday.setDate(monday.getDate() - dow0)
+
+      const days = []
+      for (let col = 0; col < 5; col++) {
+        const d = new Date(monday)
+        d.setDate(monday.getDate() + col)
+        const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+        const dayIdx = workingDayDates.indexOf(dateStr)
+        const hol = holidayAllMap.get(dateStr)
+        const isHolidayActive = holidayMap.has(dateStr)
+        days.push({
+          date: dateStr,
+          dayIndex: dayIdx >= 0 ? dayIdx : null,
+          holidayName: (hol && !isHolidayActive) ? hol.name : null,  // show name only when inactive (was override-disabled)
+          activeHolidayName: isHolidayActive ? hol?.name ?? null : null,
+          isSkipped: dayIdx < 0,  // it's a weekday in this calendar week but skipped (holiday or before cycle start)
+        })
+      }
+      weekGroups.push({ label: weekLabels[w], days: days as any })
+    }
+  }
 
   return (
     <div>
@@ -478,50 +544,81 @@ function PlanningTab({ cycle, exercises, employees, clients, sessionExercises, o
       )}
 
       <div className="flex flex-col gap-6">
-        {[0, 1, 2, 3].map(week => (
+        {weekGroups.map(({ label, days }, week) => (
           <div key={week}>
             <div className="flex items-center gap-3 mb-3">
-              <span className="text-xs font-semibold text-white/40 uppercase tracking-wide">{weekLabels[week]}</span>
+              <span className="text-xs font-semibold text-white/40 uppercase tracking-wide">{label}</span>
               <div className="flex-1 h-px bg-white/10" />
             </div>
             <div className="grid grid-cols-5 gap-2">
-              {[0, 1, 2, 3, 4].map(dow => {
-                const dayIdx  = week * 5 + dow
-                const dayDate = getDayDate(cycle.start_date, dayIdx)
-                const isToday = dayDate.toDateString() === today.toDateString()
-                const daySlots = (slotsByDay.get(dayIdx) ?? []).sort((a, b) =>
-                  a.session_time.localeCompare(b.session_time) || a.block_label.localeCompare(b.block_label)
-                )
+              {(days as any[]).map((day: any, col: number) => {
+                const isToday    = day.date === todayStr
+                const isHoliday  = day.isSkipped && day.activeHolidayName  // active holiday → grayed
+                const isOverride = day.isSkipped && !day.activeHolidayName && !day.holidayName  // skipped for other reason (before start)
+                const dayDate    = new Date(day.date + 'T12:00:00')
+                const dayLabel   = DAY_SHORT[col]
+                const dayNum     = dayDate.getDate()
+                const daySlots   = day.dayIndex != null
+                  ? (slotsByDay.get(day.dayIndex) ?? []).sort((a: any, b: any) =>
+                      a.session_time.localeCompare(b.session_time) || a.block_label.localeCompare(b.block_label))
+                  : []
 
+                // Holiday cell (active — grayed out, no slots)
+                if (isHoliday) {
+                  return (
+                    <div key={col} className="rounded-xl border border-white/[0.04] bg-white/[0.01] overflow-hidden opacity-50" title={day.activeHolidayName}>
+                      <div className="px-2 py-1.5 border-b border-white/[0.06]">
+                        <p className="text-[11px] font-semibold text-white/30">{dayLabel} {dayNum}</p>
+                        <p className="text-[9px] text-white/20 truncate">{DAY_NAMES[col]}</p>
+                      </div>
+                      <div className="p-1.5 flex flex-col items-center gap-1">
+                        <p className="text-[9px] text-white/25 text-center leading-tight">{day.activeHolidayName}</p>
+                        <button
+                          onClick={() => handleToggleHoliday(day.date)}
+                          title="Anular festivo para este ciclo"
+                          className="text-[9px] text-[#FF914D]/60 hover:text-[#FF914D] underline transition-colors mt-0.5">
+                          Revertir
+                        </button>
+                      </div>
+                    </div>
+                  )
+                }
+
+                // Skipped cell (before cycle start, or non-working for other reason)
+                if (day.isSkipped) {
+                  return (
+                    <div key={col} className="rounded-xl border border-white/[0.03] bg-transparent overflow-hidden">
+                      <div className="px-2 py-1.5">
+                        <p className="text-[11px] font-semibold text-white/15">{dayLabel} {dayNum}</p>
+                      </div>
+                    </div>
+                  )
+                }
+
+                // Normal working day
                 return (
-                  <div key={dow}
+                  <div key={col}
                     className={`rounded-xl border ${isToday ? 'border-[#FF914D]/40 bg-[#FF914D]/5' : 'border-white/[0.08] bg-white/[0.02]'} overflow-hidden`}>
-                    {/* Day header */}
                     <div className={`px-2 py-1.5 border-b ${isToday ? 'border-[#FF914D]/20 bg-[#FF914D]/10' : 'border-white/[0.08]'}`}>
                       <p className={`text-[11px] font-semibold ${isToday ? 'text-[#FF914D]' : 'text-white/50'}`}>
-                        {DAY_SHORT[dow]} {dayDate.getDate()}
+                        {dayLabel} {dayNum}
                       </p>
-                      <p className="text-[9px] text-white/25">{DAY_NAMES[dow]}</p>
+                      <p className="text-[9px] text-white/25">{DAY_NAMES[col]}</p>
                     </div>
-
-                    {/* Slots */}
                     <div className="p-1.5 flex flex-col gap-1.5">
                       {daySlots.length === 0 && <p className="text-[10px] text-white/20 text-center py-2">—</p>}
-                      {daySlots.map(slot => {
+                      {daySlots.map((slot: any) => {
                         const clientCount = slot.group_cycle_slot_clients.length
                         const empName = slot.assigned_employee_id
                           ? employeeMap.get(slot.assigned_employee_id)?.split(' ')[0] ?? '?'
                           : null
-
-                        // Count exercises for this block/base
-                        const baseSession = cycle.group_sessions.find(s => s.label === slot.block_label && s.difficulty === 'base')
+                        const baseSession = cycle.group_sessions.find((s: any) => s.label === slot.block_label && s.difficulty === 'base')
                         const exCount = baseSession ? (sessionExercises[baseSession.id] ?? baseSession.group_session_exercises).length : 0
 
                         return (
                           <button key={slot.id}
                             onClick={() => setOpenSlot(slot)}
                             className="w-full text-left rounded-lg bg-black/20 hover:bg-black/50 border border-white/[0.06] hover:border-white/20 transition-all p-1.5 group">
-                            {/* Time + block */}
                             <div className="flex items-center gap-1 mb-1">
                               <span className={`w-4 h-4 rounded-full ${BLOCK_COLORS[slot.block_label] ?? 'bg-white/20'} text-white text-[9px] font-bold flex items-center justify-center shrink-0`}>
                                 {slot.block_label}
@@ -529,14 +626,10 @@ function PlanningTab({ cycle, exercises, employees, clients, sessionExercises, o
                               <span className="text-[10px] text-white/70 font-medium flex-1">{timeRange(slot.session_time)}</span>
                               <ChevronRight className="h-3 w-3 text-white/15 group-hover:text-white/40 shrink-0" />
                             </div>
-                            {/* Employee */}
                             <div className="flex items-center gap-1 mb-0.5">
                               <User className="h-2.5 w-2.5 text-white/25 shrink-0" />
-                              <span className={`text-[9px] truncate ${empName ? 'text-white/50' : 'text-white/20'}`}>
-                                {empName ?? '—'}
-                              </span>
+                              <span className={`text-[9px] truncate ${empName ? 'text-white/50' : 'text-white/20'}`}>{empName ?? '—'}</span>
                             </div>
-                            {/* Clients + exercises */}
                             <div className="flex items-center gap-2">
                               <div className="flex items-center gap-1">
                                 <Users className="h-2.5 w-2.5 text-white/25 shrink-0" />
@@ -567,7 +660,7 @@ function PlanningTab({ cycle, exercises, employees, clients, sessionExercises, o
 // ─── Main component ───────────────────────────────────────────────────────────
 type SessionState = Record<string, GSE[]>
 
-export default function CycleEditor({ cycle, exercises, employees, clients }: Props) {
+export default function CycleEditor({ cycle, exercises, employees, clients, holidays }: Props) {
   const [, startTransition] = useTransition()
   const [activeTab, setActiveTab] = useState<'exercises' | 'planning'>('exercises')
 
@@ -733,6 +826,7 @@ export default function CycleEditor({ cycle, exercises, employees, clients }: Pr
             exercises={exercises}
             employees={employees}
             clients={clients}
+            holidays={holidays}
             sessionExercises={sessionExercises}
             onUpdateGSE={handleUpdate}
             onDeleteGSE={handleDelete}
