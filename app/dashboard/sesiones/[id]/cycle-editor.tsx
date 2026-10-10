@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useTransition, useOptimistic, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import Link from 'next/link'
 import {
   ArrowLeft, Pencil, Trash2, Plus, Search, X, User, Users, Check,
-  Calendar, Dumbbell, ChevronRight,
+  Calendar, Dumbbell, ChevronRight, Filter,
 } from 'lucide-react'
 import {
   updateGroupSessionExerciseAction,
@@ -17,7 +17,14 @@ import { toggleHolidayAction } from '@/app/actions/holidays'
 import { generateCycleDates } from '@/lib/calendar-utils'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Exercise = { id: string; name: string; technical_name?: string | null }
+type Item     = { id: string; name: string }
+type Exercise = {
+  id: string; name: string; technical_name?: string | null
+  level?: number | null; technical_level?: string | null
+  body_zone_id?: string | null; movement_pattern_id?: string | null
+  equipment_id?: string | null; objective_id?: string | null
+  muscle_group_ids?: string[]
+}
 type Employee = { id: string; full_name: string }
 type Client   = { id: string; first_name: string; last_name: string }
 
@@ -73,6 +80,11 @@ type Props = {
   employees: Employee[]
   clients: Client[]
   holidays: Holiday[]
+  bodyZones: Item[]
+  muscleGroups: Item[]
+  movementPatterns: Item[]
+  equipment: Item[]
+  objectives: Item[]
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -120,38 +132,151 @@ function getDayDate(startDate: string, day_index: number): Date {
   return d
 }
 
-// ─── Exercise picker modal ────────────────────────────────────────────────────
-function ExercisePicker({ exercises, onSelect, onClose }: {
+// ─── Full exercise picker with filters ───────────────────────────────────────
+type PickerMode = { sessionId: string; swapGseId?: string }
+
+function CycleExercisePicker({ exercises, bodyZones, muscleGroups, movementPatterns, equipment, objectives, onSelect, onClose }: {
   exercises: Exercise[]
-  onSelect: (ex: Exercise) => void
+  bodyZones: Item[]
+  muscleGroups: Item[]
+  movementPatterns: Item[]
+  equipment: Item[]
+  objectives: Item[]
+  onSelect: (ex: Exercise, sets: number, reps: number, weight_kg: string, notes: string) => void
   onClose: () => void
 }) {
-  const [query, setQuery] = useState('')
-  const filtered = exercises.filter(e =>
-    e.name.toLowerCase().includes(query.toLowerCase()) ||
-    (e.technical_name ?? '').toLowerCase().includes(query.toLowerCase())
-  )
+  const [query, setQuery]       = useState('')
+  const [showFilters, setShowFilters] = useState(false)
+  const [filters, setFilters]   = useState({ body_zone_id: '', movement_pattern_id: '', muscle_group_id: '', equipment_id: '', objective_id: '', level: '' })
+  const [selected, setSelected] = useState<Exercise | null>(null)
+  const [form, setForm]         = useState({ sets: 3, reps: 10, weight_kg: '', notes: '' })
+
+  const filtered = exercises.filter(ex => {
+    if (query && !ex.name.toLowerCase().includes(query.toLowerCase()) && !(ex.technical_name ?? '').toLowerCase().includes(query.toLowerCase())) return false
+    if (filters.body_zone_id && ex.body_zone_id !== filters.body_zone_id) return false
+    if (filters.movement_pattern_id && ex.movement_pattern_id !== filters.movement_pattern_id) return false
+    if (filters.equipment_id && ex.equipment_id !== filters.equipment_id) return false
+    if (filters.objective_id && ex.objective_id !== filters.objective_id) return false
+    if (filters.muscle_group_id && !(ex.muscle_group_ids ?? []).includes(filters.muscle_group_id)) return false
+    if (filters.level && String(ex.level) !== filters.level) return false
+    return true
+  })
+
+  const activeFilterCount = Object.values(filters).filter(Boolean).length
+  const selectCls = 'flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#FF914D]/50 appearance-none'
+
+  if (selected) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-4">
+        <div className="bg-[#1C1C1C] rounded-2xl border border-white/10 w-full max-w-sm p-5 shadow-2xl">
+          <div className="flex items-center gap-2 mb-4">
+            <button onClick={() => setSelected(null)} className="text-white/40 hover:text-white"><X className="h-4 w-4" /></button>
+            <p className="text-white font-medium text-sm truncate">{selected.name}</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            {([['sets', 'Sèries', '3'], ['reps', 'Reps', '10']] as const).map(([key, label, placeholder]) => (
+              <div key={key}>
+                <label className="text-[11px] text-white/40 mb-1 block">{label}</label>
+                <input type="number" min={1} value={(form as any)[key]} onChange={e => setForm(f => ({ ...f, [key]: parseInt(e.target.value) || 0 }))}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#FF914D]/50 text-center" placeholder={placeholder} />
+              </div>
+            ))}
+          </div>
+          <div className="mb-3">
+            <label className="text-[11px] text-white/40 mb-1 block">Càrrega (kg, opcional)</label>
+            <input type="text" value={form.weight_kg} onChange={e => setForm(f => ({ ...f, weight_kg: e.target.value }))} placeholder="—"
+              className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#FF914D]/50" />
+          </div>
+          <div className="mb-4">
+            <label className="text-[11px] text-white/40 mb-1 block">Notes (opcional)</label>
+            <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="—" rows={2}
+              className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#FF914D]/50 resize-none" />
+          </div>
+          <button onClick={() => onSelect(selected, form.sets, form.reps, form.weight_kg, form.notes)}
+            className="w-full bg-[#FF914D] hover:bg-[#e07a3a] text-white text-sm font-semibold py-2.5 rounded-xl transition-colors">
+            Afegir al bloc
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-[#1C1C1C] rounded-2xl border border-white/10 w-full max-w-md p-5 shadow-2xl">
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-white font-semibold">Selecciona exercici</span>
-          <button onClick={onClose} className="text-white/40 hover:text-white"><X className="h-4 w-4" /></button>
-        </div>
-        <div className="relative mb-3">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-4">
+      <div className="bg-[#1C1C1C] rounded-2xl border border-white/10 w-full max-w-lg flex flex-col shadow-2xl max-h-[80vh]">
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10 shrink-0">
+          <Search className="h-4 w-4 text-white/30 shrink-0" />
           <input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder="Cerca exercici..."
-            className="w-full bg-black/30 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-[#FF914D]/50" />
+            className="flex-1 bg-transparent text-sm text-white placeholder-white/30 focus:outline-none" />
+          <button onClick={() => setShowFilters(f => !f)}
+            className={`relative p-1.5 rounded-lg transition-colors ${showFilters ? 'bg-[#FF914D]/20 text-[#FF914D]' : 'text-white/40 hover:text-white hover:bg-white/5'}`}>
+            <Filter className="h-4 w-4" />
+            {activeFilterCount > 0 && <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#FF914D] rounded-full text-[9px] font-bold text-white flex items-center justify-center">{activeFilterCount}</span>}
+          </button>
+          <button onClick={onClose} className="text-white/40 hover:text-white p-1"><X className="h-4 w-4" /></button>
         </div>
-        <div className="max-h-72 overflow-y-auto flex flex-col gap-1">
-          {filtered.length === 0 && <p className="text-white/30 text-sm text-center py-4">Sense resultats</p>}
+
+        {/* Filters panel */}
+        {showFilters && (
+          <div className="px-4 py-3 border-b border-white/[0.08] shrink-0 flex flex-col gap-2">
+            <div className="flex gap-2">
+              <select value={filters.body_zone_id} onChange={e => setFilters(f => ({ ...f, body_zone_id: e.target.value }))} className={selectCls}>
+                <option value="">Totes les zones</option>
+                {bodyZones.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
+              </select>
+              <select value={filters.movement_pattern_id} onChange={e => setFilters(f => ({ ...f, movement_pattern_id: e.target.value }))} className={selectCls}>
+                <option value="">Tots els patrons</option>
+                {movementPatterns.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+            <div className="flex gap-2">
+              <select value={filters.muscle_group_id} onChange={e => setFilters(f => ({ ...f, muscle_group_id: e.target.value }))} className={selectCls}>
+                <option value="">Tots els músculs</option>
+                {muscleGroups.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+              </select>
+              <select value={filters.equipment_id} onChange={e => setFilters(f => ({ ...f, equipment_id: e.target.value }))} className={selectCls}>
+                <option value="">Tot el material</option>
+                {equipment.map(eq => <option key={eq.id} value={eq.id}>{eq.name}</option>)}
+              </select>
+            </div>
+            <div className="flex gap-2 items-center">
+              <select value={filters.level} onChange={e => setFilters(f => ({ ...f, level: e.target.value }))} className={selectCls}>
+                <option value="">Tots els nivells</option>
+                <option value="1">Groc</option>
+                <option value="2">Blau</option>
+                <option value="3">Vermell</option>
+              </select>
+              {activeFilterCount > 0 && (
+                <button onClick={() => setFilters({ body_zone_id: '', movement_pattern_id: '', muscle_group_id: '', equipment_id: '', objective_id: '', level: '' })}
+                  className="text-xs text-white/40 hover:text-white shrink-0 px-2">Netejar</button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Results */}
+        <div className="overflow-y-auto flex-1 p-2">
+          {filtered.length === 0 && <p className="text-white/30 text-sm text-center py-8">Sense resultats</p>}
           {filtered.map(ex => (
-            <button key={ex.id} onClick={() => { onSelect(ex); onClose() }}
-              className="flex flex-col items-start px-3 py-2 rounded-xl hover:bg-white/5 text-left">
-              <span className="text-white text-sm">{ex.name}</span>
-              {ex.technical_name && <span className="text-white/30 text-xs">{ex.technical_name}</span>}
+            <button key={ex.id} onClick={() => setSelected(ex)}
+              className="w-full flex items-start gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 text-left transition-colors group">
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-sm font-medium leading-snug">{ex.name}</p>
+                {ex.technical_name && <p className="text-white/35 text-xs truncate">{ex.technical_name}</p>}
+              </div>
+              {ex.level != null && (
+                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border shrink-0 ${ex.level === 1 ? 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10' : ex.level === 2 ? 'text-blue-400 border-blue-500/30 bg-blue-500/10' : 'text-red-400 border-red-500/30 bg-red-500/10'}`}>
+                  {ex.level === 1 ? 'Groc' : ex.level === 2 ? 'Blau' : 'Vermell'}
+                </span>
+              )}
+              <Plus className="h-4 w-4 text-white/20 group-hover:text-[#FF914D] shrink-0 mt-0.5 transition-colors" />
             </button>
           ))}
+        </div>
+
+        <div className="px-4 py-2 border-t border-white/[0.06] shrink-0">
+          <p className="text-[11px] text-white/25">{filtered.length} exercicis</p>
         </div>
       </div>
     </div>
@@ -204,6 +329,7 @@ function ExerciseRow({ gse, onUpdate, onDelete, onSwap }: {
 // all three difficulties, inline-editable.
 function SlotDrawer({
   slot, cycle, exercises: exerciseCatalog, employees, clients,
+  bodyZones, muscleGroups, movementPatterns, equipment, objectives,
   sessionExercises, onUpdateGSE, onDeleteGSE, onAddGSE, onSwapGSE,
   onSaveAssignment, onClose,
 }: {
@@ -212,11 +338,16 @@ function SlotDrawer({
   exercises: Exercise[]
   employees: Employee[]
   clients: Client[]
+  bodyZones: Item[]
+  muscleGroups: Item[]
+  movementPatterns: Item[]
+  equipment: Item[]
+  objectives: Item[]
   sessionExercises: Record<string, GSE[]>
   onUpdateGSE: (gseId: string, data: Partial<Pick<GSE, 'sets' | 'reps' | 'weight_kg'>>) => void
   onDeleteGSE: (sessionId: string, gseId: string) => void
-  onAddGSE:   (sessionId: string, ex: Exercise) => void
-  onSwapGSE:  (gseId: string, sessionId: string) => void
+  onAddGSE:   (sessionId: string, ex: Exercise, sets: number, reps: number, weight_kg: string, notes: string) => void
+  onSwapGSE:  (gseId: string, sessionId: string, ex: Exercise) => void
   onSaveAssignment: (slotId: string, employeeId: string | null, clientIds: string[]) => void
   onClose: () => void
 }) {
@@ -254,11 +385,16 @@ function SlotDrawer({
 
       {/* Exercise picker overlay */}
       {(pickerFor || swapFor) && (
-        <ExercisePicker
+        <CycleExercisePicker
           exercises={exerciseCatalog}
-          onSelect={ex => {
-            if (swapFor) { onSwapGSE(swapFor.gseId, swapFor.sessionId); setSwapFor(null) }
-            else if (pickerFor) { onAddGSE(pickerFor, ex); setPickerFor(null) }
+          bodyZones={bodyZones}
+          muscleGroups={muscleGroups}
+          movementPatterns={movementPatterns}
+          equipment={equipment}
+          objectives={objectives}
+          onSelect={(ex, sets, reps, weight_kg, notes) => {
+            if (swapFor) { onSwapGSE(swapFor.gseId, swapFor.sessionId, ex); setSwapFor(null) }
+            else if (pickerFor) { onAddGSE(pickerFor, ex, sets, reps, weight_kg, notes); setPickerFor(null) }
           }}
           onClose={() => { setPickerFor(null); setSwapFor(null) }}
         />
@@ -418,17 +554,22 @@ function SlotDrawer({
 }
 
 // ─── Planning tab ─────────────────────────────────────────────────────────────
-function PlanningTab({ cycle, exercises, employees, clients, holidays, sessionExercises, onUpdateGSE, onDeleteGSE, onAddGSE, onSwapGSE }: {
+function PlanningTab({ cycle, exercises, employees, clients, holidays, bodyZones, muscleGroups, movementPatterns, equipment, objectives, sessionExercises, onUpdateGSE, onDeleteGSE, onAddGSE, onSwapGSE }: {
   cycle: Cycle
   exercises: Exercise[]
   employees: Employee[]
   clients: Client[]
   holidays: Holiday[]
+  bodyZones: Item[]
+  muscleGroups: Item[]
+  movementPatterns: Item[]
+  equipment: Item[]
+  objectives: Item[]
   sessionExercises: Record<string, GSE[]>
   onUpdateGSE: (gseId: string, data: Partial<Pick<GSE, 'sets' | 'reps' | 'weight_kg'>>) => void
   onDeleteGSE: (sessionId: string, gseId: string) => void
-  onAddGSE:   (sessionId: string, ex: Exercise) => void
-  onSwapGSE:  (gseId: string, sessionId: string) => void
+  onAddGSE:   (sessionId: string, ex: Exercise, sets: number, reps: number, weight_kg: string, notes: string) => void
+  onSwapGSE:  (gseId: string, sessionId: string, ex: Exercise) => void
 }) {
   const [slots, setSlots] = useState<Slot[]>(cycle.group_cycle_slots ?? [])
   const [openSlot, setOpenSlot] = useState<Slot | null>(null)
@@ -533,6 +674,11 @@ function PlanningTab({ cycle, exercises, employees, clients, holidays, sessionEx
           exercises={exercises}
           employees={employees}
           clients={clients}
+          bodyZones={bodyZones}
+          muscleGroups={muscleGroups}
+          movementPatterns={movementPatterns}
+          equipment={equipment}
+          objectives={objectives}
           sessionExercises={sessionExercises}
           onUpdateGSE={onUpdateGSE}
           onDeleteGSE={onDeleteGSE}
@@ -660,9 +806,9 @@ function PlanningTab({ cycle, exercises, employees, clients, holidays, sessionEx
 // ─── Main component ───────────────────────────────────────────────────────────
 type SessionState = Record<string, GSE[]>
 
-export default function CycleEditor({ cycle, exercises, employees, clients, holidays }: Props) {
-  const [, startTransition] = useTransition()
+export default function CycleEditor({ cycle, exercises, employees, clients, holidays, bodyZones, muscleGroups, movementPatterns, equipment, objectives }: Props) {
   const [activeTab, setActiveTab] = useState<'exercises' | 'planning'>('exercises')
+  const [activeBlock, setActiveBlock] = useState<'A' | 'B' | 'C'>('A')
 
   const buildInitialState = (): SessionState => {
     const state: SessionState = {}
@@ -672,7 +818,7 @@ export default function CycleEditor({ cycle, exercises, employees, clients, holi
     return state
   }
 
-  const [sessionExercises, setSessionExercises] = useOptimistic(buildInitialState())
+  const [sessionExercises, setSessionExercises] = useState<SessionState>(buildInitialState)
   const [pickerOpen, setPickerOpen] = useState<null | { sessionId: string; swapGseId?: string }>(null)
 
   const status = getCycleStatus(cycle.start_date)
@@ -683,59 +829,57 @@ export default function CycleEditor({ cycle, exercises, employees, clients, holi
     [cycle.group_sessions]
   )
 
-  const handleUpdate = (gseId: string, data: Partial<Pick<GSE, 'sets' | 'reps' | 'weight_kg'>>) => {
-    startTransition(async () => { await updateGroupSessionExerciseAction(gseId, data) })
+  const handleUpdate = async (gseId: string, data: Partial<Pick<GSE, 'sets' | 'reps' | 'weight_kg'>>) => {
+    await updateGroupSessionExerciseAction(gseId, data)
   }
 
-  const handleDelete = (sessionId: string, gseId: string) => {
-    startTransition(async () => {
-      setSessionExercises(prev => ({ ...prev, [sessionId]: (prev[sessionId] ?? []).filter(e => e.id !== gseId) }))
-      await deleteGroupSessionExerciseAction(gseId)
-    })
+  const handleDelete = async (sessionId: string, gseId: string) => {
+    setSessionExercises(prev => ({ ...prev, [sessionId]: (prev[sessionId] ?? []).filter(e => e.id !== gseId) }))
+    await deleteGroupSessionExerciseAction(gseId)
   }
 
-  const handleAdd = (sessionId: string, ex: Exercise) => {
-    startTransition(async () => {
-      const current    = sessionExercises[sessionId] ?? []
-      const order_index = current.length
-      const tempId     = `temp-${Date.now()}`
-      const tempGSE: GSE = { id: tempId, exercise_id: ex.id, sets: 3, reps: 10, weight_kg: null, notes: null, order_index, exercises: ex }
-      setSessionExercises(prev => ({ ...prev, [sessionId]: [...(prev[sessionId] ?? []), tempGSE] }))
-      const result = await addGroupSessionExerciseAction(sessionId, ex.id, { sets: 3, reps: 10, order_index })
-      if (result.row) {
-        setSessionExercises(prev => ({
-          ...prev,
-          [sessionId]: (prev[sessionId] ?? []).map(e => e.id === tempId ? (result.row as unknown as GSE) : e),
-        }))
-      }
-    })
-  }
-
-  const handleSwap = (gseId: string, sessionId: string) => {
-    setPickerOpen({ sessionId, swapGseId: gseId })
-  }
-
-  const handleSwapPick = (ex: Exercise) => {
-    if (!pickerOpen?.swapGseId) return
-    const { swapGseId, sessionId } = pickerOpen
-    startTransition(async () => {
+  const handleAdd = async (sessionId: string, ex: Exercise, sets: number, reps: number, weight_kg: string, notes: string) => {
+    const current     = sessionExercises[sessionId] ?? []
+    const order_index = current.length
+    const tempId      = `temp-${Date.now()}`
+    const wkg = weight_kg !== '' ? parseFloat(weight_kg) : null
+    const tempGSE: GSE = { id: tempId, exercise_id: ex.id, sets, reps, weight_kg: wkg, notes: notes || null, order_index, exercises: ex }
+    setSessionExercises(prev => ({ ...prev, [sessionId]: [...(prev[sessionId] ?? []), tempGSE] }))
+    const result = await addGroupSessionExerciseAction(sessionId, ex.id, { sets, reps, order_index })
+    if (result.row) {
       setSessionExercises(prev => ({
         ...prev,
-        [sessionId]: (prev[sessionId] ?? []).map(e => e.id === swapGseId ? { ...e, exercise_id: ex.id, exercises: ex } : e),
+        [sessionId]: (prev[sessionId] ?? []).map(e => e.id === tempId ? (result.row as unknown as GSE) : e),
       }))
-      await swapGroupSessionExerciseAction(swapGseId, ex.id)
-    })
+    }
+  }
+
+  const handleSwap = async (gseId: string, sessionId: string, ex: Exercise) => {
+    setSessionExercises(prev => ({
+      ...prev,
+      [sessionId]: (prev[sessionId] ?? []).map(e => e.id === gseId ? { ...e, exercise_id: ex.id, exercises: ex } : e),
+    }))
+    await swapGroupSessionExerciseAction(gseId, ex.id)
   }
 
   return (
     <div className="min-h-screen bg-[#111111] p-6">
-      {/* Global exercise picker (for the Exercises tab grid) */}
+      {/* Global exercise picker (for the Exercises tab) */}
       {pickerOpen && (
-        <ExercisePicker
+        <CycleExercisePicker
           exercises={exercises}
-          onSelect={ex => {
-            if (pickerOpen.swapGseId) handleSwapPick(ex)
-            else handleAdd(pickerOpen.sessionId, ex)
+          bodyZones={bodyZones}
+          muscleGroups={muscleGroups}
+          movementPatterns={movementPatterns}
+          equipment={equipment}
+          objectives={objectives}
+          onSelect={(ex, sets, reps, weight_kg, notes) => {
+            if (pickerOpen.swapGseId) {
+              handleSwap(pickerOpen.swapGseId, pickerOpen.sessionId, ex)
+            } else {
+              handleAdd(pickerOpen.sessionId, ex, sets, reps, weight_kg, notes)
+            }
+            setPickerOpen(null)
           }}
           onClose={() => setPickerOpen(null)}
         />
@@ -772,51 +916,67 @@ export default function CycleEditor({ cycle, exercises, employees, clients, holi
 
         {/* ── Exercises tab ── */}
         {activeTab === 'exercises' && (
-          <>
-            <div className="grid grid-cols-4 gap-3 mb-3">
-              <div />
-              {(['regression', 'base', 'progression'] as const).map(diff => (
-                <div key={diff} className="text-center">
-                  <span className={`text-sm font-semibold ${DIFF_META[diff].color}`}>{DIFF_META[diff].label}</span>
-                </div>
+          <div className="max-w-2xl">
+            {/* Block tabs A / B / C */}
+            <div className="flex gap-2 mb-6">
+              {(['A', 'B', 'C'] as const).map(label => (
+                <button key={label} onClick={() => setActiveBlock(label)}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${activeBlock === label ? `${BLOCK_COLORS[label]} text-white shadow-lg` : 'bg-white/5 text-white/40 hover:text-white/70 hover:bg-white/8'}`}>
+                  Bloc {label}
+                  {(() => {
+                    const total = (['regression','base','progression'] as const).reduce((sum, diff) => {
+                      const s = getSession(label, diff); return sum + (s ? (sessionExercises[s.id] ?? s.group_session_exercises).length : 0)
+                    }, 0)
+                    return total > 0 ? <span className={`text-[11px] font-normal opacity-70`}>{total} ex.</span> : null
+                  })()}
+                </button>
               ))}
             </div>
-            {(['A', 'B', 'C'] as const).map(label => (
-              <div key={label} className="grid grid-cols-4 gap-3 mb-3">
-                <div className="flex items-start pt-3 justify-center">
-                  <span className="w-8 h-8 rounded-full bg-[#FF914D] text-white text-sm font-bold flex items-center justify-center">{label}</span>
-                </div>
-                {(['regression', 'base', 'progression'] as const).map(diff => {
-                  const session = getSession(label, diff)
-                  const meta    = DIFF_META[diff]
-                  const gses    = session ? (sessionExercises[session.id] ?? []) : []
-                  return (
-                    <div key={diff} className={`rounded-xl border ${meta.border} ${meta.bg} p-3`}>
-                      {!session ? (
-                        <p className="text-white/20 text-xs italic">Sense sessió</p>
-                      ) : (
-                        <>
-                          {gses.map(gse => (
-                            <ExerciseRow key={gse.id} gse={gse}
-                              onUpdate={handleUpdate}
-                              onDelete={id => handleDelete(session.id, id)}
-                              onSwap={id => setPickerOpen({ sessionId: session.id, swapGseId: id })}
-                            />
-                          ))}
-                          {gses.length === 0 && <p className="text-white/20 text-xs italic mb-2">Sense exercicis</p>}
-                          <button onClick={() => setPickerOpen({ sessionId: session.id })}
-                            className={`mt-2 w-full flex items-center justify-center gap-1 text-xs ${meta.color} hover:opacity-80 py-1.5 rounded-lg border border-dashed ${meta.border}`}>
-                            <Plus className="h-3 w-3" />
-                            Afegir exercici
-                          </button>
-                        </>
+
+            {/* Three difficulty sections stacked */}
+            {(['regression', 'base', 'progression'] as const).map(diff => {
+              const session = getSession(activeBlock, diff)
+              const meta    = DIFF_META[diff]
+              const gses    = session ? (sessionExercises[session.id] ?? session.group_session_exercises).sort((a, b) => a.order_index - b.order_index) : []
+              return (
+                <div key={diff} className={`rounded-2xl border ${meta.border} ${meta.bg} p-4 mb-3`}>
+                  {/* Section header */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className={`w-2 h-2 rounded-full ${meta.dot} shrink-0`} />
+                    <span className={`text-sm font-semibold ${meta.color}`}>{meta.label}</span>
+                    <span className="text-white/20 text-xs ml-auto">{gses.length} exercici{gses.length !== 1 ? 's' : ''}</span>
+                  </div>
+
+                  {/* Exercise list */}
+                  {!session ? (
+                    <p className="text-white/20 text-sm italic py-2">Sense sessió per a aquest bloc</p>
+                  ) : (
+                    <>
+                      {gses.length === 0 && (
+                        <p className="text-white/25 text-sm italic mb-3">Cap exercici afegit</p>
                       )}
-                    </div>
-                  )
-                })}
-              </div>
-            ))}
-          </>
+                      {gses.map(gse => (
+                        <ExerciseRow key={gse.id} gse={gse}
+                          onUpdate={handleUpdate}
+                          onDelete={id => handleDelete(session.id, id)}
+                          onSwap={id => setPickerOpen({ sessionId: session.id, swapGseId: id })}
+                        />
+                      ))}
+                      <button onClick={() => setPickerOpen({ sessionId: session.id })}
+                        className={`mt-3 w-full flex items-center justify-center gap-1.5 text-sm ${meta.color} py-2.5 rounded-xl border border-dashed ${meta.border} hover:opacity-80 transition-opacity`}>
+                        <Plus className="h-4 w-4" />
+                        Afegir exercici
+                      </button>
+                    </>
+                  )}
+                </div>
+              )
+            })}
+
+            <p className="text-[11px] text-white/20 mt-4">
+              Els exercicis s&apos;apliquen a totes les sessions del bloc {activeBlock} del cicle.
+            </p>
+          </div>
         )}
 
         {/* ── Planning tab ── */}
@@ -827,6 +987,11 @@ export default function CycleEditor({ cycle, exercises, employees, clients, holi
             employees={employees}
             clients={clients}
             holidays={holidays}
+            bodyZones={bodyZones}
+            muscleGroups={muscleGroups}
+            movementPatterns={movementPatterns}
+            equipment={equipment}
+            objectives={objectives}
             sessionExercises={sessionExercises}
             onUpdateGSE={handleUpdate}
             onDeleteGSE={handleDelete}
