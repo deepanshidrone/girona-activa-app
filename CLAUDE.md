@@ -406,7 +406,7 @@ git push origin dev
 
 ---
 
-## Pendent (roadmap MVP)
+## Roadmap
 
 - [ ] **DNS:** configurar `app.gironaactiva.com` → Vercel
 - [ ] **Merge dev → main** quan MVP estable, tag `v1.0.0`
