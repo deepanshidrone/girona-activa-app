@@ -418,6 +418,10 @@ git push origin dev
 - [ ] **TrainWall:** display d'exercicis en pantalla (pantalla gran al gimnàs). Arquitectura HW/SW ja dissenyada — veure [CLAUDE-TW.md](./CLAUDE-TW.md). Pendent: confirmar amb el client i implementar.
 - [ ] **Gestió de plans:** veure actiu/historial des del perfil del client (millora UX)
 - [ ] **Més empleats:** afegir entrenadors nous quan s'incorporin
+- [ ] **Pàgina de Configuració** (`/dashboard/configuracio`) — secció general per a paràmetres del centre:
+  - **Festius:** llistat complet de `public_holidays` amb toggle `is_active` per dia, formulari per afegir festius nous (puentes, tancaments del centre), botó "Carregar festius [any]" que crida `syncHolidaysFromApiAction` (API Nager.Date). Per ara: 2026 i 2027 ja carregats manualment; per a 2028+ caldrà executar el sync.
+  - **Horaris del centre:** possibilitat futura de definir horaris d'obertura/tancament
+  - Accés restringit a rol `employee`
 
 ---
 
