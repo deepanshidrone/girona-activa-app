@@ -40,9 +40,20 @@ export async function getEmployeesAction(): Promise<Employee[]> {
   if (error) return []
 
   // Filter to only employees and admins (not clients)
+  // Some users may have app_metadata.role = 'client' even if profiles.role = 'employee',
+  // so we cross-reference with profiles table as the source of truth.
+  const allIds = authUsers.users.map(u => u.id)
+  const { data: allProfiles } = await supabase
+    .from('profiles')
+    .select('id, role')
+    .in('id', allIds)
+    .in('role', ['employee', 'admin'])
+
+  const employeeProfileIds = new Set((allProfiles ?? []).map(p => p.id))
+
   const employeeUsers = authUsers.users.filter(u => {
-    const role = u.app_metadata?.role
-    return role === 'employee' || role === 'admin'
+    const metaRole = u.app_metadata?.role
+    return metaRole === 'employee' || metaRole === 'admin' || employeeProfileIds.has(u.id)
   })
 
   if (employeeUsers.length === 0) return []
