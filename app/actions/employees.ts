@@ -110,25 +110,87 @@ export async function getEmployeeByIdAction(id: string): Promise<Employee | null
   }
 }
 
+async function sendEmployeeInviteEmail(email: string, fullName: string, inviteLink: string, role: string) {
+  const firstName = fullName.split(' ')[0]
+  const roleLabel = role === 'admin' ? 'administrador/a' : 'entrenador/a'
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px; background: #ffffff;">
+      <div style="text-align: center; margin-bottom: 32px;">
+        <h1 style="font-size: 18px; font-weight: bold; letter-spacing: 4px; text-transform: uppercase; font-style: italic; color: #1C1C1C; margin: 0;">
+          GIRONA ACTIVA
+        </h1>
+      </div>
+
+      <h2 style="font-size: 22px; font-weight: bold; color: #1C1C1C; margin-bottom: 8px;">
+        Benvingut/da, ${firstName}! 👋
+      </h2>
+      <p style="color: #666666; font-size: 15px; line-height: 1.6; margin-bottom: 8px;">
+        S'ha creat el teu compte com a <strong>${roleLabel}</strong> a Girona Activa.
+      </p>
+      <p style="color: #666666; font-size: 15px; line-height: 1.6; margin-bottom: 24px;">
+        Des del teu panell podràs gestionar sessions, clients i plans d'entrenament. Fes clic al botó per establir la teva contrasenya i activar el compte.
+      </p>
+
+      <div style="text-align: center; margin-bottom: 32px;">
+        <a href="${inviteLink}" style="background: #FF914D; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 15px; padding: 14px 32px; border-radius: 10px; display: inline-block;">
+          Activar el meu compte
+        </a>
+      </div>
+
+      <p style="color: #999999; font-size: 13px; text-align: center;">
+        Aquest enllaç és vàlid durant 24 hores.<br/>
+        Si no esperaves aquest email, pots ignorar-lo.
+      </p>
+    </div>
+  `
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: 'Girona Activa <noreply@gironaactiva.com>',
+      to: email,
+      subject: 'Benvingut/da a Girona Activa! Activa el teu compte',
+      html,
+    }),
+  })
+
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error('Error Resend: ' + err)
+  }
+}
+
 export async function createEmployeeAction(data: CreateEmployeeData): Promise<{ error?: string; id?: string }> {
   const supabase = createAdminClient()
 
-  // Create auth user and send invite email
-  const { data: created, error: createError } = await supabase.auth.admin.createUser({
+  // Generate invite link (same flow as clients — no Supabase default email)
+  const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+    type: 'invite',
     email: data.email,
-    email_confirm: false,
-    app_metadata: { role: data.role },
-    user_metadata: { full_name: data.full_name },
+    options: {
+      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/confirm`,
+      data: { role: data.role },
+    },
   })
 
-  if (createError) {
-    if (createError.message.includes('already been registered') || createError.message.includes('already exists')) {
-      return { error: 'Ya existe un usuario con este email.' }
+  if (linkError) {
+    if (linkError.message?.includes('already been registered') || linkError.message?.includes('already exists')) {
+      return { error: 'Ja existeix un usuari amb aquest email.' }
     }
-    return { error: createError.message }
+    return { error: linkError.message }
   }
 
-  const userId = created.user.id
+  const userId = linkData.user.id
+
+  // Set app_metadata role
+  await supabase.auth.admin.updateUserById(userId, {
+    app_metadata: { role: data.role },
+  })
 
   // Create profile
   const { error: profileError } = await supabase.from('profiles').upsert({
@@ -144,8 +206,12 @@ export async function createEmployeeAction(data: CreateEmployeeData): Promise<{ 
 
   if (profileError) return { error: profileError.message }
 
-  // Send invite link via Supabase
-  await supabase.auth.admin.inviteUserByEmail(data.email)
+  // Send branded email via Resend
+  try {
+    await sendEmployeeInviteEmail(data.email, data.full_name, linkData.properties.action_link, data.role)
+  } catch (e: any) {
+    return { error: 'Error al enviar el email: ' + e.message }
+  }
 
   revalidatePath('/dashboard/empleados')
   return { id: userId }
