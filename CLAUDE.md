@@ -390,6 +390,14 @@ git commit -m "feat/fix/chore: descripció"
 git push origin dev
 ```
 
+### Registre de bugs
+
+Els bugs oberts i resolts es registren a [docs/BUGS.md](./docs/BUGS.md) (IDs `BUG-NNN`).
+- En detectar un bug, afegir-lo a "Abiertos".
+- El commit que l'arregla porta l'ID al missatge: `fix(BUG-002): descripció`.
+- Després del commit, moure'l a "Resueltos" amb el hash (commit `docs:` a part).
+- Consultar aquest fitxer abans de començar a treballar en un bug, per veure si ja està registrat.
+
 ---
 
 ## Canvis recents (2026-09-22)
