@@ -19,8 +19,8 @@ export default function AuthConfirmPage() {
       supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
         .then(({ data: { session }, error }) => {
           if (error || !session) { router.replace('/login'); return }
-          const role = session.user.app_metadata?.role
-          router.replace(role === 'client' ? '/client/set-password' : '/dashboard')
+          // Enlace de invitación/recuperación: cualquier rol debe fijar su contraseña
+          router.replace('/auth/set-password')
         })
     } else {
       supabase.auth.getSession().then(({ data: { session } }) => {
