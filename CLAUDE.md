@@ -1,59 +1,59 @@
 # CLAUDE.md — Girona Activa App
 
-Contexte complet del projecte per a Claude Code. Es carrega automàticament a l'inici de cada sessió.
-**Última actualització:** 2026-10-09
+Contexto completo del proyecto para Claude Code. Se carga automáticamente al inicio de cada sesión.
+**Última actualización:** 2026-11-04 (traducido del catalán al castellano)
 
 ---
 
-## Visió general
+## Visión general
 
-**Producte:** Eina web de gestió de plans d'entrenament per al centre Girona Activa (Girona, Espanya).
-Permet als entrenadors crear plans individuals i grupals, registrar sessions i fer seguiment de clients.
+**Producto:** herramienta web de gestión de planes de entrenamiento para el centro Girona Activa (Girona, España).
+Permite a los entrenadores crear planes individuales y grupales, registrar sesiones y hacer seguimiento de los clientes.
 
-**URL dev (Vercel preview):** `https://girona-activa-app-git-dev-brota-ai.vercel.app`
-**URL producció (Vercel):** `https://girona-activa-app.vercel.app`
-**Subdomini propi:** `app.gironaactiva.com` → pendent de configurar DNS
-**Idioma de la UI:** Castellà
-**Estat:** MVP en desenvolupament actiu — branca `dev`, desplegat a Vercel
+**URL dev (preview de Vercel):** `https://girona-activa-app-git-dev-brota-ai.vercel.app`
+**URL producción (Vercel):** `https://girona-activa-app.vercel.app`
+**Subdominio propio:** `app.gironaactiva.com` → pendiente de configurar el DNS
+**Idioma de la UI:** castellano
+**Estado:** MVP en desarrollo activo — rama `dev`, desplegado en Vercel
 
 ---
 
-## Stack tècnic
+## Stack técnico
 
-| Capa | Tecnologia |
+| Capa | Tecnología |
 |---|---|
 | Frontend + Backend | Next.js 16, App Router, TypeScript |
-| Estils | Tailwind CSS v4 + shadcn/ui (new-york) |
+| Estilos | Tailwind CSS v4 + shadcn/ui (new-york) |
 | BD + Auth | Supabase (PostgreSQL + Supabase Auth) |
-| Hosting | Vercel (org brota-ai, pla Hobby) |
-| Repo | `deepanshidrone/girona-activa-app` (públic) |
-| Font | Outfit (Google Fonts) |
+| Hosting | Vercel (org brota-ai, plan Hobby) |
+| Repo | `deepanshidrone/girona-activa-app` (público) |
+| Fuente | Outfit (Google Fonts) |
 
 ---
 
-## Identitat de marca / tema visual
+## Identidad de marca / tema visual
 
-El dashboard té fons fosc (`#111111` body, `#1C1C1C` cards). El color primari de l'app és el taronja.
+El dashboard tiene fondo oscuro (`#111111` body, `#1C1C1C` cards). El color primario de la app es el naranja.
 
 ```
---orange: #FF914D   /* taronja — color primari, botons, accents */
---dark:   #1C1C1C   /* cards i panels */
---body:   #111111   /* fons general del dashboard */
---border: white/10  /* vores (border-white/10) */
---text:   white     /* text principal */
---muted:  white/40  /* text secundari */
+--orange: #FF914D   /* naranja — color primario, botones, acentos */
+--dark:   #1C1C1C   /* cards y paneles */
+--body:   #111111   /* fondo general del dashboard */
+--border: white/10  /* bordes (border-white/10) */
+--text:   white     /* texto principal */
+--muted:  white/40  /* texto secundario */
 ```
 
-**Sidebar:** fons `#1C1C1C`, text blanc, ítem actiu `#FF914D`.
-**Botons primaris:** `bg-[#FF914D] hover:bg-[#e07a3a] text-white`
-**Cards / panels:** `bg-[#1C1C1C] rounded-2xl border border-white/10`
-**Important:** Qualsevol pàgina nova dins del dashboard MUST usar aquesta paleta fosca, no colors clars (`bg-white`, `text-[#1C1C1C]`, etc.).
+**Sidebar:** fondo `#1C1C1C`, texto blanco, ítem activo `#FF914D`.
+**Botones primarios:** `bg-[#FF914D] hover:bg-[#e07a3a] text-white`
+**Cards / paneles:** `bg-[#1C1C1C] rounded-2xl border border-white/10`
+**Importante:** cualquier página nueva dentro del dashboard DEBE usar esta paleta oscura, no colores claros (`bg-white`, `text-[#1C1C1C]`, etc.).
 
 ---
 
-## Variables d'entorn
+## Variables de entorno
 
-### `.env.local` (local — mai pujar a Git)
+### `.env.local` (local — nunca subir a Git)
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://woomjsjbmrasydpirwap.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
@@ -62,51 +62,51 @@ SUPABASE_JWKS_URL=https://woomjsjbmrasydpirwap.supabase.co/auth/v1/.well-known/j
 RESEND_API_KEY=re_...
 ```
 
-### Regla de seguretat crítica
-- `SUPABASE_SECRET_KEY` i `RESEND_API_KEY` **mai** s'exposen al navegador
-- Totes les operacions d'admin (crear usuaris, bypass RLS) → Server Actions / Server Components
-- `lib/supabase/admin.ts` exposa `createAdminClient()` que usa el secret key — **server-only**
+### Regla de seguridad crítica
+- `SUPABASE_SECRET_KEY` y `RESEND_API_KEY` **nunca** se exponen al navegador
+- Todas las operaciones de admin (crear usuarios, saltarse RLS) → Server Actions / Server Components
+- `lib/supabase/admin.ts` expone `createAdminClient()`, que usa la secret key — **solo servidor**
 
 ---
 
-## Autenticació i rols
+## Autenticación y roles
 
-- Proveïdor: Supabase Auth (email + contrasenya)
-- Middleware `middleware.ts` (o `proxy.ts`): protegeix rutes `/dashboard/**`, redirigeix a `/login` si no hi ha sessió
+- Proveedor: Supabase Auth (email + contraseña)
+- Middleware `middleware.ts` (o `proxy.ts`): protege las rutas `/dashboard/**` y redirige a `/login` si no hay sesión
 
-### Rols
+### Roles
 
-| Rol | Taula `profiles.role` | Accés |
+| Rol | Tabla `profiles.role` | Acceso |
 |---|---|---|
-| `employee` | `employee` | Dashboard complet (entrenadors, admins) |
-| `client` | `client` | Només vista del seu pla (no implementada al MVP) |
+| `employee` | `employee` | Dashboard completo (entrenadores, admins) |
+| `client` | `client` | Solo la vista de su plan (no implementada en el MVP) |
 
-### Usuaris empleats (taula `profiles`)
+### Usuarios empleados (tabla `profiles`)
 
-| Nom | UUID | Email |
+| Nombre | UUID | Email |
 |---|---|---|
 | Ezequiel (admin) | `29a82d0f-bab5-4a42-b4fc-68cfe64db63a` | ezequiel@gironaactiva.com |
 | Maria | `62ba0e07-b75f-4528-9e36-87f774418882` | maria@gironaactiva.com |
 | Rima Babani | `f47ae5ba-d477-4ddd-9bbb-69bc00d25a40` | miababani@gmail.com |
 
-Nota: els empleats necessiten compte a Supabase Auth per aparèixer com a opció d'assignació de plans.
-Per donar d'alta un empleat existent (que ja té compte): `UPDATE profiles SET full_name='Nom', role='employee' WHERE id='uuid'`.
+Nota: los empleados necesitan cuenta en Supabase Auth para aparecer como opción al asignar planes.
+Para dar de alta a un empleado existente (que ya tiene cuenta): `UPDATE profiles SET full_name='Nombre', role='employee' WHERE id='uuid'`.
 
 ---
 
-## Estructura de fitxers (estat actual)
+## Estructura de archivos (estado actual)
 
 ```
 girona-activa-app/
 ├── app/
 │   ├── layout.tsx
 │   ├── globals.css
-│   ├── page.tsx                          # Redirigeix a /login
+│   ├── page.tsx                          # Redirige a /login
 │   ├── login/page.tsx
-│   ├── actions/                          # Server Actions (TOTS els fitxers d'aquesta carpeta
+│   ├── actions/                          # Server Actions (TODOS los archivos de esta carpeta)
 │   │   ├── clients.ts                    # createClientAction, getClientsAction
-│   │   ├── plans.ts                      # createPlanAction (plans individuals)
-│   │   ├── group-sessions.ts             # createGroupPlanAction, createGroupCycleAction (accepta template_id)
+│   │   ├── plans.ts                      # createPlanAction (planes individuales)
+│   │   ├── group-sessions.ts             # createGroupPlanAction, createGroupCycleAction (acepta template_id)
 │   ├── cycle-templates.ts            # getTemplatesAction, createTemplateAction, updateTemplateAction,
 │   │                                 # deleteTemplateAction, duplicateTemplateAction
 │   └── holidays.ts                   # getHolidaysAction, getActiveHolidayDatesAction,
@@ -118,126 +118,126 @@ girona-activa-app/
 │   │   └── delete-client.ts              # deleteClientAction
 │   └── dashboard/
 │       ├── layout.tsx
-│       ├── page.tsx                      # Panell (stats + accions ràpides)
+│       ├── page.tsx                      # Panel (estadísticas + acciones rápidas)
 │       ├── hoy/
-│       │   ├── page.tsx                  # Agenda del dia — sessions agrupades per entrenador
+│       │   ├── page.tsx                  # Agenda del día — sesiones agrupadas por entrenador
 │       │   └── [sessionId]/
-│       │       ├── page.tsx              # Server component — carrega detall sessió
-│       │       └── session-runner.tsx    # Client component — registre de la sessió d'entrenament
+│       │       ├── page.tsx              # Server component — carga el detalle de la sesión
+│       │       └── session-runner.tsx    # Client component — registro de la sesión de entrenamiento
 │       ├── clientes/
-│       │   ├── page.tsx                  # Llistat de clients
-│       │   ├── nuevo/page.tsx            # Alta client (Server Action)
+│       │   ├── page.tsx                  # Listado de clientes
+│       │   ├── nuevo/page.tsx            # Alta de cliente (Server Action)
 │       │   └── [id]/
-│       │       ├── page.tsx              # Detall client + plans
+│       │       ├── page.tsx              # Detalle del cliente + planes
 │       │       └── delete-button.tsx
 │       ├── ejercicios/
-│       │   └── page.tsx                  # Galeria d'exercicis amb filtres
+│       │   └── page.tsx                  # Galería de ejercicios con filtros
 │       ├── planes/
-│       │   ├── page.tsx                  # Llistat de plans
+│       │   ├── page.tsx                  # Listado de planes
 │       │   ├── nuevo/
-│       │   │   ├── page.tsx              # Server component — carrega dades per al wizard
-│       │   │   ├── wizard.tsx            # Client component — wizard de creació (6 passos)
-│       │   │   └── exercise-picker-modal.tsx  # Modal galeria d'exercicis (reutilitzat)
+│       │   │   ├── page.tsx              # Server component — carga los datos del wizard
+│       │   │   ├── wizard.tsx            # Client component — wizard de creación (6 pasos)
+│       │   │   └── exercise-picker-modal.tsx  # Modal de galería de ejercicios (reutilizado)
 │       │   └── [id]/editar/
-│       │       ├── page.tsx              # Server component — carrega sessió per editar
-│       │       └── edit-plan-calendar.tsx # Client component — calendari interactiu d'edició
+│       │       ├── page.tsx              # Server component — carga la sesión a editar
+│       │       └── edit-plan-calendar.tsx # Client component — calendario interactivo de edición
 │       └── sesiones/
-│           ├── page.tsx                  # Llistat de cicles + pestanya tabs
-│           ├── sesiones-tabs.tsx         # Client component — tabs "Ciclos" | "Plantillas"
+│           ├── page.tsx                  # Listado de ciclos + pestañas
+│           ├── sesiones-tabs.tsx         # Client component — pestañas "Ciclos" | "Plantillas"
 │           ├── plantilles/
-│           │   ├── page.tsx              # Pàgina de plantilles
-│           │   └── plantillas-client.tsx # Client component — CRUD plantilles + editor
+│           │   ├── page.tsx              # Página de plantillas
+│           │   └── plantillas-client.tsx # Client component — CRUD de plantillas + editor
 │           └── nuevo/
-│               ├── page.tsx              # Server component — carrega exercicis + plantilles
-│               └── cycle-form.tsx        # Client component — 2 passos: plantilla + configuració
+│               ├── page.tsx              # Server component — carga ejercicios + plantillas
+│               └── cycle-form.tsx        # Client component — 2 pasos: plantilla + configuración
 ├── components/
-│   ├── app-sidebar.tsx                   # Sidebar amb: Hoy, Clientes, Ejercicios, Planes, Sesiones grupales
-│   └── ui/                              # Components shadcn/ui
+│   ├── app-sidebar.tsx                   # Sidebar con: Hoy, Clientes, Ejercicios, Planes, Sesiones grupales
+│   └── ui/                              # Componentes shadcn/ui
 ├── lib/
-│   ├── calendar-utils.ts             # generateCycleDates() — genera dates laborables saltant festius i fins de setmana
+│   ├── calendar-utils.ts             # generateCycleDates() — genera fechas laborables saltando festivos y fines de semana
 │   ├── supabase/
 │   │   ├── client.ts                    # createClient() — Client Components
 │   │   ├── server.ts                    # createClient() — Server Components
-│   │   └── admin.ts                     # createAdminClient() — bypass RLS, server-only
+│   │   └── admin.ts                     # createAdminClient() — se salta RLS, solo servidor
 │   ├── group-sessions-utils.ts          # levelToDifficulty(), type Difficulty
 │   └── utils.ts                         # cn()
-└── middleware.ts                         # Protecció de rutes
+└── middleware.ts                         # Protección de rutas
 ```
 
 ---
 
-## Base de dades — taules principals
+## Base de datos — tablas principales
 
-### Model de dades — Sessions unificades (octubre 2026)
+### Modelo de datos — sesiones unificadas (octubre 2026)
 
-Totes les sessions (individuals i grupals) estan unificades a `training_sessions` i `training_session_clients`. Les taules legacy `plan_sessions` i `group_cycle_slots` es mantenen per compatibilitat però ja no s'usen per a nova funcionalitat.
+Todas las sesiones (individuales y grupales) están unificadas en `training_sessions` y `training_session_clients`. Las tablas legacy `plan_sessions` y `group_cycle_slots` se mantienen por compatibilidad, pero ya no se usan para funcionalidad nueva.
 
-**`training_sessions`** — event/ocurrència concreta al calendari:
+**`training_sessions`** — evento u ocurrencia concreta en el calendario:
 ```
 id UUID PK
 type                  'individual' | 'group'
-session_date DATE     ← sempre data absoluta (no day_index sol)
+session_date DATE     ← siempre fecha absoluta (no solo day_index)
 session_time TIME
 assigned_employee_id  → profiles
 session_label         'A' | 'B' | 'C'
-cycle_id              → group_cycles   (sessions grupals)
-plan_id               → training_plans (sessions individuals)
-day_index INTEGER     0-19 (dins del cicle, per sessions grupals)
-max_clients INTEGER   (sessions grupals, normalment 6)
+cycle_id              → group_cycles   (sesiones grupales)
+plan_id               → training_plans (sesiones individuales)
+day_index INTEGER     0-19 (dentro del ciclo, para sesiones grupales)
+max_clients INTEGER   (sesiones grupales, normalmente 6)
 status                'scheduled' | 'completed' | 'cancelled'
 notes TEXT
 ```
 
-**`training_session_clients`** — participació d'un client en una sessió (junction amb atributs):
+**`training_session_clients`** — participación de un cliente en una sesión (tabla de unión con atributos):
 ```
 id UUID PK
 session_id  → training_sessions
 client_id   → clients
-difficulty  'regression' | 'base' | 'progression'   ← per client, progressiu
+difficulty  'regression' | 'base' | 'progression'   ← por cliente, progresivo
 UNIQUE(session_id, client_id)
 ```
 
-Per a sessions individuals: 1 fila a `training_session_clients`.
-Per a sessions grupals: fins a `max_clients` files, cadascuna amb el seu `difficulty` (el nivell pot canviar sessió a sessió per registrar la progressió del client).
+Para sesiones individuales: 1 fila en `training_session_clients`.
+Para sesiones grupales: hasta `max_clients` filas, cada una con su `difficulty` (el nivel puede cambiar de una sesión a otra para registrar la progresión del cliente).
 
-### Taules existents
+### Tablas existentes
 
-| Taula | Descripció |
+| Tabla | Descripción |
 |---|---|
 | `profiles` | `id` (FK auth.users), `full_name`, `role` (employee/client) |
-| `clients` | Perfil client: `first_name`, `last_name`, `sex`, `birth_date`, `height_cm`, `weight_kg`, `start_date`, `email`, `notes`, `is_active` |
-| `body_zones` | Catàleg de zones corporals |
-| `muscle_groups` | Catàleg de grups musculars |
-| `movement_patterns` | Catàleg de patrons de moviment |
-| `equipment` | Catàleg d'equipament |
-| `objectives` | Catàleg d'objectius |
-| `exercises` | `name`, `technical_name`, `level` (1-3), `technical_level`, `body_zone_id`, `movement_pattern_id`, `equipment_id`, `objective_id`, `regression_id` (FK self), `progression_id` (FK self) |
-| `exercise_muscle_groups` | Junction exercici ↔ grup muscular |
-| `group_cycles` | Cicles de sessions grupals (4 setmanes): `start_date`, `notes` |
-| `group_sessions` | Plantilla d'exercicis per bloc A/B/C × dificultat regression/base/progression |
-| `group_session_exercises` | Exercicis de la plantilla: `exercise_id`, `sets`, `reps`, `weight_kg`, `order_index` |
-| `training_sessions` | **Taula unificada** — totes les sessions individuals i grupals com a events concrets al calendari |
-| `training_session_clients` | **Junction** — quin client participa en quina sessió i a quin nivell (`difficulty`) |
-| `training_plans` | Contracte de subscripció del client: `client_id`, `assigned_employee_id`, `type`, `level`, `status`, `duration_months`, `weekly_frequency`, `session_duration`, `start_date`, `end_date` |
-| `public_holidays` | Festius: `date` (PK), `name`, `scope` (national/catalonia/girona), `is_active`, `is_override` |
-| `cycle_templates` | Plantilles predefinides per crear cicles: `name`, `notes`, `is_default`, `created_by` |
-| `cycle_template_days` | Patró mensual de la plantilla: 20 files (day_index 0-19) amb `block_label` A/B/C |
-| `cycle_template_slots` | Franges intradía de la plantilla per dia de la setmana: `day_of_week` (0-4), `session_time`, `has_overlap`, `max_clients` |
-| `plan_sessions` | ⚠️ Legacy — sessions individuals (migrades a `training_sessions`) |
-| `group_cycle_slots` | ⚠️ Legacy — slots de cicles grupals (migrats a `training_sessions`) |
-| `plan_session_exercises` | Exercicis de sessions individuals |
-| `session_logs` | Registre d'execució: `started_at`, `completed_at`, `status` |
+| `clients` | Perfil del cliente: `first_name`, `last_name`, `sex`, `birth_date`, `height_cm`, `weight_kg`, `start_date`, `email`, `notes`, `is_active` |
+| `body_zones` | Catálogo de zonas corporales |
+| `muscle_groups` | Catálogo de grupos musculares |
+| `movement_patterns` | Catálogo de patrones de movimiento |
+| `equipment` | Catálogo de equipamiento |
+| `objectives` | Catálogo de objetivos |
+| `exercises` | `name`, `technical_name`, `level` (1-3), `technical_level`, `body_zone_id`, `movement_pattern_id`, `equipment_id`, `objective_id`, `regression_id` (FK a sí misma), `progression_id` (FK a sí misma) |
+| `exercise_muscle_groups` | Unión ejercicio ↔ grupo muscular |
+| `group_cycles` | Ciclos de sesiones grupales (4 semanas): `start_date`, `notes` |
+| `group_sessions` | Plantilla de ejercicios por bloque A/B/C × dificultad regression/base/progression |
+| `group_session_exercises` | Ejercicios de la plantilla: `exercise_id`, `sets`, `reps`, `weight_kg`, `order_index` |
+| `training_sessions` | **Tabla unificada** — todas las sesiones individuales y grupales como eventos concretos del calendario |
+| `training_session_clients` | **Unión** — qué cliente participa en qué sesión y a qué nivel (`difficulty`) |
+| `training_plans` | Contrato de suscripción del cliente: `client_id`, `assigned_employee_id`, `type`, `level`, `status`, `duration_months`, `weekly_frequency`, `session_duration`, `start_date`, `end_date` |
+| `public_holidays` | Festivos: `date` (PK), `name`, `scope` (national/catalonia/girona), `is_active`, `is_override` |
+| `cycle_templates` | Plantillas predefinidas para crear ciclos: `name`, `notes`, `is_default`, `created_by` |
+| `cycle_template_days` | Patrón mensual de la plantilla: 20 filas (day_index 0-19) con `block_label` A/B/C |
+| `cycle_template_slots` | Franjas del día de la plantilla por día de la semana: `day_of_week` (0-4), `session_time`, `has_overlap`, `max_clients` |
+| `plan_sessions` | ⚠️ Legacy — sesiones individuales (migradas a `training_sessions`) |
+| `group_cycle_slots` | ⚠️ Legacy — franjas de ciclos grupales (migradas a `training_sessions`) |
+| `plan_session_exercises` | Ejercicios de las sesiones individuales |
+| `session_logs` | Registro de ejecución: `started_at`, `completed_at`, `status` |
 | `exercise_logs` | `sets_done`, `reps_done`, `load_kg`, `rpe` (1-10), `rir` (0-10), `skipped` |
 
-### Convencions RLS
+### Convenciones de RLS
 
-Totes les taules usen:
+Todas las tablas usan:
 ```sql
 FOR ALL USING (auth.role() = 'authenticated')
 ```
-(No `is_employee()` — no funciona bé en context de servidor)
+(No `is_employee()` — no funciona bien en contexto de servidor)
 
-Permisos necessaris (executar després de crear taules noves):
+Permisos necesarios (ejecutar después de crear tablas nuevas):
 ```sql
 GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
@@ -245,278 +245,291 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
 ```
 
-### Trigger important
+### Trigger importante
 ```sql
--- Crea automàticament una fila a profiles en crear un usuari a auth.users
--- role per defecte: 'employee'. Per a clients: passar role='client' a raw_user_meta_data
+-- Crea automáticamente una fila en profiles al crear un usuario en auth.users
+-- role por defecto: 'employee'. Para clientes: pasar role='client' en raw_user_meta_data
 create trigger on_auth_user_created after insert on auth.users ...
 ```
 
 ---
 
-## Funcionalitats implementades (estat actual)
+## Funcionalidades implementadas (estado actual)
 
-### Clients (`/dashboard/clientes`)
-- Llistat amb stats (actius, nous aquest mes)
-- Alta client: crea compte Supabase Auth + fila a `clients` + envia email de reset de contrasenya
-- Detall client: dades personals + pla actiu + historial de plans
-- Des del detall: botó "Nou pla" que preselecciona el client al wizard
-- Eliminar client
+### Clientes (`/dashboard/clientes`)
+- Listado con estadísticas (activos, nuevos este mes)
+- Alta de cliente: crea la cuenta en Supabase Auth + la fila en `clients` + envía el email para fijar la contraseña
+- Detalle del cliente: datos personales + plan activo + historial de planes
+- Desde el detalle: botón "Nuevo plan" que preselecciona al cliente en el wizard
+- Eliminar cliente
 
-### Galeria d'exercicis (`/dashboard/ejercicios`)
-- Filtres: zona corporal, patró de moviment, grup muscular, equipament, objectiu, nivell
-- Cada exercici pot tenir `regression_id` i `progression_id` (FK a exercises)
+### Galería de ejercicios (`/dashboard/ejercicios`)
+- Filtros: zona corporal, patrón de movimiento, grupo muscular, equipamiento, objetivo, nivel
+- Cada ejercicio puede tener `regression_id` y `progression_id` (FK a exercises)
 
-### Plans d'entrenament (`/dashboard/planes`)
+### Planes de entrenamiento (`/dashboard/planes`)
 
-#### Wizard de creació (6 passos) — `planes/nuevo/wizard.tsx`
-1. **Client** — selecció del client (es salta si ve de `?client=uuid`)
-2. **Entrenador** — selecció de l'empleat assignat (`assigned_employee_id`)
-3. **Tipus** — Individual / Grupal + selecció de cicle (si és grupal)
-4. **Nivell** — 1 (Regresión), 2 (Base), 3 (Progresión)
-5. **Paràmetres** — data inici, hora sessió, mesos durada, freqüència, dies de la setmana, durada per sessió
-6. **Calendari** — previsualització + guardar
+#### Wizard de creación (6 pasos) — `planes/nuevo/wizard.tsx`
+1. **Cliente** — selección del cliente (se salta si se llega con `?client=uuid`)
+2. **Entrenador** — selección del empleado asignado (`assigned_employee_id`)
+3. **Tipo** — Individual / Grupal + selección de ciclo (si es grupal)
+4. **Nivel** — 1 (Regresión), 2 (Base), 3 (Progresión)
+5. **Parámetros** — fecha de inicio, hora de la sesión, meses de duración, frecuencia, días de la semana, duración por sesión
+6. **Calendario** — previsualización + guardar
 
-**Plans grupals:** generen sessions A/B/C en rotació (index % 3) a partir d'un `group_cycle` existent.
-- Nivell 1 → `regression` (usa `exercise.regression_id`, fallback a base si null)
-- Nivell 2 → `base`
-- Nivell 3 → `progression` (usa `exercise.progression_id`, fallback a base si null)
+**Planes grupales:** generan sesiones A/B/C en rotación (index % 3) a partir de un `group_cycle` existente.
+- Nivel 1 → `regression` (usa `exercise.regression_id`; si es null, usa el base)
+- Nivel 2 → `base`
+- Nivel 3 → `progression` (usa `exercise.progression_id`; si es null, usa el base)
 
-**Plans individuals:** calendari interactiu on s'afegeixen exercicis per dia amb `ExercisePickerModal`.
+**Planes individuales:** calendario interactivo donde se añaden ejercicios por día con `ExercisePickerModal`.
 
-#### Editar pla — `planes/[id]/editar/`
-- Calendari interactiu mensual
-- Clic en un dia: bottom sheet amb exercicis d'aquella sessió
-- Afegir exercicis: usa `ExercisePickerModal` (galeria amb filtres)
-- Editar / eliminar exercicis existents
-- Moure sessió a un altre dia
+#### Editar plan — `planes/[id]/editar/`
+- Calendario interactivo mensual
+- Clic en un día: hoja inferior (bottom sheet) con los ejercicios de esa sesión
+- Añadir ejercicios: usa `ExercisePickerModal` (galería con filtros)
+- Editar / eliminar ejercicios existentes
+- Mover la sesión a otro día
 
-### Agenda del dia (`/dashboard/hoy`)
-- Mostra les sessions del dia actual de tots els clients
-- Ordenació: sessions del login-user primer, resta agrupades per entrenador
-- Stats: total, completades, pendents
+### Agenda del día (`/dashboard/hoy`)
+- Muestra las sesiones del día actual de todos los clientes
+- Orden: primero las sesiones del usuario conectado, el resto agrupadas por entrenador
+- Estadísticas: total, completadas, pendientes
 
-### Registre de sessió (`/dashboard/hoy/[sessionId]`)
-- Flux d'entrenament sessió a sessió: exercici per exercici
-- Per cada exercici: Series, Reps, Carga (kg), RPE (1-10), RIR (0-10), Comentarios, opció "Saltar"
-- RPE: verd ≤ 3, groc ≤ 6, vermell > 6
-- RIR: vermell ≤ 2, groc ≤ 5, verd > 5 (lògica invertida)
-- "Completar sesión" només actiu quan tots els exercicis estan guardats
+### Registro de sesión (`/dashboard/hoy/[sessionId]`)
+- Flujo de entrenamiento sesión a sesión: ejercicio por ejercicio
+- Por cada ejercicio: Series, Reps, Carga (kg), RPE (1-10), RIR (0-10), Comentarios, opción "Saltar"
+- RPE: verde ≤ 3, amarillo ≤ 6, rojo > 6
+- RIR: rojo ≤ 2, amarillo ≤ 5, verde > 5 (lógica invertida)
+- "Completar sesión" solo se activa cuando todos los ejercicios están guardados
 
-### Cicles de sessions grupals (`/dashboard/sesiones`)
+### Ciclos de sesiones grupales (`/dashboard/sesiones`)
 
-#### Llista de cicles (`/dashboard/sesiones`)
-- Mostra tots els cicles amb calendari de 4 setmanes i status (Activo / Próximo / Expirado)
-- Pestanya "Ciclos" | "Plantillas" (`sesiones-tabs.tsx`)
+#### Lista de ciclos (`/dashboard/sesiones`)
+- Muestra todos los ciclos con calendario de 4 semanas y estado (Activo / Próximo / Expirado)
+- Pestañas "Ciclos" | "Plantillas" (`sesiones-tabs.tsx`)
 
-#### Plantilles de cicle (`/dashboard/sesiones/plantillas`)
-- Llistat de plantilles predefinides amb preview del patró mensual A/B/C
-- Crear / editar / duplicar / eliminar plantilles (la plantilla per defecte no es pot eliminar)
-- Editor de plantilla: grid de 4 setmanes × 5 dies (clic per ciclar A→B→C→A) + gestor de franges intradía
-- Franges: es poden afegir/eliminar per dia de la setmana, configurar solapament i màxim clients
-- Plantilla per defecte: "Plantilla estàndard" (`id: 00000000-0000-0000-0000-000000000001`)
-- Accions CRUD a `app/actions/cycle-templates.ts`
+#### Plantillas de ciclo (`/dashboard/sesiones/plantillas`)
+- Listado de plantillas predefinidas con vista previa del patrón mensual A/B/C
+- Crear / editar / duplicar / eliminar plantillas (la plantilla por defecto no se puede eliminar)
+- Editor de plantilla: cuadrícula de 4 semanas × 5 días (clic para ciclar A→B→C→A) + gestor de franjas del día
+- Franjas: se pueden añadir o eliminar por día de la semana y configurar solapamiento y máximo de clientes
+- Plantilla por defecto: "Plantilla estàndard" (`id: 00000000-0000-0000-0000-000000000001`)
+- Acciones CRUD en `app/actions/cycle-templates.ts`
 
-#### Festius (`public_holidays`)
-- 16 festius de 2026 pre-carregats: nacionals espanyols + Catalunya + Sant Narcís (Girona)
-- `is_active = false` → el festiu s'ignora en la generació de cicles (el dia passa a ser laboral)
-- `is_override = true` → marcat manualment per un empleat (no el sobreescriu `syncHolidaysFromApiAction`)
-- `toggleHolidayAction(date)`: canvia `is_active` i posa `is_override = true`
-- `syncHolidaysFromApiAction(year)`: crida Nager.Date API (ES + ES-CT) i fa upsert. Pendent: integrar a una pàgina de Configuració
-- La gestió completa de festius (afegir festius locals nous, puentes, etc.) anirà a una futura secció **Configuració**
+#### Festivos (`public_holidays`)
+- 16 festivos de 2026 precargados: nacionales de España + Cataluña + Sant Narcís (Girona)
+- `is_active = false` → el festivo se ignora al generar ciclos (el día pasa a ser laborable)
+- `is_override = true` → marcado manualmente por un empleado (`syncHolidaysFromApiAction` no lo sobrescribe)
+- `toggleHolidayAction(date)`: cambia `is_active` y pone `is_override = true`
+- `syncHolidaysFromApiAction(year)`: llama a la API Nager.Date (ES + ES-CT) y hace upsert. Pendiente: integrarlo en una página de Configuración
+- La gestión completa de festivos (añadir festivos locales nuevos, puentes, etc.) irá a una futura sección de **Configuración**
 
-#### Creació de cicle (`/dashboard/sesiones/nuevo`)
-- **Pas 1** — Selecció de plantilla (patró mensual + franges intradía)
-- **Pas 2** — Data d'inici, notes i exercicis de cada sessió A/B/C
-- Al guardar: `createGroupCycleAction` carrega el patró i les franges de la plantilla seleccionada des de la DB (fallback: `CYCLE_PATTERN_20` i `DAY_SLOT_TEMPLATE` hardcodejats)
-- Genera `training_sessions` automàticament per als 20 dies laborables del cicle
-- La generació de dates usa `generateCycleDates()` de `lib/calendar-utils.ts`: comença a `start_date` (pot ser qualsevol dia laborable, no necessàriament dilluns), avança dia a dia saltant caps de setmana i festius actius de `public_holidays`
+#### Creación de ciclo (`/dashboard/sesiones/nuevo`)
+- **Paso 1** — Selección de plantilla (patrón mensual + franjas del día)
+- **Paso 2** — Fecha de inicio, notas y ejercicios de cada sesión A/B/C
+- Al guardar: `createGroupCycleAction` carga el patrón y las franjas de la plantilla seleccionada desde la BD (si falla, usa `CYCLE_PATTERN_20` y `DAY_SLOT_TEMPLATE` fijos en el código)
+- Genera automáticamente `training_sessions` para los 20 días laborables del ciclo
+- La generación de fechas usa `generateCycleDates()` de `lib/calendar-utils.ts`: empieza en `start_date` (puede ser cualquier día laborable, no necesariamente lunes) y avanza día a día saltando fines de semana y festivos activos de `public_holidays`
 
-#### Editor de cicle (`/dashboard/sesiones/[id]`)
-- Pestanya "Exercicis": exercicis dels 3 blocs A/B/C × 3 dificultats
-- Pestanya "Planificació": calendari de 4 setmanes × 5 dies
-  - Cada slot és clicable → abre drawer lateral
-  - Drawer: editar exercicis del bloc + assignar empleat + assignar clients (màx 6)
-  - Celdas de festiu: apareixen en gris amb nom del festiu + botó "Revertir" que crida `toggleHolidayAction` (canvi local optimista)
+#### Editor de ciclo (`/dashboard/sesiones/[id]`)
+- Pestaña "Ejercicios": ejercicios de los 3 bloques A/B/C × 3 dificultades
+- Pestaña "Planificación": calendario de 4 semanas × 5 días
+  - Cada franja es clicable → abre un panel lateral
+  - Panel: editar ejercicios del bloque + asignar empleado + asignar clientes (máx. 6)
+  - Celdas de festivo: aparecen en gris con el nombre del festivo + botón "Revertir" que llama a `toggleHolidayAction` (cambio local optimista)
 
-#### Requisits funcionals de sessions grupals (definits a l'octubre 2026)
-- **Múltiples sessions per dia:** en un dia d'un cicle hi pot haver més d'una sessió grupal. Es defineix en crear el cicle ("Nuevo ciclo").
-- **Empleat per sessió:** cada sessió grupal concreta pot tenir un empleat diferent assignat.
-- **Override de bloc:** en un dia concret on per defecte toca el bloc A, una de les sessions grupals pot ser del bloc B (o C). L'usuari tria el bloc per a cada sessió en definir el cicle.
-- **Màxim 6 clients per sessió:** cada sessió grupal té un límit de 6 clients. Es configura al crear el cicle.
-- **Visibilitat a "Hoy":** les sessions grupals han d'aparèixer individualment a la pàgina de "Hoy", amb l'empleat assignat i el bloc corresponent.
+#### Requisitos funcionales de las sesiones grupales (definidos en octubre de 2026)
+- **Varias sesiones por día:** en un día de un ciclo puede haber más de una sesión grupal. Se define al crear el ciclo ("Nuevo ciclo").
+- **Empleado por sesión:** cada sesión grupal concreta puede tener asignado un empleado distinto.
+- **Cambio de bloque:** en un día concreto en el que por defecto toca el bloque A, una de las sesiones grupales puede ser del bloque B (o C). El usuario elige el bloque de cada sesión al definir el ciclo.
+- **Máximo 6 clientes por sesión:** cada sesión grupal tiene un límite de 6 clientes. Se configura al crear el ciclo.
+- **Visibilidad en "Hoy":** las sesiones grupales deben aparecer una a una en la página "Hoy", con el empleado asignado y el bloque correspondiente.
 
 ---
 
-## Patrons importants de codi
+## Patrones de código importantes
 
 ### `export const dynamic = 'force-dynamic'`
-Afegir a totes les pàgines Server Component que fan fetch de Supabase, per evitar caché de Vercel.
+Añadirlo en todas las páginas Server Component que hacen fetch a Supabase, para evitar la caché de Vercel.
 
-### Server Actions — tots els exports han de ser `async`
-En fitxers marcats `'use server'`, **tots** els exports (tipus, funcions) han de ser `async`.
-Exportar un tipus no-async o una funció no-async trenca Turbopack amb:
+### Server Actions — todos los exports deben ser `async`
+En archivos marcados con `'use server'`, **todos** los exports (tipos, funciones) deben ser `async`.
+Exportar un tipo o una función no async rompe Turbopack con:
 `Error: Only async functions are allowed to be exported in a "use server" file.`
-**Solució:** moure tipus/funcions no-async a fitxers separats (ex: `lib/group-sessions-utils.ts`).
+**Solución:** mover los tipos y funciones no async a archivos separados (ej.: `lib/group-sessions-utils.ts`).
 
-### PostgREST retorna relations com a arrays
-Quan es fa un join amb `select('training_plans(...)')`, TypeScript pot inferir array.
-Cal fer guard:
+### PostgREST devuelve las relaciones como arrays
+Al hacer un join con `select('training_plans(...)')`, TypeScript puede inferir un array.
+Hay que protegerse así:
 ```ts
 const getPlan = (s: any) => Array.isArray(s.training_plans) ? s.training_plans[0] : s.training_plans
 ```
 
-### `ExercisePickerModal` — component reutilitzat
-Definit a `app/dashboard/planes/nuevo/exercise-picker-modal.tsx`.
-Usat a:
-- `planes/nuevo/wizard.tsx` (creació de plans individuals)
-- `planes/[id]/editar/edit-plan-calendar.tsx` (edició de plans)
+### `ExercisePickerModal` — componente reutilizado
+Definido en `app/dashboard/planes/nuevo/exercise-picker-modal.tsx`.
+Se usa en:
+- `planes/nuevo/wizard.tsx` (creación de planes individuales)
+- `planes/[id]/editar/edit-plan-calendar.tsx` (edición de planes)
 
-Props necessàries: `exercises`, `exerciseCatalog`, `existingExercises`, `bodyZones`, `movementPatterns`, `muscleGroups`, `equipment`, `objectives`, `dayLabel`, `onAdd`, `onRemove`, `onUpdate`, `onClose`.
-Els exercicis han de tenir `muscle_group_ids: string[]` (join via `exercise_muscle_groups`).
+Props necesarias: `exercises`, `exerciseCatalog`, `existingExercises`, `bodyZones`, `movementPatterns`, `muscleGroups`, `equipment`, `objectives`, `dayLabel`, `onAdd`, `onRemove`, `onUpdate`, `onClose`.
+Los ejercicios deben tener `muscle_group_ids: string[]` (join vía `exercise_muscle_groups`).
 
 ---
 
-## Git workflow
+## Flujo de Git
 
 ```
-dev   → preview Vercel (branca de treball habitual)
-main  → producció Vercel
+dev   → preview de Vercel (rama de trabajo habitual)
+main  → producción de Vercel
 ```
 
 ```bash
-git add [fitxers]
-git commit -m "feat/fix/chore: descripció"
+git add [archivos]
+git commit -m "feat/fix/chore: descripción"
 git push origin dev
 ```
 
-### Registre de bugs
+### Migraciones de base de datos (desde el 2026-11-04)
 
-Els bugs oberts i resolts es registren a [docs/BUGS.md](./docs/BUGS.md) (IDs `BUG-NNN`).
-- En detectar un bug, afegir-lo a "Abiertos".
-- El commit que l'arregla porta l'ID al missatge: `fix(BUG-002): descripció`.
-- Després del commit, moure'l a "Resueltos" amb el hash (commit `docs:` a part).
-- Consultar aquest fitxer abans de començar a treballar en un bug, per veure si ja està registrat.
+La estructura de la BD se versiona en `supabase/migrations/`. **No se hacen cambios de esquema a mano en el editor SQL de Supabase.**
+
+- `20261104120000_baseline.sql`: foto del esquema tal como estaba el 2026-11-04 (pg_dump de `public` + objetos fuera de `public`: trigger `on_auth_user_created`, event trigger `ensure_rls`, bucket `avatars`, publicación Realtime). Incluye las políticas abiertas de BUG-002. Sustituye a los antiguos `trainwall-tables.sql` y `group-slots-migration.sql` (ya estaban aplicados).
+- Flujo para un cambio nuevo:
+  1. `npx.cmd supabase migration new nombre_del_cambio` → escribir el SQL en el archivo creado
+  2. Revisarlo y hacer commit junto con el código que lo usa
+  3. Aplicarlo: `npx.cmd supabase db push --remote` (pide confirmación; se hace cuando el propietario lo aprueba)
+  4. Comprobarlo: `npx.cmd supabase migration list --remote`
+- Si algún día se cambia algo a mano en el panel, hay que capturarlo después en una migración.
+- Los datos (galería, festivos, clientes) **no** están en las migraciones; solo la estructura.
+- Sin Docker en este PC, `supabase db dump/pull` no funcionan directamente. Para hacer un volcado: `npx.cmd supabase db dump --remote --dry-run` muestra el script de `pg_dump` (con un usuario temporal) y se ejecuta con el `pg_dump` local (`C:\Program Files\PostgreSQL\17\bin`, solo herramientas cliente). En Windows hay que cambiar `--quote-all-identifier` por `--quote-all-identifiers`.
+- Pendiente antes del go-live: un segundo proyecto de Supabase de pruebas (`brotafit-dev`) donde probar las migraciones antes de producción.
+
+### Registro de bugs
+
+Los bugs abiertos y resueltos se registran en [docs/BUGS.md](./docs/BUGS.md) (IDs `BUG-NNN`).
+- Al detectar un bug, añadirlo en "Abiertos".
+- El commit que lo arregla lleva el ID en el mensaje: `fix(BUG-002): descripción`.
+- Después del commit, moverlo a "Resueltos" con el hash (en un commit `docs:` aparte).
+- Consultar este archivo antes de empezar a trabajar en un bug, para ver si ya está registrado.
 
 ---
 
-## Canvis recents (2026-09-22)
+## Cambios recientes (2026-09-22)
 
-- **Wizard 6 passos:** pas 2 dedicat a la selecció d'entrenador (separat del pas 1 de client)
-- **ExercisePickerModal a editar pla:** substituït `<select>` per la galeria amb filtres
-- **Cruceta per eliminar sessió del calendari (wizard pas 6):** botó `×` vermell a la cantonada superior dreta de cada dia de sessió
-- **Agenda "Hoy" arreglada:** fallava per join `profiles:assigned_employee_id` sense FK declarada → fetch separat de profiles i merge en JS
-- **Adherència al perfil del client:** stats completada/expirada/pendiente + % adherència al bloc del pla actiu i historial
-- **Estats al calendari d'editar pla:** colors verd (completada), taronja (pendent), gris (expirada)
-- **`components/ui/input.tsx`:** `bg-white text-[#1C1C1C]` (era `bg-transparent`, invisible en fons fosc)
-- **`components/ui/label.tsx`:** `text-white` afegit
-- **`components/ui/select.tsx`:** `bg-white text-[#1C1C1C]` (era `bg-transparent`)
+- **Wizard de 6 pasos:** el paso 2 se dedica a elegir entrenador (separado del paso 1 de cliente)
+- **ExercisePickerModal al editar plan:** se sustituyó el `<select>` por la galería con filtros
+- **Aspa para eliminar una sesión del calendario (paso 6 del wizard):** botón `×` rojo en la esquina superior derecha de cada día con sesión
+- **Agenda "Hoy" arreglada:** fallaba por el join `profiles:assigned_employee_id` sin FK declarada → fetch separado de profiles y merge en JS
+- **Adherencia en el perfil del cliente:** estadísticas completada/expirada/pendiente + % de adherencia en el bloque del plan activo y en el historial
+- **Estados en el calendario de editar plan:** colores verde (completada), naranja (pendiente), gris (expirada)
+- **`components/ui/input.tsx`:** `bg-white text-[#1C1C1C]` (antes `bg-transparent`, invisible sobre fondo oscuro)
+- **`components/ui/label.tsx`:** añadido `text-white`
+- **`components/ui/select.tsx`:** `bg-white text-[#1C1C1C]` (antes `bg-transparent`)
 
 ---
 
 ## Roadmap
 
 - [ ] **DNS:** configurar `app.gironaactiva.com` → Vercel
-- [ ] **Merge dev → main** quan MVP estable, tag `v1.0.0`
-- [ ] **Vista client:** calendari mòbil del pla actiu (el client veu el seu pla)
-- [ ] **Imatges d'exercicis:** Supabase Storage — mostrar foto/vídeo a la galeria
-- [ ] **Zones d'exercici pendents:** rodilla, cadera, columna/core, hombro (venen d'Excels del client)
-- [ ] **Gràfics d'evolució:** RPE/RIR/carga per exercici al llarg del temps (diferit)
-- [ ] **Long press al calendari (wizard):** click llarg sobre un dia de sessió → modal de confirmació per eliminar-lo (alternativa a la cruceta actual, més adequada per mòbil)
-- [ ] **TrainWall:** display d'exercicis en pantalla (pantalla gran al gimnàs). Arquitectura HW/SW ja dissenyada — veure [CLAUDE-TW.md](./CLAUDE-TW.md). Pendent: confirmar amb el client i implementar.
-- [ ] **Gestió de plans:** veure actiu/historial des del perfil del client (millora UX)
-- [ ] **Més empleats:** afegir entrenadors nous quan s'incorporin
-- [ ] **Pàgina de Configuració** (`/dashboard/configuracio`) — secció general per a paràmetres del centre:
-  - **Festius:** llistat complet de `public_holidays` amb toggle `is_active` per dia, formulari per afegir festius nous (puentes, tancaments del centre), botó "Carregar festius [any]" que crida `syncHolidaysFromApiAction` (API Nager.Date). Per ara: 2026 i 2027 ja carregats manualment; per a 2028+ caldrà executar el sync.
-  - **Horaris del centre:** possibilitat futura de definir horaris d'obertura/tancament
-  - Accés restringit a rol `employee`
-
----
+- [ ] **Merge dev → main** cuando el MVP sea estable, tag `v1.0.0`
+- [ ] **Vista de cliente:** calendario móvil del plan activo (el cliente ve su plan). Especificación en `docs/spec-vista-cliente.md`
+- [ ] **Imágenes de ejercicios:** Supabase Storage — mostrar foto/vídeo en la galería
+- [ ] **Zonas de ejercicio pendientes:** rodilla, cadera, columna/core, hombro (vienen de Excels del cliente)
+- [ ] **Gráficos de evolución:** RPE/RIR/carga por ejercicio a lo largo del tiempo (aplazado)
+- [ ] **Pulsación larga en el calendario (wizard):** mantener pulsado un día con sesión → modal de confirmación para eliminarla (alternativa al aspa actual, más adecuada para móvil)
+- [ ] **TrainWall:** visualización de ejercicios en pantalla (pantalla grande en el gimnasio). Arquitectura HW/SW ya diseñada — ver [CLAUDE-TW.md](./CLAUDE-TW.md). Pendiente: confirmar con el cliente e implementar.
+- [ ] **Gestión de planes:** ver el plan activo y el historial desde el perfil del cliente (mejora de UX)
+- [ ] **Más empleados:** añadir entrenadores nuevos cuando se incorporen
+- [ ] **Página de Configuración** (`/dashboard/configuracio`) — sección general para los parámetros del centro:
+  - **Festivos:** listado completo de `public_holidays` con interruptor `is_active` por día, formulario para añadir festivos nuevos (puentes, cierres del centro) y botón "Cargar festivos [año]" que llama a `syncHolidaysFromApiAction` (API Nager.Date). Por ahora, 2026 y 2027 ya están cargados a mano; para 2028 y siguientes habrá que ejecutar la sincronización.
+  - **Horarios del centro:** posibilidad futura de definir horarios de apertura y cierre
+  - Acceso restringido al rol `employee`
 
 ---
 
 ## TrainWall — sistema de pantallas en sala
 
-**TrainWall** és el nom comercial de la feature de pantallas físiques al centre. Es ven com a mòdul opcional de **BrotaFit** (nom comercial de questa app quan es ven a tercers). Els documents de venda (`comercial/brotafit.html`, `comercial/trainwall.html`) viuen al repo `brota-ai`, no aquí.
+**TrainWall** es el nombre comercial de la funcionalidad de pantallas físicas en el centro. Se vende como módulo opcional de **BrotaFit** (nombre comercial de esta app cuando se vende a terceros). Los documentos de venta (`comercial/brotafit.html`, `comercial/trainwall.html`) viven en el repo `brota-ai`, no aquí.
 
-**Arxius de disseny (referència, NO implementat encara):**
-- `docs/context-pantallas.md` — context de negoci original
+**Archivos de diseño (referencia, NO implementado todavía):**
+- `docs/context-pantallas.md` — contexto de negocio original
 - `docs/arquitectura-pantallas.md` — arquitectura hardware/software detallada
 
-### Què fa
+### Qué hace
 
-Mostra en pantalles físiques del centre l'entrenament actiu de cada client (individual o grupal) quan l'entrenador fa el check-in. La pantalla s'actualitza en temps real via Supabase Realtime, sense recarregar.
+Muestra en pantallas físicas del centro el entrenamiento activo de cada cliente (individual o grupal) cuando el entrenador hace el check-in. La pantalla se actualiza en tiempo real mediante Supabase Realtime, sin recargar.
 
-### Decisions clau
+### Decisiones clave
 
-- **Check-in**: manual per l'empleat al MVP (no QR/NFC). L'empleat selecciona el client o classe grupal, confirma la sessió (auto-suggerida per data, editable), i tria la pantalla destí.
-- **Hardware (x4 pantalles):** Monitor 32" LED/LCD (no Smart, no OLED) + Android TV box (~50€) + Fully Kiosk Browser Plus (7,90€/dispositiu, pagament únic). Cost total estimat ~750-950€.
-- **Gestió remota:** des de qualsevol ordinador a la xarxa del centre via `http://<ip>:2323` — no cal cap unitat central física.
-- **Temps real:** Supabase Realtime (`postgres_changes` sobre `screen_assignments`, filtrat per `screen_id`).
-- **Pantalla grupal:** mostra 3 columnes (regressió / base / progressió) perquè diverses persones de nivell diferent comparteixen la mateixa pantalla.
-- **Seguretat:** lectura via RLS de només lectura (sense emails/telèfons del client). Cap escriptura possible des del token de pantalla. Check-in sempre via Server Actions autenticades.
+- **Check-in:** manual por el empleado en el MVP (sin QR/NFC). El empleado selecciona el cliente o la clase grupal, confirma la sesión (sugerida automáticamente por fecha, editable) y elige la pantalla de destino.
+- **Hardware (x4 pantallas):** monitor de 32" LED/LCD (no Smart, no OLED) + Android TV box (~50 €) + Fully Kiosk Browser Plus (7,90 €/dispositivo, pago único). Coste total estimado: ~750-950 €.
+- **Gestión remota:** desde cualquier ordenador de la red del centro vía `http://<ip>:2323` — no hace falta ninguna unidad central física.
+- **Tiempo real:** Supabase Realtime (`postgres_changes` sobre `screen_assignments`, filtrado por `screen_id`).
+- **Pantalla grupal:** muestra 3 columnas (regresión / base / progresión), porque varias personas de nivel distinto comparten la misma pantalla.
+- **Seguridad:** lectura mediante RLS de solo lectura (sin emails ni teléfonos del cliente). Ninguna escritura posible desde el token de la pantalla. El check-in siempre pasa por Server Actions autenticadas.
 
-### Model de dades (noves taules pendents de crear)
+### Modelo de datos (tablas nuevas pendientes de crear)
 
 ```sql
 screens
   id uuid pk
   name text              -- "Pantalla 1", "Zona funcional", etc.
   location text          -- opcional
-  access_token text      -- secret no endevinable, va a la URL del dispositiu
+  access_token text      -- secreto no adivinable, va en la URL del dispositivo
   created_at
 
 screen_assignments
   id uuid pk
   screen_id uuid         -- FK screens
   session_type text      -- 'individual' | 'group'
-  client_id uuid         -- FK clients (només individual)
-  plan_session_id uuid   -- FK plan_sessions (només individual)
-  group_session_id uuid  -- FK group_cycle_sessions (només group) ← nom real de la taula
-  assigned_by uuid       -- FK profiles (empleat que fa check-in)
+  client_id uuid         -- FK clients (solo individual)
+  plan_session_id uuid   -- FK plan_sessions (solo individual)
+  group_session_id uuid  -- FK group_cycle_sessions (solo group) ← nombre real de la tabla
+  assigned_by uuid       -- FK profiles (empleado que hace el check-in)
   started_at timestamptz
-  ended_at timestamptz   -- null mentre activa; una sola activa per screen_id
+  ended_at timestamptz   -- null mientras está activa; solo una activa por screen_id
 ```
 
-⚠️ `docs/arquitectura-pantallas.md` usa `group_sessions` però la taula real és **`group_cycle_sessions`**.
+⚠️ `docs/arquitectura-pantallas.md` usa `group_sessions`, pero la tabla real es **`group_cycle_sessions`**.
 
-### Ruta de pantalla
+### Ruta de la pantalla
 
-`/pantalla/[screenId]?token=<access_token>` — ruta pública (no requereix login), protegida per token no endevinable. Al carregar, s'subscriu a Realtime. Estat idle: logo del centre.
+`/pantalla/[screenId]?token=<access_token>` — ruta pública (no requiere login), protegida por un token no adivinable. Al cargar, se suscribe a Realtime. Estado de reposo: logo del centro.
 
-### Preguntes obertes (sense decidir)
+### Preguntas abiertas (sin decidir)
 
-- "Finalizar sesión": botó manual de l'empleat o tancament automàtic passat `session_duration`?
-- Connexió Ethernet o WiFi per a les pantalles? (depèn de si hi ha presa de xarxa a cada ubicació)
-- Número real de pantalles i mida — confirmar amb Girona Activa abans de comprar hardware.
+- "Finalizar sesión": ¿botón manual del empleado o cierre automático pasado `session_duration`?
+- ¿Conexión Ethernet o WiFi para las pantallas? (depende de si hay toma de red en cada ubicación)
+- Número real de pantallas y tamaño — confirmar con Girona Activa antes de comprar el hardware.
 
-### Pròxims passos TrainWall
+### Próximos pasos de TrainWall
 
-- [ ] Confirmar número/mida de pantalles amb el client
-- [x] Crear taules `screens` i `screen_assignments` a Supabase — SQL a `supabase/trainwall-tables.sql` (**pendent d'executar al dashboard de Supabase**)
-- [x] Server Actions: `createScreenAssignmentAction`, `endScreenAssignmentAction` — a `app/actions/screens.ts`
-- [x] Ruta `/pantalla/[screenId]` amb Supabase Realtime i estat idle — `app/pantalla/[screenId]/page.tsx` + `screen-display.tsx`
-- [x] API route `/pantalla/[screenId]/data` per refetch en temps real — `app/pantalla/[screenId]/data/route.ts`
-- [x] UI de check-in al dashboard (`/dashboard/pantallas`) — `app/dashboard/pantallas/`
-- [x] RLS de només lectura per a la ruta de pantalla — inclòs al SQL
-- [x] "Pantallas" afegit al sidebar de navegació
+- [ ] Confirmar número y tamaño de pantallas con el cliente
+- [x] Crear las tablas `screens` y `screen_assignments` en Supabase — ya existen en la BD (comprobado el 2026-11-04) y están en la migración base `supabase/migrations/20261104120000_baseline.sql`
+- [x] Server Actions: `createScreenAssignmentAction`, `endScreenAssignmentAction` — en `app/actions/screens.ts`
+- [x] Ruta `/pantalla/[screenId]` con Supabase Realtime y estado de reposo — `app/pantalla/[screenId]/page.tsx` + `screen-display.tsx`
+- [x] API route `/pantalla/[screenId]/data` para recargar los datos en tiempo real — `app/pantalla/[screenId]/data/route.ts`
+- [x] UI de check-in en el dashboard (`/dashboard/pantallas`) — `app/dashboard/pantallas/`
+- [x] RLS de solo lectura para la ruta de la pantalla — incluida en el SQL
+- [x] "Pantallas" añadido al sidebar de navegación
 
-### Display TV (pantalla física)
+### Display de TV (pantalla física)
 
-- **Tipografia en pantalla:** font-size en `vw` (3.2vw per al nom del client, 1.35vw per als exercicis) — escala automàticament a TV de 32"
-- **Sessió individual:** taula 5 columnes (bloc, exercici, sèries, reps, càrrega), agrupada per blocs (A1/A2, B, C1/C2...)
-- **Sessió grupal:** 3 columnes (Regresión=groc, Base=vermell, Progresión=verd), cadascuna amb blocs i exercicis per nivell
-- **Estat idle:** logo centrat a baixa opacitat quan no hi ha sessió activa
-- **Logo GA:** fix bottom-right sempre visible, opacitat 50%
-- **Realtime:** subscripció via `supabase_realtime` a `screen_assignments` filtrada per `screen_id` — quan l'entrenador fa check-in, la pantalla es refresca automàticament sense reload
-- **Seguretat:** URL protegida per `access_token` en query param — si el token no coincideix, retorna 404
+- **Tipografía en pantalla:** tamaño de fuente en `vw` (3.2vw para el nombre del cliente, 1.35vw para los ejercicios) — escala automáticamente en una TV de 32"
+- **Sesión individual:** tabla de 5 columnas (bloque, ejercicio, series, reps, carga), agrupada por bloques (A1/A2, B, C1/C2...)
+- **Sesión grupal:** 3 columnas (Regresión = amarillo, Base = rojo, Progresión = verde), cada una con bloques y ejercicios por nivel
+- **Estado de reposo:** logo centrado con baja opacidad cuando no hay sesión activa
+- **Logo GA:** fijo abajo a la derecha, siempre visible, opacidad 50%
+- **Realtime:** suscripción vía `supabase_realtime` a `screen_assignments` filtrada por `screen_id` — cuando el entrenador hace el check-in, la pantalla se refresca automáticamente sin recargar
+- **Seguridad:** URL protegida por `access_token` en el query param — si el token no coincide, devuelve 404
 
 ---
 
-## Notes per a futures sessions
+## Notas para futuras sesiones
 
-- **Supabase project ID:** `woomjsjbmrasydpirwap`
-- **Vercel org:** `brota-ai`
-- La galeria d'exercicis **no està completa** — els exercicis s'estan afegint progressivament per zones. `regression_id` / `progression_id` estaran buits fins que la galeria estigui completa; el codi ja fa fallback al base si són null.
-- L'app usa el mateix sistema de disseny que la web de màrqueting de BrotaAI però en mode fosc.
-- El client principal és Girona Activa (centre d'entrenament, zona Girona). Els usuaris reals del dashboard són els entrenadors.
+- **ID del proyecto de Supabase:** `woomjsjbmrasydpirwap`
+- **Org de Vercel:** `brota-ai`
+- La galería de ejercicios **no está completa** — los ejercicios se van añadiendo por zonas. `regression_id` / `progression_id` estarán vacíos hasta que la galería esté completa; el código ya usa el base si son null.
+- La app usa el mismo sistema de diseño que la web de marketing de BrotaAI, pero en modo oscuro.
+- El cliente principal es Girona Activa (centro de entrenamiento, zona de Girona). Los usuarios reales del dashboard son los entrenadores.
