@@ -15,6 +15,7 @@ Registro de bugs abiertos y resueltos. Se mantiene en cada sesión de trabajo.
 ```
 ### BUG-NNN — Título corto
 - **Detectado:** AAAA-MM-DD
+- **Caso QA:** ID del caso de `qa/` que falló (si viene de una ronda de pruebas)
 - **Síntoma:** qué ve el usuario
 - **Dónde:** pantalla o archivo
 - **Causa:** (cuando se conozca)
@@ -27,7 +28,14 @@ Registro de bugs abiertos y resueltos. Se mantiene en cada sesión de trabajo.
 
 ## Abiertos
 
-_Ninguno registrado._
+### BUG-002 — RLS abierta: un cliente con login puede leer y modificar datos de todos los clientes
+- **Detectado:** 2026-11-04 (revisión de políticas para la especificación de la vista de cliente)
+- **Síntoma:** no se ve en la interfaz. Un cliente con login puede usar la clave pública y su propia sesión para llamar a la API de Supabase (PostgREST) y leer o modificar `clients` (con `notes` internas y datos de salud de todos los clientes), `training_plans`, `plan_sessions`, `plan_session_exercises`, `training_sessions`, `training_session_clients`, `public_holidays`, catálogos de ejercicios, `screens` y `screen_assignments` (por ejemplo, cambiar lo que muestra una pantalla de TrainWall).
+- **Dónde:** políticas RLS en Supabase (`woomjsjbmrasydpirwap`) y varias server actions de `app/actions/`.
+- **Causa:** las políticas permisivas se combinan con OR. Las políticas genéricas `auth.role() = 'authenticated'` / `true` para el rol `authenticated` anulan las políticas específicas de cliente que ya existen ("Cliente lee sus planes", "Cliente lee sus sesiones", etc.). Además, varias server actions usan `createAdminClient()` sin comprobar sesión ni rol: `saveExerciseLogAction`, `completeSessionLogAction`, todo `holidays.ts`, y sin comprobar el rol en `group-sessions.ts`, `cycle-templates.ts`, `screens.ts`, `plans.ts` y `exercises.ts`.
+- **Solución:** (pendiente) ver `docs/spec-vista-cliente.md`, apartado "Permisos y privacidad". Debe resolverse antes de dar acceso a la app a clientes reales.
+- **Commit:**
+- **Verificado:**
 
 ---
 
