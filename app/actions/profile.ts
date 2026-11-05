@@ -29,19 +29,27 @@ export async function updateProfileAction(formData: FormData) {
     avatarUrl = publicUrl + `?t=${Date.now()}`
   }
 
-  const role = user.app_metadata?.role ?? 'employee'
-  const updates: Record<string, string> = { updated_at: new Date().toISOString(), role }
+  // Solo nombre y avatar: el rol no lo puede cambiar el propio usuario
+  // (la base de datos solo permite actualizar estas columnas desde la sesión).
+  const updates: Record<string, string> = { updated_at: new Date().toISOString() }
   if (fullName) updates.full_name = fullName
   if (avatarUrl) updates.avatar_url = avatarUrl
 
   const { error } = await supabase
     .from('profiles')
-    .upsert({ id: user.id, ...updates })
+    .update(updates)
+    .eq('id', user.id)
 
   if (error) return { error: 'Error actualizando perfil: ' + error.message }
 
   revalidatePath('/dashboard')
   return { success: true }
+}
+
+function roleLabel(role: unknown) {
+  if (role === 'admin') return 'Admin'
+  if (role === 'client') return 'Cliente'
+  return 'Empleado'
 }
 
 export async function getProfileAction() {
@@ -60,6 +68,6 @@ export async function getProfileAction() {
     email: user.email ?? '',
     fullName: data?.full_name ?? '',
     avatarUrl: data?.avatar_url ?? null,
-    role: user.app_metadata?.role === 'client' ? 'Cliente' : 'Empleado',
+    role: roleLabel(user.app_metadata?.role),
   }
 }

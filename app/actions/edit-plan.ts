@@ -1,14 +1,11 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createClient } from '@/lib/supabase/server'
+import { getStaffUser } from '@/lib/auth/permissions'
 
+// Admin y employee pueden editar planes.
 async function verifyEmployee() {
-  const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return null
-  if (session.user.app_metadata?.role !== 'employee') return null
-  return session.user
+  return getStaffUser()
 }
 
 export async function moveSessionAction(sessionId: string, newDate: string) {

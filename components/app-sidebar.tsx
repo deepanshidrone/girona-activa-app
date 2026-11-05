@@ -52,7 +52,7 @@ export function AppSidebar() {
         name: profile?.full_name ?? '',
         email: user.email ?? '',
         avatarUrl: profile?.avatar_url ?? null,
-        role: user.app_metadata?.role === 'client' ? 'Cliente' : 'Empleado',
+        role: user.app_metadata?.role === 'admin' ? 'Admin' : user.app_metadata?.role === 'client' ? 'Cliente' : 'Empleado',
       })
     })
   }, [])

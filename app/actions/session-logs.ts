@@ -1,7 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createClient } from '@/lib/supabase/server'
+import { requireStaff } from '@/lib/auth/permissions'
 
 export type ExerciseLogInput = {
   exercise_id: string
@@ -16,11 +16,9 @@ export type ExerciseLogInput = {
 }
 
 export async function startSessionLogAction(planSessionId: string, clientId: string) {
+  const auth = await requireStaff()
+  if (!auth.user) return { error: auth.error }
   const adminSupabase = createAdminClient()
-  const supabase = await createClient()
-
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return { error: 'No autorizado' }
 
   // Si ya existe un log para esta sesión, devuelve el existente
   const { data: existing } = await adminSupabase
@@ -36,7 +34,7 @@ export async function startSessionLogAction(planSessionId: string, clientId: str
     .insert({
       plan_session_id: planSessionId,
       client_id: clientId,
-      employee_id: session.user.id,
+      employee_id: auth.user.id,
       date: new Date().toISOString().split('T')[0],
       status: 'in_progress',
     })
@@ -51,6 +49,8 @@ export async function saveExerciseLogAction(
   sessionLogId: string,
   exerciseLog: ExerciseLogInput
 ) {
+  const auth = await requireStaff()
+  if (!auth.user) return { error: auth.error }
   const adminSupabase = createAdminClient()
 
   // Upsert por session_log_id + plan_exercise_id
@@ -97,6 +97,8 @@ export async function saveExerciseLogAction(
 }
 
 export async function completeSessionLogAction(sessionLogId: string) {
+  const auth = await requireStaff()
+  if (!auth.user) return { error: auth.error }
   const adminSupabase = createAdminClient()
 
   const { error } = await adminSupabase
@@ -109,12 +111,11 @@ export async function completeSessionLogAction(sessionLogId: string) {
 }
 
 export async function getTodaySessionsAction() {
+  const auth = await requireStaff()
+  if (!auth.user) return { error: auth.error, sessions: [], currentUserId: null }
+  const currentUserId = auth.user.id
   const adminSupabase = createAdminClient()
-  const supabase = await createClient()
   const today = new Date().toISOString().split('T')[0]
-
-  const { data: { session: authSession } } = await supabase.auth.getSession()
-  const currentUserId = authSession?.user?.id ?? null
 
   const { data, error } = await adminSupabase
     .from('plan_sessions')
@@ -169,6 +170,8 @@ export async function getTodaySessionsAction() {
 }
 
 export async function getSessionDetailAction(planSessionId: string) {
+  const auth = await requireStaff()
+  if (!auth.user) return { error: auth.error, session: null }
   const adminSupabase = createAdminClient()
 
   const { data, error } = await adminSupabase

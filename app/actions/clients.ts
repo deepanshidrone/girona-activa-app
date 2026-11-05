@@ -1,7 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createClient } from '@/lib/supabase/server'
+import { requireStaff } from '@/lib/auth/permissions'
 
 export type CreateClientData = {
   first_name: string
@@ -65,15 +65,10 @@ async function sendInviteEmail(email: string, firstName: string, inviteLink: str
 }
 
 export async function createClientAction(data: CreateClientData) {
+  const auth = await requireStaff()
+  if (!auth.user) return { error: auth.error }
+  const user = auth.user
   const adminSupabase = createAdminClient()
-  const supabase = await createClient()
-
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return { error: 'No autorizado — sesión no encontrada' }
-  const user = session.user
-
-  const role = user.app_metadata?.role
-  if (role !== 'employee') return { error: 'No autorizado — rol incorrecto: ' + (role ?? 'sin rol') }
 
   // 1. Generar link de invitación sin enviar email (evita el rate limit de Supabase)
   const { data: linkData, error: linkError } = await adminSupabase.auth.admin.generateLink({
@@ -106,7 +101,7 @@ export async function createClientAction(data: CreateClientData) {
   }
 
   // 4. Insertar cliente en la BD
-  const { error: clientError } = await supabase.from('clients').insert({
+  const { error: clientError } = await adminSupabase.from('clients').insert({
     user_id: authUser.id,
     first_name: data.first_name,
     last_name: data.last_name,

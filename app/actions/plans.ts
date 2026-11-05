@@ -1,7 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createClient } from '@/lib/supabase/server'
+import { requireStaff } from '@/lib/auth/permissions'
 
 export type PlanExercise = {
   exercise_id: string
@@ -30,11 +30,9 @@ export type CreatePlanData = {
 }
 
 export async function createPlanAction(data: CreatePlanData) {
+  const auth = await requireStaff()
+  if (!auth.user) return { error: auth.error }
   const adminSupabase = createAdminClient()
-  const supabase = await createClient()
-
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return { error: 'No autorizado' }
 
   // 1. Desactivar plan activo anterior del cliente
   await adminSupabase
@@ -60,7 +58,7 @@ export async function createPlanAction(data: CreatePlanData) {
       session_duration: data.session_duration,
       start_date: data.start_date,
       end_date: endDate.toISOString().split('T')[0],
-      created_by: session.user.id,
+      created_by: auth.user.id,
     })
     .select()
     .single()

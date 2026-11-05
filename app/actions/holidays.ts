@@ -1,6 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireStaff } from '@/lib/auth/permissions'
 
 export type Holiday = {
   date: string        // 'YYYY-MM-DD'
@@ -12,6 +13,7 @@ export type Holiday = {
 
 // Returns all holidays as a Set<string> of 'YYYY-MM-DD' for fast lookup
 export async function getActiveHolidayDatesAction(year?: number): Promise<Set<string>> {
+  if (!(await requireStaff()).user) return new Set()
   const adminSupabase = createAdminClient()
   let query = adminSupabase
     .from('public_holidays')
@@ -27,6 +29,7 @@ export async function getActiveHolidayDatesAction(year?: number): Promise<Set<st
 }
 
 export async function getHolidaysAction(yearStart?: number, yearEnd?: number): Promise<Holiday[]> {
+  if (!(await requireStaff()).user) return []
   const adminSupabase = createAdminClient()
   let query = adminSupabase
     .from('public_holidays')
@@ -41,6 +44,8 @@ export async function getHolidaysAction(yearStart?: number, yearEnd?: number): P
 }
 
 export async function toggleHolidayAction(date: string): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (!auth.user) return { error: auth.error }
   const adminSupabase = createAdminClient()
 
   const { data: existing } = await adminSupabase
@@ -67,6 +72,8 @@ export async function toggleHolidayAction(date: string): Promise<{ error?: strin
 }
 
 export async function addHolidayAction(date: string, name: string): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (!auth.user) return { error: auth.error }
   const adminSupabase = createAdminClient()
   const { error } = await adminSupabase
     .from('public_holidays')
@@ -77,6 +84,8 @@ export async function addHolidayAction(date: string, name: string): Promise<{ er
 
 // Sync from Nager.Date API — call once per year (e.g., from a future settings page)
 export async function syncHolidaysFromApiAction(year: number): Promise<{ synced: number; error?: string }> {
+  const auth = await requireStaff()
+  if (!auth.user) return { synced: 0, error: auth.error }
   const adminSupabase = createAdminClient()
 
   try {

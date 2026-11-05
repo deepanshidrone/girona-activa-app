@@ -1,7 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createClient } from '@/lib/supabase/server'
+import { requireStaff } from '@/lib/auth/permissions'
 
 export type CreateExerciseData = {
   name: string
@@ -16,11 +16,9 @@ export type CreateExerciseData = {
 }
 
 export async function createExerciseAction(data: CreateExerciseData) {
+  const auth = await requireStaff()
+  if (!auth.user) return { error: auth.error }
   const adminSupabase = createAdminClient()
-  const supabase = await createClient()
-
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return { error: 'No autorizado' }
 
   const { data: exercise, error } = await adminSupabase
     .from('exercises')
@@ -53,11 +51,9 @@ export async function createExerciseAction(data: CreateExerciseData) {
 }
 
 export async function createCatalogItemAction(table: 'movement_patterns' | 'equipment' | 'objectives' | 'muscle_groups', name: string) {
+  const auth = await requireStaff()
+  if (!auth.user) return { error: auth.error }
   const adminSupabase = createAdminClient()
-  const supabase = await createClient()
-
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return { error: 'No autorizado' }
 
   const { data, error } = await adminSupabase
     .from(table)

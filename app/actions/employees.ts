@@ -2,6 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+import { requirePermission, requireStaff } from '@/lib/auth/permissions'
 
 export type Employee = {
   id: string
@@ -34,6 +35,7 @@ export type UpdateEmployeeData = {
 }
 
 export async function getEmployeesAction(): Promise<Employee[]> {
+  if (!(await requireStaff()).user) return []
   const supabase = createAdminClient()
 
   const { data: authUsers, error } = await supabase.auth.admin.listUsers({ perPage: 1000 })
@@ -84,6 +86,7 @@ export async function getEmployeesAction(): Promise<Employee[]> {
 }
 
 export async function getEmployeeByIdAction(id: string): Promise<Employee | null> {
+  if (!(await requireStaff()).user) return null
   const supabase = createAdminClient()
 
   const { data: authUser, error } = await supabase.auth.admin.getUserById(id)
@@ -166,6 +169,8 @@ async function sendEmployeeInviteEmail(email: string, fullName: string, inviteLi
 }
 
 export async function createEmployeeAction(data: CreateEmployeeData): Promise<{ error?: string; id?: string }> {
+  const auth = await requirePermission('empleados.gestionar')
+  if (!auth.user) return { error: auth.error }
   const supabase = createAdminClient()
 
   // Generate invite link (same flow as clients — no Supabase default email)
@@ -218,6 +223,8 @@ export async function createEmployeeAction(data: CreateEmployeeData): Promise<{ 
 }
 
 export async function updateEmployeeAction(id: string, data: UpdateEmployeeData): Promise<{ error?: string }> {
+  const auth = await requirePermission('empleados.gestionar')
+  if (!auth.user) return { error: auth.error }
   const supabase = createAdminClient()
 
   // Update app_metadata role if role changed
@@ -245,6 +252,8 @@ export async function updateEmployeeAction(id: string, data: UpdateEmployeeData)
 }
 
 export async function toggleEmployeeActiveAction(id: string, is_active: boolean): Promise<{ error?: string }> {
+  const auth = await requirePermission('empleados.gestionar')
+  if (!auth.user) return { error: auth.error }
   const supabase = createAdminClient()
 
   const { error } = await supabase
@@ -260,6 +269,8 @@ export async function toggleEmployeeActiveAction(id: string, is_active: boolean)
 }
 
 export async function changeEmployeePasswordAction(id: string, newPassword: string): Promise<{ error?: string }> {
+  const auth = await requirePermission('empleados.gestionar')
+  if (!auth.user) return { error: auth.error }
   if (newPassword.length < 8) return { error: 'La contrasenya ha de tenir mínim 8 caràcters.' }
 
   const supabase = createAdminClient()
@@ -270,6 +281,7 @@ export async function changeEmployeePasswordAction(id: string, newPassword: stri
 }
 
 export async function getEmployeeSessionsAction(id: string) {
+  if (!(await requireStaff()).user) return []
   const supabase = createAdminClient()
 
   const { data: slots } = await supabase

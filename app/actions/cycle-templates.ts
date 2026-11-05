@@ -1,7 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createClient } from '@/lib/supabase/server'
+import { requireStaff } from '@/lib/auth/permissions'
 
 export type TemplateSlotData = {
   day_of_week: number   // 0=Lun … 4=Vie
@@ -23,6 +23,8 @@ export type CreateTemplateData = {
 }
 
 export async function getTemplatesAction() {
+  const auth = await requireStaff()
+  if (!auth.user) return { error: auth.error, templates: [] }
   const adminSupabase = createAdminClient()
   const { data, error } = await adminSupabase
     .from('cycle_templates')
@@ -39,6 +41,8 @@ export async function getTemplatesAction() {
 }
 
 export async function getTemplateByIdAction(id: string) {
+  const auth = await requireStaff()
+  if (!auth.user) return { error: auth.error, template: null }
   const adminSupabase = createAdminClient()
   const { data, error } = await adminSupabase
     .from('cycle_templates')
@@ -55,14 +59,13 @@ export async function getTemplateByIdAction(id: string) {
 }
 
 export async function createTemplateAction(data: CreateTemplateData) {
+  const auth = await requireStaff()
+  if (!auth.user) return { error: auth.error }
   const adminSupabase = createAdminClient()
-  const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return { error: 'No autorizado' }
 
   const { data: tmpl, error: tmplError } = await adminSupabase
     .from('cycle_templates')
-    .insert({ name: data.name, notes: data.notes || null, created_by: session.user.id })
+    .insert({ name: data.name, notes: data.notes || null, created_by: auth.user.id })
     .select()
     .single()
 
@@ -87,10 +90,9 @@ export async function updateTemplateAction(
   id: string,
   data: { name?: string; notes?: string; days?: TemplateDayData[]; slots?: TemplateSlotData[] }
 ) {
+  const auth = await requireStaff()
+  if (!auth.user) return { error: auth.error }
   const adminSupabase = createAdminClient()
-  const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return { error: 'No autorizado' }
 
   if (data.name !== undefined || data.notes !== undefined) {
     const { error } = await adminSupabase
@@ -120,10 +122,9 @@ export async function updateTemplateAction(
 }
 
 export async function deleteTemplateAction(id: string) {
+  const auth = await requireStaff()
+  if (!auth.user) return { error: auth.error }
   const adminSupabase = createAdminClient()
-  const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return { error: 'No autorizado' }
 
   // Prevent deleting the default template
   const { data: tmpl } = await adminSupabase.from('cycle_templates').select('is_default').eq('id', id).single()
@@ -135,10 +136,9 @@ export async function deleteTemplateAction(id: string) {
 }
 
 export async function duplicateTemplateAction(id: string, name: string) {
+  const auth = await requireStaff()
+  if (!auth.user) return { error: auth.error }
   const adminSupabase = createAdminClient()
-  const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return { error: 'No autorizado' }
 
   const { data: src } = await adminSupabase
     .from('cycle_templates')
@@ -150,7 +150,7 @@ export async function duplicateTemplateAction(id: string, name: string) {
 
   const { data: newTmpl, error } = await adminSupabase
     .from('cycle_templates')
-    .insert({ name, created_by: session.user.id })
+    .insert({ name, created_by: auth.user.id })
     .select()
     .single()
 

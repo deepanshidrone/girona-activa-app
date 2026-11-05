@@ -76,10 +76,19 @@ RESEND_API_KEY=re_...
 
 ### Roles
 
-| Rol | Tabla `profiles.role` | Acceso |
+| Rol | Quién es | Acceso |
 |---|---|---|
-| `employee` | `employee` | Dashboard completo (entrenadores, admins) |
-| `client` | `client` | Solo la vista de su plan (no implementada en el MVP) |
+| `admin` | El jefe del centro (también entrena). Puede haber varios | Todo |
+| `employee` | Entrenador contratado | Dashboard completo salvo los permisos que el admin no le conceda (hoy: borrar clientes y gestionar empleados) |
+| `client` | Socio del centro | Solo su área `/client` |
+
+**Fuente del rol:** `app_metadata.role` en Supabase Auth, que viaja en el token de sesión y solo se cambia desde el servidor. `profiles.role` es una copia informativa que mantiene `employees.ts`; el usuario no la puede modificar.
+
+**Control de acceso en el código** (`lib/auth/permissions.ts`):
+- Toda Server Action empieza con `requireStaff()` o `requirePermission('...')` antes de usar `createAdminClient()`. Las Server Actions se pueden llamar por POST directo, sin pasar por la UI.
+- Para decidir permisos se usa `getUser()`, nunca `getSession()` (en el servidor no verifica el token).
+- Los permisos del employee están fijos en `EMPLOYEE_PERMISSIONS` hasta que exista la página de Configuración.
+- `proxy.ts` deniega por defecto: `/dashboard` solo para employee y admin, `/client` solo para client.
 
 ### Usuarios empleados (tabla `profiles`)
 
@@ -231,11 +240,16 @@ Para sesiones grupales: hasta `max_clients` filas, cada una con su `difficulty` 
 
 ### Convenciones de RLS
 
-Todas las tablas usan:
+Desde BUG-002 (migración `20261105213646_bug002_rls_por_rol.sql`):
 ```sql
-FOR ALL USING (auth.role() = 'authenticated')
+-- Toda tabla nueva del centro: solo personal (employee o admin, leído del token)
+create policy "personal_todo" on public.<tabla> for all to authenticated
+  using ((select public.is_staff())) with check ((select public.is_staff()));
 ```
-(No `is_employee()` — no funciona bien en contexto de servidor)
+- **Nunca** usar `auth.role() = 'authenticated'` ni `using (true)`: deja entrar a los clientes con login.
+- Los clientes no tienen acceso directo a ninguna tabla. Lo que vean se les dará con vistas de solo lectura sin columnas internas (ver `docs/spec-vista-cliente.md`).
+- Excepción: `screen_assignments` tiene lectura pública para el tiempo real de las pantallas de TrainWall.
+- `profiles`: cada usuario lee el suyo y solo puede editar `full_name`, `avatar_url` y `updated_at`.
 
 Permisos necesarios (ejecutar después de crear tablas nuevas):
 ```sql
@@ -249,6 +263,7 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
 ```sql
 -- Crea automáticamente una fila en profiles al crear un usuario en auth.users
 -- role por defecto: 'employee'. Para clientes: pasar role='client' en raw_user_meta_data
+-- (además, el código fija app_metadata.role, que es la fuente real del rol)
 create trigger on_auth_user_created after insert on auth.users ...
 ```
 
@@ -444,7 +459,9 @@ Los bugs abiertos y resueltos se registran en [docs/BUGS.md](./docs/BUGS.md) (ID
 - [ ] **Página de Configuración** (`/dashboard/configuracio`) — sección general para los parámetros del centro:
   - **Festivos:** listado completo de `public_holidays` con interruptor `is_active` por día, formulario para añadir festivos nuevos (puentes, cierres del centro) y botón "Cargar festivos [año]" que llama a `syncHolidaysFromApiAction` (API Nager.Date). Por ahora, 2026 y 2027 ya están cargados a mano; para 2028 y siguientes habrá que ejecutar la sincronización.
   - **Horarios del centro:** posibilidad futura de definir horarios de apertura y cierre
-  - Acceso restringido al rol `employee`
+  - **Permisos por rol (solo admin):** el admin decide qué acciones puede hacer el rol `employee` (por ejemplo, borrar clientes). El admin siempre tiene todos los permisos. Mientras no exista esta página, los permisos son fijos en el código (helper `requirePermission()`), con estos valores por defecto: employee puede todo salvo borrar clientes y gestionar empleados.
+  - **Marca y módulos del centro:** nombre, logo, color y módulos activos (`center_settings`, ver `docs/spec-vista-cliente.md` §7.4)
+  - Acceso: festivos y horarios para `employee` y `admin`; permisos, marca y módulos solo para `admin`
 
 ---
 

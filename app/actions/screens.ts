@@ -1,7 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createClient } from '@/lib/supabase/server'
+import { requireStaff } from '@/lib/auth/permissions'
 
 export type Screen = {
   id: string
@@ -24,6 +24,8 @@ export type ActiveAssignment = {
 }
 
 export async function getScreensAction(): Promise<{ screens: Screen[]; error: string | null }> {
+  const auth = await requireStaff()
+  if (!auth.user) return { screens: [], error: auth.error }
   const adminSupabase = createAdminClient()
   const { data, error } = await adminSupabase
     .from('screens')
@@ -38,6 +40,8 @@ export async function getScreensWithStatusAction(): Promise<{
   screens: (Screen & { activeAssignment: ActiveAssignment | null })[]
   error: string | null
 }> {
+  const auth = await requireStaff()
+  if (!auth.user) return { screens: [], error: auth.error }
   const adminSupabase = createAdminClient()
 
   const { data: screens, error } = await adminSupabase
@@ -87,9 +91,9 @@ export async function createScreenAssignmentAction(params: {
   plan_session_id?: string
   group_session_id?: string
 }): Promise<{ success: boolean; error: string | null }> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'No autenticado' }
+  const auth = await requireStaff()
+  if (!auth.user) return { success: false, error: auth.error }
+  const user = auth.user
 
   const adminSupabase = createAdminClient()
 
@@ -118,9 +122,9 @@ export async function createScreenAssignmentAction(params: {
 export async function endScreenAssignmentAction(
   screen_id: string
 ): Promise<{ success: boolean; error: string | null }> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'No autenticado' }
+  const auth = await requireStaff()
+  if (!auth.user) return { success: false, error: auth.error }
+  const user = auth.user
 
   const adminSupabase = createAdminClient()
   const { error } = await adminSupabase
@@ -133,6 +137,8 @@ export async function endScreenAssignmentAction(
   return { success: true, error: null }
 }
 
+// PÚBLICA a propósito: la usa la ruta de la pantalla (sin login). Solo devuelve
+// la pantalla si el id y el token secreto coinciden.
 // Used by the public screen route to validate the token and get the screen id
 export async function getScreenByTokenAction(
   screenId: string,

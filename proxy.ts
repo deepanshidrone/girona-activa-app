@@ -38,24 +38,22 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Cliente intentando acceder a rutas de empleado → su área
-  if (isEmployeeRoute && role === 'client') {
-    const url = request.nextUrl.clone()
-    url.pathname = '/client'
-    return NextResponse.redirect(url)
-  }
+  // Denegar por defecto: cada área solo para su rol.
+  // Un usuario con sesión pero sin rol válido no entra en ninguna.
+  const isStaff = role === 'employee' || role === 'admin'
+  const isClient = role === 'client'
+  const homeFor = isStaff ? '/dashboard' : isClient ? '/client' : null
 
-  // Empleado intentando acceder a rutas de cliente → su área
-  if (isClientRoute && role === 'employee') {
+  if ((isEmployeeRoute && !isStaff) || (isClientRoute && !isClient)) {
     const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
+    url.pathname = homeFor ?? '/logout'
     return NextResponse.redirect(url)
   }
 
   // Login con sesión activa → redirigir según rol
-  if (path === '/login' && user) {
+  if (path === '/login' && user && homeFor) {
     const url = request.nextUrl.clone()
-    url.pathname = role === 'client' ? '/client' : '/dashboard'
+    url.pathname = homeFor
     return NextResponse.redirect(url)
   }
 

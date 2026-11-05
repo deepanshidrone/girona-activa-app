@@ -1,15 +1,12 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createClient } from '@/lib/supabase/server'
+import { requirePermission } from '@/lib/auth/permissions'
 
 export async function deleteClientAction(clientId: string) {
-  const supabase = await createClient()
+  const auth = await requirePermission('clientes.borrar')
+  if (!auth.user) return { error: auth.error }
   const adminSupabase = createAdminClient()
-
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return { error: 'No autorizado' }
-  if (session.user.app_metadata?.role !== 'employee') return { error: 'No autorizado' }
 
   // Obtener el user_id del cliente para borrar también de auth
   const { data: cliente } = await adminSupabase

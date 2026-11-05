@@ -1,7 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createClient } from '@/lib/supabase/server'
+import { requireStaff } from '@/lib/auth/permissions'
 import { CYCLE_PATTERN_20, NEXT_BLOCK, DAY_SLOT_TEMPLATE, getTodayDayIndex } from '@/lib/cycle-utils'
 import { generateCycleDates } from '@/lib/calendar-utils'
 import { getActiveHolidayDatesAction } from './holidays'
@@ -44,18 +44,16 @@ export type CreateGroupPlanData = {
 export type { Difficulty } from '@/lib/group-sessions-utils'
 
 export async function createGroupCycleAction(data: CreateGroupCycleData) {
+  const auth = await requireStaff()
+  if (!auth.user) return { error: auth.error }
   const adminSupabase = createAdminClient()
-  const supabase = await createClient()
-
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return { error: 'No autorizado' }
 
   const { data: cycle, error: cycleError } = await adminSupabase
     .from('group_cycles')
     .insert({
       start_date: data.start_date,
       notes: data.notes || null,
-      created_by: session.user.id,
+      created_by: auth.user.id,
     })
     .select()
     .single()
@@ -247,11 +245,9 @@ export async function createGroupCycleAction(data: CreateGroupCycleData) {
 }
 
 export async function createGroupPlanAction(data: CreateGroupPlanData) {
+  const auth = await requireStaff()
+  if (!auth.user) return { error: auth.error }
   const adminSupabase = createAdminClient()
-  const supabase = await createClient()
-
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return { error: 'No autorizado' }
 
   // Desactivar plan activo anterior
   await adminSupabase
@@ -277,7 +273,7 @@ export async function createGroupPlanAction(data: CreateGroupPlanData) {
       session_duration: data.session_duration,
       start_date: data.start_date,
       end_date: endDate.toISOString().split('T')[0],
-      created_by: session.user.id,
+      created_by: auth.user.id,
     })
     .select()
     .single()
@@ -299,6 +295,8 @@ export async function createGroupPlanAction(data: CreateGroupPlanData) {
 }
 
 export async function getGroupCycleByIdAction(id: string) {
+  const auth = await requireStaff()
+  if (!auth.user) return { error: auth.error, cycle: null }
   const adminSupabase = createAdminClient()
   const { data, error } = await adminSupabase
     .from('group_cycles')
@@ -345,10 +343,9 @@ export async function updateSlotAssignmentAction(
   clientIds: string[],
   difficulties?: Record<string, 'regression' | 'base' | 'progression'>
 ) {
+  const auth = await requireStaff()
+  if (!auth.user) return { error: auth.error }
   const adminSupabase = createAdminClient()
-  const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return { error: 'No autorizado' }
 
   const { error: sessionError } = await adminSupabase
     .from('training_sessions')
@@ -377,10 +374,9 @@ export async function updateGroupSessionExerciseAction(
   gseId: string,
   data: { sets?: number; reps?: number; weight_kg?: number | null; notes?: string | null }
 ) {
+  const auth = await requireStaff()
+  if (!auth.user) return { error: auth.error }
   const adminSupabase = createAdminClient()
-  const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return { error: 'No autorizado' }
 
   const { error } = await adminSupabase
     .from('group_session_exercises')
@@ -396,10 +392,9 @@ export async function addGroupSessionExerciseAction(
   exerciseId: string,
   data: { sets: number; reps: number; weight_kg?: number | null; order_index: number }
 ) {
+  const auth = await requireStaff()
+  if (!auth.user) return { error: auth.error }
   const adminSupabase = createAdminClient()
-  const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return { error: 'No autorizado' }
 
   const { data: row, error } = await adminSupabase
     .from('group_session_exercises')
@@ -419,10 +414,9 @@ export async function addGroupSessionExerciseAction(
 }
 
 export async function deleteGroupSessionExerciseAction(gseId: string) {
+  const auth = await requireStaff()
+  if (!auth.user) return { error: auth.error }
   const adminSupabase = createAdminClient()
-  const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return { error: 'No autorizado' }
 
   const { error } = await adminSupabase
     .from('group_session_exercises')
@@ -434,10 +428,9 @@ export async function deleteGroupSessionExerciseAction(gseId: string) {
 }
 
 export async function swapGroupSessionExerciseAction(gseId: string, newExerciseId: string) {
+  const auth = await requireStaff()
+  if (!auth.user) return { error: auth.error }
   const adminSupabase = createAdminClient()
-  const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return { error: 'No autorizado' }
 
   const { error } = await adminSupabase
     .from('group_session_exercises')
@@ -449,6 +442,8 @@ export async function swapGroupSessionExerciseAction(gseId: string, newExerciseI
 }
 
 export async function getTodayGroupSlotsAction() {
+  const auth = await requireStaff()
+  if (!auth.user) return { slots: [] }
   const adminSupabase = createAdminClient()
 
   const todayStr = new Date().toISOString().split('T')[0]
@@ -479,6 +474,8 @@ export async function getTodayGroupSlotsAction() {
 }
 
 export async function getGroupCyclesAction() {
+  const auth = await requireStaff()
+  if (!auth.user) return { error: auth.error, cycles: [] }
   const adminSupabase = createAdminClient()
   const { data, error } = await adminSupabase
     .from('group_cycles')
