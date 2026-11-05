@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, User, Calendar, Dumbbell, ClipboardList, CheckCircle2, Clock, XCircle } from 'lucide-react'
 import { DeleteClientButton } from './delete-button'
+import { AccessCard, type AccessStatus } from './access-card'
 
 export default async function ClienteDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -15,6 +16,21 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
     .single()
 
   if (!cliente) notFound()
+
+  // Estado del acceso a la app (opcional): sin cuenta, invitado o activo
+  let access: { status: AccessStatus; invitedAt: string | null; lastSignInAt: string | null } =
+    { status: 'none', invitedAt: null, lastSignInAt: null }
+  if (cliente.user_id) {
+    const { data: authData } = await supabase.auth.admin.getUserById(cliente.user_id)
+    const authUser = authData?.user
+    if (authUser) {
+      access = {
+        status: authUser.last_sign_in_at ? 'active' : 'invited',
+        invitedAt: authUser.invited_at ?? authUser.created_at ?? null,
+        lastSignInAt: authUser.last_sign_in_at ?? null,
+      }
+    }
+  }
 
   const { data: planes } = await supabase
     .from('training_plans')
@@ -68,10 +84,12 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Datos personales */}
-        <div className="md:col-span-1 bg-[#1C1C1C] rounded-2xl border border-white/10 p-5">
+        {/* Datos personales y acceso a la app */}
+        <div className="md:col-span-1 flex flex-col gap-4">
+        <div className="bg-[#1C1C1C] rounded-2xl border border-white/10 p-5">
           <h2 className="font-semibold text-white mb-4">Datos personales</h2>
           <dl className="flex flex-col gap-3">
+            <DataRow label="Email" value={cliente.email ?? '—'} />
             <DataRow label="Sexo" value={sexoLabel} />
             {edad && <DataRow label="Edad" value={`${edad} años`} />}
             {cliente.birth_date && (
@@ -90,6 +108,15 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
               <p className="text-sm text-white/70">{cliente.notes}</p>
             </div>
           )}
+        </div>
+
+        <AccessCard
+          clientId={id}
+          email={cliente.email ?? null}
+          status={access.status}
+          invitedAt={access.invitedAt}
+          lastSignInAt={access.lastSignInAt}
+        />
         </div>
 
         {/* Planes */}

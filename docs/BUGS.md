@@ -42,9 +42,9 @@ Registro de bugs abiertos y resueltos. Se mantiene en cada sesión de trabajo.
 - **Síntoma:** un cliente dado de alta desde el dashboard puede quedar con `profiles.role = 'employee'`. No da permisos (el acceso sale de `app_metadata.role`), pero `profiles.role` se usa para listar empleados y para elegir el entrenador de una sesión grupal, así que el cliente podría aparecer como entrenador.
 - **Dónde:** trigger `on_auth_user_created` → `public.handle_new_user()`; `app/actions/clients.ts` y `app/actions/employees.ts`
 - **Causa:** el trigger lee `app_metadata.role` al insertar el usuario y, si no lo encuentra, pone `'employee'`. Supabase crea el usuario antes de que el código fije `app_metadata.role` (con `generateLink` + `updateUserById`, o con `createUser`), así que el trigger no lo ve.
-- **Solución:** (pendiente) por defecto el rol menos privilegiado (`client`) y mantener `profiles.role` sincronizado cuando cambie `app_metadata.role` (trigger de actualización en `auth.users`). Revisar los perfiles existentes.
+- **Solución:** migración `20261105224602_alta_clientes_email_y_bug003.sql`: `handle_new_user()` pone `client` por defecto y el nuevo trigger `on_auth_user_role_changed` copia `app_metadata.role` a `profiles.role` cada vez que cambia. Se corrigió el único perfil desincronizado.
 - **Commit:**
-- **Verificado:**
+- **Verificado:** 2026-11-05, por Claude: con un usuario temporal, el perfil se crea como `client` y se sincroniza al cambiar el rol; 0 perfiles desincronizados en la BD.
 
 ---
 

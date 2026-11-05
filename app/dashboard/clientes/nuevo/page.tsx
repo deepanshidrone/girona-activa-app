@@ -52,7 +52,7 @@ export default function NuevoClientePage() {
       height_cm: parseInt(form.height_cm),
       weight_kg: parseFloat(form.weight_kg),
       start_date: form.start_date,
-      email: form.email,
+      email: form.email || undefined,
       notes: form.notes,
     })
 
@@ -64,7 +64,7 @@ export default function NuevoClientePage() {
 
     setSuccess(true)
     setLoading(false)
-    setTimeout(() => router.push('/dashboard/clientes'), 2000)
+    setTimeout(() => router.push(result.id ? `/dashboard/clientes/${result.id}` : '/dashboard/clientes'), 1500)
   }
 
   if (success) {
@@ -75,8 +75,8 @@ export default function NuevoClientePage() {
             <UserPlus className="h-8 w-8 text-green-600" />
           </div>
           <h2 className="text-xl font-bold text-white mb-1">Cliente creado correctamente</h2>
-          <p className="text-white/50 text-sm">Se ha enviado un email al cliente para establecer su contraseña.</p>
-          <p className="text-white/30 text-xs mt-2">Redirigiendo...</p>
+          <p className="text-white/50 text-sm">Si va a usar la app, puedes invitarle desde su ficha.</p>
+          <p className="text-white/30 text-xs mt-2">Abriendo su ficha...</p>
         </div>
       </div>
     )
@@ -152,9 +152,9 @@ export default function NuevoClientePage() {
 
         {/* Email */}
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="email">Email <span className="text-red-500">*</span></Label>
-          <Input id="email" name="email" type="email" value={form.email} onChange={handleChange} placeholder="cliente@email.com" required />
-          <p className="text-xs text-white/40">Se enviará un email al cliente para que establezca su contraseña de acceso.</p>
+          <Label htmlFor="email">Email</Label>
+          <Input id="email" name="email" type="email" value={form.email} onChange={handleChange} placeholder="cliente@email.com" />
+          <p className="text-xs text-white/40">Opcional. Solo hace falta si el cliente va a usar la app: la invitación se envía después, desde su ficha.</p>
         </div>
 
         {/* Comentarios */}
