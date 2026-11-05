@@ -83,7 +83,24 @@ Esto condiciona la v1 (ver §7).
 - Ver el feedback del cliente en el detalle de la sesión y en la ficha del cliente. Si hay "dolor: sí", se resalta.
 - Indicador "feedback sin leer" en la ficha del cliente.
 
-### 4.3 Requisitos no funcionales
+### 4.3 Alta y acceso del cliente (decidido 2026-11-05)
+
+Hasta ahora el alta creaba a la vez la ficha, la cuenta de acceso y enviaba la invitación. Se separan:
+
+1. **Alta de cliente** (`/dashboard/clientes/nuevo`): crea solo la ficha. El **email es opcional** y se guarda en la nueva columna `clients.email`. No se envía nada.
+2. **Detalle del cliente:** sección "Acceso a la app" con el estado:
+   - **Sin acceso:** `clients.user_id` vacío.
+   - **Invitado:** hay cuenta, pero el cliente nunca ha iniciado sesión.
+   - **Activo:** el cliente ha iniciado sesión alguna vez.
+   Botón "Enviar invitación" (sin acceso) o "Reenviar invitación" (invitado). Sin email, primero hay que añadirlo.
+3. **Invitación:** crea la cuenta con `app_metadata.role = 'client'`, la enlaza a la ficha y envía el correo (Resend). El reenvío genera un enlace nuevo; el anterior caduca a las 24 h. El cliente fija su contraseña en `/auth/set-password` (ya existe).
+4. **BUG-003:** el trigger de alta deja de poner `employee` por defecto y `profiles.role` se mantiene sincronizado con `app_metadata.role`.
+
+Migración de datos: `clients.email` se rellena con el email de la cuenta en los clientes que ya la tienen. Los clientes antiguos sin cuenta quedan sin email hasta que un empleado lo introduzca.
+
+Fuera de este cambio: trasladar a la cuenta un cambio de email de la ficha, y retirar el acceso a un cliente sin borrar su ficha.
+
+### 4.4 Requisitos no funcionales
 - Mobile-first (375 px de referencia), pulsables de al menos 44 px y navegación con una mano.
 - Instalable como PWA ("Añadir a pantalla de inicio": manifest + icono del centro). Sin notificaciones push.
 - "Hoy" se calcula en la zona horaria del centro (`Europe/Madrid`), no en UTC. El código actual usa `toISOString()`, que falla entre las 00:00 y las 01:00/02:00.

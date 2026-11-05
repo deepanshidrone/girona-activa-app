@@ -33,7 +33,16 @@ Registro de bugs abiertos y resueltos. Se mantiene en cada sesión de trabajo.
 - **Síntoma:** no se ve en la interfaz. Un cliente con login puede usar la clave pública y su propia sesión para llamar a la API de Supabase (PostgREST) y leer o modificar `clients` (con `notes` internas y datos de salud de todos los clientes), `training_plans`, `plan_sessions`, `plan_session_exercises`, `training_sessions`, `training_session_clients`, `public_holidays`, catálogos de ejercicios, `screens` y `screen_assignments` (por ejemplo, cambiar lo que muestra una pantalla de TrainWall).
 - **Dónde:** políticas RLS en Supabase (`woomjsjbmrasydpirwap`) y varias server actions de `app/actions/`.
 - **Causa:** las políticas permisivas se combinan con OR. Las políticas genéricas `auth.role() = 'authenticated'` / `true` para el rol `authenticated` anulan las políticas específicas de cliente que ya existen ("Cliente lee sus planes", "Cliente lee sus sesiones", etc.). Además, varias server actions usan `createAdminClient()` sin comprobar sesión ni rol: `saveExerciseLogAction`, `completeSessionLogAction`, todo `holidays.ts`, y sin comprobar el rol en `group-sessions.ts`, `cycle-templates.ts`, `screens.ts`, `plans.ts` y `exercises.ts`.
-- **Solución:** (pendiente) ver `docs/spec-vista-cliente.md`, apartado "Permisos y privacidad". Debe resolverse antes de dar acceso a la app a clientes reales.
+- **Solución:** migración `20261105213646_bug002_rls_por_rol.sql` (políticas por rol con `is_staff()` leído del token; clientes sin acceso directo a tablas; `screens` cerrada; `profiles` solo editable en nombre y avatar). Helper `lib/auth/permissions.ts` y control de acceso en todas las Server Actions. `proxy.ts` deniega por defecto.
+- **Commit:**
+- **Verificado:** 2026-11-05, por Claude: migración aplicada; 26 pruebas por API con el usuario "Cliente Test" y sin sesión (no lee ni modifica datos del centro, no puede cambiarse el rol) y simulación en BD de sesiones employee/admin (ven todos los datos). Pendiente: prueba manual del dashboard por el propietario.
+
+### BUG-003 — Los usuarios nuevos se crean con `profiles.role = 'employee'`
+- **Detectado:** 2026-11-05 (al crear el usuario de prueba "Cliente Test")
+- **Síntoma:** un cliente dado de alta desde el dashboard puede quedar con `profiles.role = 'employee'`. No da permisos (el acceso sale de `app_metadata.role`), pero `profiles.role` se usa para listar empleados y para elegir el entrenador de una sesión grupal, así que el cliente podría aparecer como entrenador.
+- **Dónde:** trigger `on_auth_user_created` → `public.handle_new_user()`; `app/actions/clients.ts` y `app/actions/employees.ts`
+- **Causa:** el trigger lee `app_metadata.role` al insertar el usuario y, si no lo encuentra, pone `'employee'`. Supabase crea el usuario antes de que el código fije `app_metadata.role` (con `generateLink` + `updateUserById`, o con `createUser`), así que el trigger no lo ve.
+- **Solución:** (pendiente) por defecto el rol menos privilegiado (`client`) y mantener `profiles.role` sincronizado cuando cambie `app_metadata.role` (trigger de actualización en `auth.users`). Revisar los perfiles existentes.
 - **Commit:**
 - **Verificado:**
 
