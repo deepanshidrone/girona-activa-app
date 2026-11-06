@@ -1,6 +1,6 @@
 # FRD — BrotaFit (Girona Activa)
 **Documento de requisitos funcionales**
-Versión: 2.0 | Última actualización: 2026-11-06 | Repo: `deepanshidrone/girona-activa-app`
+Versión: 2.1 | Última actualización: 2026-11-06 | Repo: `deepanshidrone/girona-activa-app`
 
 Este es el **documento de producto** de BrotaFit: qué hace la app, qué está hecho y qué falta. Se mantiene al día con cada funcionalidad (ver [§7](#7-cómo-se-mantiene-este-documento)). El detalle técnico (convenciones de código, migraciones, RLS) está en `CLAUDE.md`. Las especificaciones de módulos concretos están en `docs/spec-*.md`.
 
@@ -70,6 +70,7 @@ Nació como app a medida de **Girona Activa** (centro de entrenamiento personal 
 | 4.11 | Panel | `/dashboard` | ✅ |
 | 4.12 | Configuración del centro | `/dashboard/configuracion` | ⏳ |
 | 4.13 | Informes, ranking, comunidad, nutrición | — | ⏳ fases posteriores |
+| 4.14 | Indicadores del centro (KPIs, solo admin) | `/dashboard/indicadores` | ⏳ v1 especificada |
 
 ---
 
@@ -110,6 +111,8 @@ Nació como app a medida de **Girona Activa** (centro de entrenamiento personal 
 
 Reglas: un cliente solo tiene un plan activo a la vez.
 
+⏳ **Estados y baja** (especificado en [`spec-kpis.md`](./spec-kpis.md) §8): estados Activo (con plan vigente), Inactivo (de alta sin plan vigente) y Baja. Cualquier miembro del personal da de baja (fecha y motivo obligatorios) y reactiva la misma ficha. Se guarda el historial de periodos de alta y baja. El borrado físico queda solo para el RGPD.
+
 ### 4.3 Empleados ✅
 
 Solo el admin gestiona empleados; el employee puede ver el listado.
@@ -118,6 +121,7 @@ Solo el admin gestiona empleados; el employee puede ver el listado.
 - Alta de empleado o admin: crea la cuenta y envía la invitación con diseño corporativo.
 - Ficha: editar datos y rol, activar o desactivar, cambiar la contraseña y ver las sesiones asignadas.
 - ⏳ Pendiente: ocultar al employee los botones que no puede usar (hoy los ve, pero el servidor los rechaza).
+- ⏳ Horas semanales disponibles por empleado (para el % de ocupación de los indicadores, ver `spec-kpis.md` §7.5).
 
 ### 4.4 Galería de ejercicios 🟡
 
@@ -253,6 +257,8 @@ Módulo opcional. Diseño en `docs/arquitectura-pantallas.md` y propuesta comerc
 
 `/dashboard`: estadísticas y accesos rápidos.
 
+⏳ El admin verá además una franja con 4 indicadores clave y el enlace al panel de indicadores (§4.14). Hay que retirar el texto fijo "centre de gestió de Girona Activa".
+
 ### 4.12 Configuración del centro ⏳
 
 Página `/dashboard/configuracion`, todavía sin crear:
@@ -267,10 +273,40 @@ Página `/dashboard/configuracion`, todavía sin crear:
 ### 4.13 Fases posteriores ⏳
 
 Preparados en el modelo de datos de la spec de la vista de cliente, pero sin construir:
-- **Informes y métricas:** del cliente (evolución de RPE, RIR y carga) y del centro (altas, bajas, leads).
+- **Informes del cliente:** evolución de RPE, RIR y carga por ejercicio. Las métricas del centro pasan al módulo de indicadores (§4.14).
 - **Ranking:** con consentimiento del cliente (`ranking_opt_in`).
 - **Comunidad.**
 - **Nutrición:** para el prospecto Pragma Health Club.
+
+### 4.14 Indicadores del centro (KPIs) ⏳
+
+**Especificación completa:** [`docs/spec-kpis.md`](./spec-kpis.md) (aprobada el 2026-11-06).
+
+Panel en `/dashboard/indicadores`, **solo para el admin** (permiso `indicadores.ver`, con el employee en `false`). Responde a los KPIs que pide Girona Activa.
+
+- **v1:** todos los indicadores se implementan aunque hoy salgan vacíos, con estados vacíos explícitos.
+  - Clientes por estado.
+  - Altas (nuevas y reactivaciones) y bajas con su motivo.
+  - Churn mensual y retención (renovación en 14 días).
+  - Adherencia del centro.
+  - Ocupación grupal por franja y ocupación por entrenador (horas asignadas ÷ horas semanales).
+  - Tabla de entrenadores.
+  - Progreso de los clientes: progresión de carga, RPE y RIR frente al objetivo de la semana del ciclo, y dolor reportado.
+  - Alertas para actuar: inactivos hace más de 30 días, planes que terminan sin renovar y adherencia baja.
+- **Uso:**
+  - Periodo mensual (mes, trimestre, año y últimos 12 meses), con comparativa frente al periodo anterior o al mismo periodo del año anterior.
+  - Objetivos editables con semáforo.
+  - Filtros por entrenador y tipo de plan.
+  - Exportación a CSV.
+  - Escritorio y tablet; en móvil, una columna.
+- **Datos nuevos:**
+  - Historial de periodos de alta y baja (`client_periods`) y motivos de baja.
+  - Fin efectivo del plan y estado `cancelled`; entrenador obligatorio en el plan.
+  - Horas semanales del empleado y duración de las sesiones grupales.
+  - Objetivos de los KPIs y de las 4 semanas del ciclo.
+- **Datos de prueba:** script de demo determinista (12 meses y escenarios) en el proyecto de Supabase actual. Antes del go-live se limpian todos los datos de prueba.
+- **Dependencias compartidas con la vista de cliente:** registro de sesiones grupales, vista `client_sessions` y `client_feedback`.
+- **Fuera de la v1:** leads (CRM fase 1), indicadores económicos (fase 2), resumen con IA e informe en PDF.
 
 ---
 
@@ -288,6 +324,8 @@ Preparados en el modelo de datos de la spec de la vista de cliente, pero sin con
   - Las sesiones individuales siguen en `plan_sessions`. Solo los ciclos grupales usan `training_sessions`; la unificación está a medias. Las filas individuales copiadas a `training_sessions` en octubre no se mantienen. Decisión pendiente: terminarla o renunciar a ella.
   - El correo de invitación y `/client` tienen la marca de Girona Activa fija.
   - El menú dice "Empleats" (en catalán).
+  - La adherencia de la ficha del cliente cuenta también las sesiones futuras. Se unifica con la definición de `spec-kpis.md` §5.3 (completadas ÷ programadas hasta hoy).
+  - El estado de los planes no es fiable: un plan sigue `active` después de su fecha de fin. Los indicadores calculan la vigencia con las fechas (`spec-kpis.md` §5.2).
 
 ---
 
@@ -300,9 +338,16 @@ Preparados en el modelo de datos de la spec de la vista de cliente, pero sin con
 - [ ] Imágenes de ejercicios y edición de ejercicios
 - [ ] Zona de hombro en la galería
 - [ ] Ocultar al employee las acciones sin permiso
-- [ ] Proyecto de Supabase de pruebas (`brotafit-dev`) para probar las migraciones
+- [ ] Limpiar la BD de todos los datos de prueba, incluida la demo de indicadores, conservando los catálogos (`spec-kpis.md` §11.4)
+- [ ] Proyecto de Supabase de pruebas (`brotafit-dev`) para probar las migraciones (opcional; de momento no se crea)
 - [ ] Planes de pago de Vercel (Pro) y Supabase (Pro, con backups) antes del uso comercial
 - [ ] DNS `app.gironaactiva.com`, merge `dev` → `main` y tag `v1.0.0`
+
+### Gestión del centro: KPIs y CRM (por fases, decidido 2026-11-06)
+Panel solo para el admin con los indicadores que pide Girona Activa (`input-negocio-GA/`). Especificación: [`docs/spec-kpis.md`](./spec-kpis.md).
+1. [ ] **KPIs v1** (§4.14): indicadores de clientes, retención, asistencia, ocupación, entrenadores y progreso, con alertas. Incluye registrar los datos que hoy no existen: baja de cliente con fecha y motivo, estados Activo / Inactivo / Baja, horas de los empleados y el script de datos de demo.
+2. [ ] **CRM fase 1, leads:** todos los contactos que llegan por la web quedan registrados en BrotaFit (integración con el formulario web, que también es nuestro) y seguimiento de cada contacto (incluidos los contactos fallidos). Va justo después de los KPIs v1.
+3. [ ] **KPIs fase 2, económicos:** facturación, gastos, ticket medio y LTV. Antes hay que definir cómo se registran los ingresos en la app (por ejemplo, la cuota por plan).
 
 ### Mejoras de producto (backlog; incluye el antiguo `FASE2.md`)
 | Área | Mejora |
@@ -316,7 +361,6 @@ Preparados en el modelo de datos de la spec de la vista de cliente, pero sin con
 | Galería | Vista visual por zona corporal (clic en el cuerpo → ejercicios) |
 | Clientes | El cliente cambia su contraseña desde la app |
 | Informes | Gráficos de evolución de RPE, RIR y carga por ejercicio |
-| Centro | Métricas del centro: altas, bajas, leads, contactos fallidos |
 | Calidad | Tests automáticos: Playwright (invitación, creación de plan, vista de cliente) y Vitest (calendario) |
 
 ### Si se vende a más centros
@@ -350,3 +394,4 @@ Preparados en el modelo de datos de la spec de la vista de cliente, pero sin con
 | 1.0 | 2026-08-14 | Primera versión (organizada por perfiles) |
 | 1.1 | 2026-08-14 | Estrategia de ramas y versionado; modal de ejercicios |
 | 2.0 | 2026-11-06 | Reorganizado por módulos. Incluye lo hecho de agosto a noviembre: entrenador asignado, agenda "Hoy" y registro con RPE/RIR, adherencia, ciclos de 4 semanas con plantillas, franjas y 3 dificultades, festivos, TrainWall, empleados, roles admin/employee/client con RLS (BUG-002) y alta de cliente con acceso opcional. Integra `FASE2.md` en el roadmap |
+| 2.1 | 2026-11-06 | Módulo 4.14 Indicadores del centro (KPIs) especificado en `spec-kpis.md`: estados del cliente y flujo de baja (4.2), horas de los empleados (4.3), franja en el Panel (4.11). Roadmap de gestión del centro por fases: KPIs v1 → CRM fase 1 (leads) → KPIs económicos |
