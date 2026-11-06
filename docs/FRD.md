@@ -1,6 +1,6 @@
 # FRD — BrotaFit (Girona Activa)
 **Documento de requisitos funcionales**
-Versión: 2.1 | Última actualización: 2026-11-06 | Repo: `deepanshidrone/girona-activa-app`
+Versión: 2.2 | Última actualización: 2026-11-06 | Repo: `deepanshidrone/girona-activa-app`
 
 Este es el **documento de producto** de BrotaFit: qué hace la app, qué está hecho y qué falta. Se mantiene al día con cada funcionalidad (ver [§7](#7-cómo-se-mantiene-este-documento)). El detalle técnico (convenciones de código, migraciones, RLS) está en `CLAUDE.md`. Las especificaciones de módulos concretos están en `docs/spec-*.md`.
 
@@ -232,9 +232,11 @@ Módulo opcional. Diseño en `docs/arquitectura-pantallas.md` y propuesta comerc
 
 ### 4.9 Vista de cliente (móvil) 🟡
 
-**Especificación completa:** [`docs/spec-vista-cliente.md`](./spec-vista-cliente.md).
+**Especificación completa:** [`docs/spec-vista-cliente.md`](./spec-vista-cliente.md) (aprobada el 2026-11-06; orden de trabajo en su §9).
 
-**Hoy:** `/client` es una sola página con tarjeta del plan activo, calendario mensual y detalle del día. Usa tema claro y marca de Girona Activa fija.
+**Hoy:** `/client` es una sola página con tarjeta del plan activo, calendario mensual y detalle del día. Usa tema claro y marca de Girona Activa fija. Solo muestra planes de `plan_sessions` y lee saltándose la RLS.
+
+**Hecho como requisito previo:** RLS por rol (BUG-002), alta con acceso opcional (4.2) y, con los KPIs, la vista `client_sessions`, `session_logs.training_session_id` y la tabla `center_settings` (solo con la zona horaria).
 
 **v1 decidida:**
 - Solo consulta, con feedback opcional (sin registrar pesos).
@@ -247,6 +249,8 @@ Módulo opcional. Diseño en `docs/arquitectura-pantallas.md` y propuesta comerc
   - Mi progreso;
   - Perfil.
 - Los datos se le darán con vistas de solo lectura, sin columnas internas.
+- La adherencia usa la definición única de los KPIs (`spec-kpis.md` §5.3).
+- Un cliente de baja o sin plan vigente puede entrar y ver su historial, su progreso y su perfil en solo lectura, sin dejar feedback nuevo (spec P9).
 
 ### 4.10 Perfil del personal ✅
 
@@ -394,3 +398,4 @@ Panel solo para el admin con los indicadores que pide Girona Activa (`input-nego
 | 1.1 | 2026-08-14 | Estrategia de ramas y versionado; modal de ejercicios |
 | 2.0 | 2026-11-06 | Reorganizado por módulos. Incluye lo hecho de agosto a noviembre: entrenador asignado, agenda "Hoy" y registro con RPE/RIR, adherencia, ciclos de 4 semanas con plantillas, franjas y 3 dificultades, festivos, TrainWall, empleados, roles admin/employee/client con RLS (BUG-002) y alta de cliente con acceso opcional. Integra `FASE2.md` en el roadmap |
 | 2.1 | 2026-11-06 | Módulo 4.14 Indicadores del centro (KPIs) especificado en `spec-kpis.md`: estados del cliente y flujo de baja (4.2), horas de los empleados (4.3), franja en el Panel (4.11). Roadmap de gestión del centro por fases: KPIs v1 → CRM fase 1 (leads) → KPIs económicos |
+| 2.2 | 2026-11-06 | 4.9 Vista de cliente: spec aprobada y puesta al día tras BUG-002, BUG-003 y los KPIs |

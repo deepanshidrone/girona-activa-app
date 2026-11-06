@@ -1,9 +1,9 @@
 # Especificación — Vista de cliente en móvil (BrotaFit)
 
-- **Estado:** borrador de producto, pendiente de validar. No hay código asociado todavía.
-- **Fecha:** 2026-11-04
+- **Estado:** **aprobada** por el propietario el 2026-11-06. Hechos los requisitos previos (BUG-002, alta con acceso opcional) y parte del modelo de datos (con los KPIs). Las pantallas v1 están sin construir.
+- **Fecha:** 2026-11-04 · **Revisada:** 2026-11-06 (tras BUG-002, BUG-003 y los KPIs)
 - **Rama:** `dev`
-- **Relacionado:** `docs/FRD.md` (sección 6, desactualizada), `docs/BUGS.md` (BUG-002), `input-negocio-GA/`
+- **Relacionado:** `docs/FRD.md` §4.9, `docs/spec-kpis.md` (adherencia §5.3, estados del cliente §5.4 y §8, piezas compartidas §7.9), `docs/BUGS.md` (BUG-002, BUG-003), `input-negocio-GA/`
 
 ---
 
@@ -15,27 +15,24 @@ La v1 tiene que ser **vendible por sí sola** (a Girona Activa y en demos a otro
 
 ---
 
-## 2. Estado actual (revisado en código y BD el 2026-11-04)
+## 2. Estado actual (revisado en código y BD el 2026-11-06)
 
 | Pieza | Estado real |
 |---|---|
-| Alta del cliente | ✅ El empleado lo crea, se fija `app_metadata.role='client'`, llega el correo (Resend) → `/auth/confirm` → `/auth/set-password` → `/client` |
-| Protección de rutas | ✅ `proxy.ts` separa `/dashboard` y `/client` por rol. ⚠️ El rol `admin` no se redirige fuera de `/client` |
-| `/client` | ⚠️ Una sola página: tarjeta del plan activo, calendario mensual y hoja inferior con ejercicios. Tema claro, distinto del dashboard |
-| Fuente de datos | ⚠️ Solo `plan_sessions` + `plan_session_exercises`, leídas con `createAdminClient()` (sin RLS) |
+| Alta y acceso del cliente | ✅ El alta crea solo la ficha (email opcional). El acceso a la app es opcional y se da desde la ficha: invitación → `/auth/confirm` → `/auth/set-password` → `/client` (§4.3, BUG-003). Pendiente de la prueba manual del propietario |
+| Protección de rutas | ✅ `proxy.ts` deniega por defecto: `/client` solo para `client` y `/dashboard` solo para `employee` y `admin` |
+| RLS | ✅ BUG-002 cerrado (pendiente de la prueba manual). El cliente **no tiene acceso directo a ninguna tabla**: se borraron todas las políticas, también las antiguas "Cliente lee sus planes/sesiones/ejercicios". Lo que vea en la v1 hay que abrírselo de cero (§8.2) |
+| `/client` | ⚠️ Una sola página: tarjeta del plan activo, calendario mensual y hoja inferior con ejercicios. Tema claro, distinto del dashboard. Hoy funciona porque lee con `createAdminClient()` (se salta la RLS) y comprueba la sesión con `getSession()` |
+| Fuente de datos | ⚠️ `/client` solo lee `plan_sessions` + `plan_session_exercises`. Ya existe la vista unificada `client_sessions` (creada con los KPIs, §7.1), pero `/client` no la usa |
 | Planes grupales | ❌ El cliente no ve los ejercicios: los de grupal viven en `group_sessions` (ciclo × bloque × dificultad) y no en `plan_session_exercises`. Los clientes apuntados a franjas de ciclo (`training_session_clients`) no aparecen |
-| Registro realizado | ❌ No se muestran `session_logs` / `exercise_logs` |
+| Registro de sesiones grupales | 🟡 La BD ya lo admite (`session_logs.training_session_id`, creado con los KPIs), pero el empleado no tiene pantalla para registrarlas. Hasta entonces, sus sesiones salen `unrecorded` (sin datos) |
+| Registro realizado | ❌ `/client` no muestra `session_logs` / `exercise_logs` |
 | Historial, progreso, racha | ❌ No existen |
-| Marca | ❌ "GIRONA ACTIVA", `/logo.png` y `#FF914D` fijos en `/client`, `/auth/set-password` y el correo de invitación |
+| Estado del cliente | ✅ Activo / Inactivo / Baja con historial de periodos (`client_periods`, `spec-kpis.md` §8). La vista de cliente no lo tiene en cuenta todavía (P9) |
+| Marca | ❌ "GIRONA ACTIVA", `/logo.png` y `#FF914D` fijos en `/client`, `/auth/set-password`, el login y el correo de invitación. `center_settings` existe, pero solo con la zona horaria |
 | `app/client/set-password/` | Código muerto (lo sustituyó `app/auth/set-password/`, BUG-001) |
-| RLS | ❌ BUG-002: un cliente con login puede leer y modificar los datos de todos los clientes vía API |
 
-**Modelo de sesiones a medias:** `CLAUDE.md` describe `training_sessions` como tabla unificada, pero en la práctica:
-- Los planes individuales y grupales (wizard) escriben en `plan_sessions` (242 filas).
-- Los ciclos grupales escriben en `training_sessions` + `training_session_clients` (830 filas / 6 clientes asignados).
-- `session_logs` cuelga solo de `plan_session_id`, así que hoy **no se puede registrar asistencia en una sesión de ciclo grupal** (`training_sessions`).
-
-Esto condiciona la v1 (ver §7).
+**Modelo de sesiones a medias:** los planes individuales y grupales del wizard escriben en `plan_sessions`; los ciclos grupales, en `training_sessions` + `training_session_clients`. Las filas `individual` de `training_sessions` son una copia antigua que no se usa. La vista `client_sessions` junta las dos fuentes (§7.1).
 
 ---
 
@@ -46,7 +43,8 @@ Esto condiciona la v1 (ver §7).
 | D1 | El cliente **consulta** su plan y lo registrado por el empleado, y deja **feedback post-sesión** (dolor sí/no + comentario). **No** registra series, reps ni cargas | El registro lo hace el empleado en sala; duplicarlo crea conflictos. El feedback cubre el "dolor sí/no" que pide GA y es el mismo patrón de "comentario sobre un elemento" que pide Pragma para nutrición |
 | D2 | De las notas del empleado, el cliente solo ve las **indicaciones del ejercicio planificado** (`plan_session_exercises.notes`, `group_session_exercises.notes`). Son internas: `clients.notes`, `plan_sessions.notes`, `training_sessions.notes`, `session_logs.notes` y `exercise_logs.notes` | Evitar que se lea algo escrito pensando que era interno. Hoy `/client` muestra `plan_sessions.notes` como "Nota del entrenador"; **se deja de mostrar** |
 | D3 | **Racha** = número de sesiones programadas consecutivas a las que el cliente asistió. No la rompen los festivos, los fines de semana ni las sesiones canceladas por el centro | Justa con planes de 2 a 4 días por semana. Es la base de "días cumpliendo" del ranking |
-| D4 | El agujero de RLS se registra como **BUG-002** y es **bloqueante**: no se da acceso a clientes reales hasta cerrarlo | Datos de salud (categoría especial del RGPD) |
+| D4 | El agujero de RLS se registra como **BUG-002** y es **bloqueante**: no se da acceso a clientes reales hasta cerrarlo. ✅ Arreglado el 2026-11-05 (falta la prueba manual) | Datos de salud (categoría especial del RGPD) |
+| D6 | **Adherencia:** la misma definición que los KPIs (`spec-kpis.md` §5.3): completadas ÷ (completadas + no asistidas), solo sesiones hasta hoy y hasta el fin efectivo del plan. Las grupales sin registro (`unrecorded`) no cuentan | Una sola definición en toda la app (decisión K12 de los KPIs) |
 | D5 | La vista de cliente usa el **tema oscuro** del dashboard, con nombre, logo y color primario del centro **leídos de configuración**, no fijos en el código | Coherencia visual y preparación para la marca blanca |
 
 ---
@@ -74,7 +72,7 @@ Esto condiciona la v1 (ver §7).
 5. **Mi progreso** (personal, sin comparar con otros clientes)
    - Sesiones asistidas este mes y este año.
    - Racha actual y racha máxima (D3).
-   - Adherencia del plan activo (% de sesiones asistidas sobre las programadas hasta hoy), la misma métrica que ya ve el empleado en la ficha.
+   - Adherencia del plan activo con la definición única (D6), la misma que ven el empleado en la ficha y el admin en los indicadores. Si no hay datos (por ejemplo, grupales sin registrar), se muestra "sin datos", no 0 %.
 6. **Perfil**
    - Nombre, email, fecha de alta y datos físicos (altura, peso) **en solo lectura** (derecho de acceso del RGPD).
    - Cambiar contraseña y cerrar sesión.
@@ -83,7 +81,7 @@ Esto condiciona la v1 (ver §7).
 - Ver el feedback del cliente en el detalle de la sesión y en la ficha del cliente. Si hay "dolor: sí", se resalta.
 - Indicador "feedback sin leer" en la ficha del cliente.
 
-### 4.3 Alta y acceso del cliente (decidido 2026-11-05)
+### 4.3 Alta y acceso del cliente (decidido 2026-11-05) ✅ implementado (commit `7abbb63`)
 
 Hasta ahora el alta creaba a la vez la ficha, la cuenta de acceso y enviaba la invitación. Se separan:
 
@@ -183,15 +181,18 @@ Rutas propuestas: `/client` (Hoy), `/client/calendario`, `/client/sesion/[id]`, 
 
 ## 7. Cambios en el modelo de datos
 
-### 7.1 Lectura unificada de "sesiones del cliente"
-La vista de cliente no debe conocer las dos fuentes (`plan_sessions` y `training_sessions`). Se propone una **vista SQL `client_sessions`** (con `security_invoker = on`, para que respete la RLS de quien consulta) con una fila por (cliente, sesión):
+### 7.1 Lectura unificada de "sesiones del cliente" 🟡 creada con los KPIs, faltan columnas
+La vista de cliente no debe conocer las dos fuentes (`plan_sessions` y `training_sessions`). La **vista SQL `client_sessions`** ya existe (migración `20261106120000_kpis_v1.sql`, `security_invoker = on`) con una fila por (cliente, sesión):
 
-| Columna | Origen |
-|---|---|
-| `client_id`, `session_date`, `session_time`, `type`, `session_label`, `assigned_employee_id` | `plan_sessions` + `training_plans`, o `training_sessions` + `training_session_clients` |
-| `difficulty` | `training_session_clients.difficulty` o, si no hay, el nivel del plan (1→regression, 2→base, 3→progression) |
-| `status` | `cancelled` si la sesión está cancelada; `completed` si hay `session_logs.status='completed'`; `missed` si la fecha ya ha pasado sin log; `scheduled` en otro caso |
-| `source`, `source_id` | `plan_session` / `training_session` y su id, para abrir el detalle |
+| Columna | Origen | Estado |
+|---|---|---|
+| `source`, `source_id` | `plan_session` / `training_session` y su id, para abrir el detalle | ✅ |
+| `client_id`, `session_date`, `session_time`, `type`, `employee_id`, `duration_min` | `plan_sessions` + plan, o `training_sessions` + `training_session_clients` | ✅ |
+| `status` | `cancelled` (cancelada o posterior al fin efectivo del plan), `completed`, `unrecorded` (grupal pasada en la que no se registró a nadie), `missed`, `scheduled` | ✅ |
+| `session_label` | Bloque A/B/C | ⏳ añadir |
+| `difficulty` | `training_session_clients.difficulty` o, si no hay, el nivel del plan (1→regression, 2→base, 3→progression) | ⏳ añadir |
+
+Hoy la leen solo los KPIs (con `service_role`). El cliente no obtiene filas porque las tablas de debajo no tienen políticas para él: hay que añadirlas (§8.2).
 
 Los ejercicios del detalle salen de `plan_session_exercises` (individual) o de `group_sessions` + `group_session_exercises` filtrados por ciclo, bloque y dificultad (grupal).
 
@@ -215,10 +216,12 @@ client_feedback
 ```
 Una sola tabla "el cliente comenta sobre algo de su plan" sirve hoy para sesiones y mañana para las ingestas de Pragma, y el empleado tiene una sola bandeja. A cambio, no hay FK real sobre `target_id`; la integridad se valida en la server action.
 
-### 7.3 Asistencia en sesiones de ciclo grupal
-`session_logs` solo admite `plan_session_id`. Se añade `training_session_id uuid null → training_sessions` con un CHECK (exactamente uno de los dos informado) y la regla de **un log por (sesión, cliente)**. Sin esto, la racha y la asistencia de quien va a grupales por ciclo salen vacías. Es un cambio pequeño en el registro del empleado ("Hoy" → registro de sesión grupal).
+### 7.3 Asistencia en sesiones de ciclo grupal 🟡 BD hecha, falta la pantalla
+✅ Hecho con los KPIs: `session_logs.training_session_id` con un CHECK (exactamente uno de `plan_session_id` / `training_session_id`) y un índice único de **un log por (sesión, cliente)**.
+⏳ Falta el registro del empleado: desde "Hoy", abrir una sesión grupal, marcar quién ha venido y registrar sus ejercicios según la dificultad de cada uno. Sin esto, la racha, la asistencia y la adherencia de quien va a grupales por ciclo salen "sin datos".
 
-### 7.4 Configuración del centro (marca blanca)
+### 7.4 Configuración del centro (marca blanca) 🟡 tabla creada, solo con la zona horaria
+`center_settings` ya existe (una fila, `timezone`, solo la lee el personal). Falta añadir las columnas de marca y módulos, y una forma de leerlas sin sesión de personal (login, `/auth/set-password`, `/client`):
 ```
 center_settings   (una fila; con multi-inquilino pasaría a una por centro)
   name, short_name, logo_url, primary_color, timezone ('Europe/Madrid'),
@@ -253,18 +256,23 @@ La usan `/client`, `/auth/set-password`, el login y el correo de invitación. As
 | Catálogo de ejercicios y festivos | ✅ lectura | |
 | Ciclos, plantillas, pantallas, empleados | ❌ | |
 
-### 8.2 Cómo cerrarlo (BUG-002, requisito previo)
-1. **Función de rol basada en el JWT**, que funciona en servidor y en navegador sin consultar tablas:
-   `is_staff()` → `(auth.jwt() -> 'app_metadata' ->> 'role') in ('employee','admin')`.
-   La razón de que `is_employee()` "no funcionara en servidor" era probablemente que consulta `profiles`; con el JWT ese problema desaparece.
-2. **Eliminar** todas las políticas `auth.role() = 'authenticated'` / `true` para `authenticated` en tablas con datos de clientes o de operación, y sustituirlas por `is_staff()`.
-3. **Políticas de cliente solo de lectura** basadas en `clients.user_id = auth.uid()`. Algunas ya existen ("Cliente lee sus planes", "Cliente lee sus sesiones", "Cliente lee sus ejercicios") y empezarán a tener efecto al quitar las genéricas. Faltan las de `training_sessions` y `training_session_clients` (solo sus filas), `session_logs` y `exercise_logs` (solo las suyas), `group_sessions` y `group_session_exercises` (solo los ciclos en los que participa), `clients` (solo su fila) y `client_feedback` (las suyas; inserción y actualización solo con su `client_id`).
-4. **Columnas internas:** RLS filtra filas, no columnas. Para no exponer `notes`, el cliente lee **a través de vistas sin esas columnas** (`client_sessions`, `client_exercise_logs`, `my_client_profile`), o se revoca `SELECT` por columna al rol `authenticated` sobre `notes` (las server actions del dashboard usan `service_role` y no se ven afectadas). Recomendación: vistas, que se leen mejor y se prueban más fácilmente.
-5. **La vista de cliente deja de usar `createAdminClient()`** y lee con el cliente de Supabase de la sesión del usuario. Así RLS es la defensa real y el filtro en servidor pasa a ser una segunda capa.
-6. **Server actions:** todas las de `app/actions/` deben comprobar sesión y rol (`employee`/`admin`) antes de usar el cliente admin. Lo más limpio es un helper común (`requireStaff()`). Las del cliente (`submitFeedbackAction`) usan `requireClient()` y fijan siempre el `client_id` desde la sesión, nunca desde el formulario.
-7. **`proxy.ts`:** tratar `admin` como `employee` (redirigirlo fuera de `/client`).
-8. **TrainWall:** `screens` y `screen_assignments` tienen `UPDATE true` para `authenticated`; pasarlo a `is_staff()`.
-9. **Comprobación:** un script o caso QA que, con la sesión de un cliente de prueba y la clave pública, intente leer `clients`, `training_plans` de otro cliente y `screens`, y verifique que no obtiene filas.
+### 8.2 Cómo se protege
+
+**Hecho en BUG-002** (migración `20261105213646_bug002_rls_por_rol.sql`, commit `0fcbd86`):
+- `is_staff()` lee el rol del JWT (`app_metadata.role`), sin consultar tablas.
+- Se borraron **todas** las políticas antiguas, incluidas las de cliente ("Cliente lee sus planes", etc.), y todas las tablas pasaron a `personal_todo` con `is_staff()`. El cliente no lee nada directamente.
+- Todas las Server Actions empiezan con `requireStaff()` / `requirePermission()` (`lib/auth/permissions.ts`).
+- `proxy.ts` deniega por defecto (el admin ya no entra en `/client`).
+- `screens` está cerrada al personal; `screen_assignments` mantiene la lectura pública para el tiempo real de TrainWall.
+- Comprobado con 26 pruebas por API como "Cliente Test" y sin sesión.
+
+**Pendiente para la v1 de la vista de cliente:**
+1. **`is_client_of(client_id)`** (o similar): función `security definer` que devuelve true si `clients.user_id = auth.uid()` para ese cliente, para no repetir el join en cada política.
+2. **Políticas de cliente solo de lectura**, todas nuevas: `clients` (solo su fila), `training_plans`, `plan_sessions`, `plan_session_exercises`, `training_sessions` y `training_session_clients` (solo sus filas), `session_logs` y `exercise_logs` (solo los suyos), `group_sessions` y `group_session_exercises` (solo los ciclos en los que participa), y lectura del catálogo de ejercicios y de los festivos. `client_feedback`: las suyas, con inserción y edición solo con su `client_id` y dentro de los 7 días.
+3. **Columnas internas:** RLS filtra filas, no columnas. Para no exponer `notes`, el cliente lee **a través de vistas sin esas columnas** (`client_sessions`, que ya no las tiene; `client_exercise_logs`; `my_client_profile`), con `security_invoker = on`. Recomendación: vistas, más fáciles de leer y de probar que revocar columnas. Si se abre una tabla base con política de cliente, revocar `select` sobre `notes` a `authenticated`.
+4. **`/client` deja de usar `createAdminClient()`** y lee con el cliente de Supabase de la sesión del usuario (`getUser()`, no `getSession()`). Así la RLS es la defensa real y el filtro en servidor, una segunda capa.
+5. **`requireClient()`** en `lib/auth/permissions.ts` para las Server Actions del cliente (`submitFeedbackAction`). Fija siempre el `client_id` desde la sesión, nunca desde el formulario.
+6. **Comprobación:** ampliar las pruebas por API de BUG-002: "Cliente Test" lee lo suyo y nada de otro cliente, ni `notes`, ni datos del centro.
 
 ### 8.3 Datos de salud
 El feedback de dolor, los datos físicos y, en el futuro, la anamnesis y la valoración son datos de salud. Acceso limitado al propio cliente y al personal del centro, sin aparecer en el ranking ni en la comunidad. La firma del RGPD forma parte de la ficha que pide GA (fuera de esta spec).
@@ -276,16 +284,17 @@ Solo aparecen los clientes con `ranking_opt_in = true` y con su `display_alias` 
 
 ## 9. Dependencias y orden de trabajo sugerido
 
-1. **BUG-002** (RLS + server actions + `proxy.ts`). Bloqueante.
-2. `center_settings` y retirada de la marca fija (cliente, set-password, login y correo).
-3. `session_logs.training_session_id` y registro de asistencia en sesiones de ciclo grupal.
-4. Vista `client_sessions` y vistas de lectura sin notas.
-5. Pantallas v1: Hoy → Calendario → Detalle → Historial → Progreso → Perfil.
-6. `client_feedback` y su visualización en el dashboard.
-7. PWA (manifest).
-8. Ronda de QA en `qa/rondas/` con un cliente individual, uno de plan grupal y uno de ciclo grupal.
+1. ~~**BUG-002** (RLS + server actions + `proxy.ts`)~~ ✅ hecho (falta la prueba manual del propietario).
+2. ~~Alta con acceso opcional (§4.3) y BUG-003~~ ✅ hecho (falta la prueba manual).
+3. `center_settings`: columnas de marca y módulos, y retirada de la marca fija (cliente, set-password, login y correo). 🟡 tabla creada.
+4. Registro de sesiones grupales por el empleado (§7.3). 🟡 BD hecha.
+5. Acceso de lectura del cliente: políticas, vistas sin notas y `requireClient()` (§8.2 pendiente). Columnas `session_label` y `difficulty` en `client_sessions` (§7.1).
+6. Pantallas v1: Hoy → Calendario → Detalle → Historial → Progreso → Perfil.
+7. `client_feedback` y su visualización en el dashboard (también alimenta el KPI de dolor, `spec-kpis.md` §7.9).
+8. PWA (manifest).
+9. Ronda de QA en `qa/rondas/` con un cliente individual, uno de plan grupal y uno de ciclo grupal.
 
-Limpieza asociada: borrar `app/client/set-password/` y actualizar `docs/FRD.md` §6 y §9 (el FRD dejaba fuera el registro por el cliente; aquí se mantiene fuera salvo el feedback).
+Limpieza asociada: borrar `app/client/set-password/`.
 
 ---
 
@@ -301,3 +310,5 @@ Limpieza asociada: borrar `app/client/set-password/` y actualizar `docs/FRD.md` 
 | P6 | Nutrición (Pragma): ¿el plan lo hace un nutricionista del centro dentro de BrotaFit o se importa? | Pendiente de la propuesta comercial a Pragma |
 | P7 | ~~Marca blanca: ¿`center_settings` en BD o variables de entorno?~~ | **Decidido 2026-11-04:** en BD, con valores de Girona Activa por ahora |
 | P8 | ¿El cliente puede pedir que se borre su cuenta o descargar sus datos desde la app (RGPD)? | v1: se pide al centro; el centro lo gestiona desde el dashboard |
+| P9 | ~~¿Qué ve un cliente **de baja** (o inactivo, sin plan vigente) que tiene acceso a la app?~~ | **Decidido 2026-11-06:** puede entrar y ve su historial, su progreso y su perfil en solo lectura, con el mensaje "No tienes un plan activo. Habla con tu centro". No puede dejar feedback nuevo |
+| P10 | Al reactivar a un cliente, ¿su cuenta sigue funcionando? | Sí, la cuenta no se toca en la baja ni en la reactivación |
