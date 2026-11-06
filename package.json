@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run",
+    "test:db": "vitest run tests/kpis/db.test.ts",
+    "seed:demo": "node scripts/seed-demo.mts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
@@ -30,6 +33,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.7"
   }
 }

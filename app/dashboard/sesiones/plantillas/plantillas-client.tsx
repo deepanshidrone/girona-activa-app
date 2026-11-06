@@ -190,6 +190,10 @@ function SlotsEditor({ slots, onChange }: {
     onChange(slots.map(s => s.day_of_week === dow && s.session_time === time ? { ...s, has_overlap: !s.has_overlap } : s))
   }
 
+  function updateDuration(dow: number, time: string, minutes: number) {
+    onChange(slots.map(s => s.day_of_week === dow && s.session_time === time ? { ...s, duration_min: minutes } : s))
+  }
+
   function updateMax(dow: number, time: string, max: number) {
     onChange(slots.map(s => s.day_of_week === dow && s.session_time === time ? { ...s, max_clients: max } : s))
   }
@@ -197,7 +201,7 @@ function SlotsEditor({ slots, onChange }: {
   return (
     <div>
       <p className="text-xs text-white/40 mb-3">
-        <span className="text-[#FF914D] font-medium">Solapamiento</span>: a esa hora habrá 2 sesiones simultáneas (bloque principal + siguiente bloque)
+        <span className="text-[#FF914D] font-medium">Solapamiento</span>: a esa hora habrá 2 sesiones simultáneas (bloque principal + siguiente bloque). Cada franja indica el máximo de clientes y la duración en minutos
       </p>
       <div className="flex flex-col gap-4">
         {[0,1,2,3,4].map(dow => {
@@ -219,6 +223,11 @@ function SlotsEditor({ slots, onChange }: {
                     <input type="number" min={1} max={20} value={s.max_clients}
                       onChange={e => updateMax(dow, s.session_time, parseInt(e.target.value) || 6)}
                       className="w-8 bg-transparent text-center text-white/60 focus:outline-none focus:text-white" title="Máx clientes" />
+                    {/* Duración (min) */}
+                    <input type="number" min={15} max={240} step={5} value={s.duration_min ?? 60}
+                      onChange={e => updateDuration(dow, s.session_time, Math.min(240, Math.max(15, parseInt(e.target.value) || 60)))}
+                      className="w-10 bg-transparent text-center text-white/60 focus:outline-none focus:text-white" title="Duración (min)" />
+                    <span className="text-white/30">min</span>
                     <button onClick={() => removeSlot(dow, s.session_time)} className="text-white/20 hover:text-red-400 transition-colors">
                       <X className="h-3 w-3" />
                     </button>
@@ -267,7 +276,7 @@ function TemplateEditor({ template, onClose, onSaved }: {
     template?.cycle_template_days.map(d => ({ day_index: d.day_index, block_label: d.block_label })) ?? DEFAULT_PATTERN
   )
   const [slots,   setSlots]   = useState<TemplateSlotData[]>(
-    template?.cycle_template_slots.map(s => ({ day_of_week: s.day_of_week, session_time: s.session_time, has_overlap: s.has_overlap, max_clients: s.max_clients })) ?? DEFAULT_SLOTS
+    template?.cycle_template_slots.map(s => ({ day_of_week: s.day_of_week, session_time: s.session_time, has_overlap: s.has_overlap, max_clients: s.max_clients, duration_min: s.duration_min ?? 60 })) ?? DEFAULT_SLOTS
   )
   const [tab,     setTab]     = useState<'pattern' | 'slots'>('pattern')
   const [saving,  setSaving]  = useState(false)

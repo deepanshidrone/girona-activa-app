@@ -1,10 +1,20 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Users, Dumbbell, CalendarDays } from 'lucide-react'
+import { Users, Dumbbell, CalendarDays, BarChart3 } from 'lucide-react'
 import Link from 'next/link'
+import { getStaffUser, hasPermission } from '@/lib/auth/permissions'
+import { loadPanelSummary } from '@/lib/kpis/load'
+import { fmtNum, fmtPct } from '@/lib/kpis/format'
+
+export const dynamic = 'force-dynamic'
 
 export default async function DashboardPage() {
   const supabase = createAdminClient()
+  const staff = await getStaffUser()
+  // Franja de indicadores clave: solo con permiso (hoy, solo admin)
+  const kpis = staff && hasPermission(staff.role, 'indicadores.ver')
+    ? await loadPanelSummary(supabase).catch(() => null)
+    : null
 
   const [
     { count: totalClientes },
@@ -44,8 +54,27 @@ export default async function DashboardPage() {
     <div className="p-6 flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-bold text-white">Panel de control</h1>
-        <p className="text-white/50 text-sm mt-1">Bienvenido al centre de gestió de Girona Activa</p>
+        <p className="text-white/50 text-sm mt-1">Resumen del centro y accesos rápidos</p>
       </div>
+
+      {kpis && (
+        <Link href="/dashboard/indicadores"
+          className="bg-[#1C1C1C] border border-white/10 rounded-2xl p-4 hover:border-[#FF914D]/60 transition-colors">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold text-white/30 uppercase tracking-wider flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-[#FF914D]" />
+              Indicadores · este mes
+            </p>
+            <span className="text-sm font-medium text-[#FF914D]">Ver indicadores →</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <PanelKpi label="Clientes activos" value={fmtNum(kpis.activeClients)} />
+            <PanelKpi label="Churn del mes" value={fmtPct(kpis.churn, 1)} />
+            <PanelKpi label="Adherencia del mes" value={fmtPct(kpis.adherence)} />
+            <PanelKpi label="Alertas pendientes" value={fmtNum(kpis.alerts)} />
+          </div>
+        </Link>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -102,6 +131,15 @@ export default async function DashboardPage() {
           </Link>
         </div>
       </div>
+    </div>
+  )
+}
+
+function PanelKpi({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-2xl font-semibold text-white">{value}</p>
+      <p className="text-xs text-white/40">{label}</p>
     </div>
   )
 }

@@ -12,6 +12,7 @@ export type Employee = {
   phone: string | null
   hire_date: string | null
   specialties: string[]
+  weekly_hours: number | null   // horas semanales disponibles para sesiones (KPIs)
   is_active: boolean
   avatar_url: string | null
   last_sign_in: string | null
@@ -31,6 +32,7 @@ export type UpdateEmployeeData = {
   phone?: string
   hire_date?: string
   specialties?: string[]
+  weekly_hours?: number | null
   role?: 'employee' | 'admin'
 }
 
@@ -63,7 +65,7 @@ export async function getEmployeesAction(): Promise<Employee[]> {
   const ids = employeeUsers.map(u => u.id)
   const { data: profiles } = await supabase
     .from('profiles')
-    .select('id, full_name, avatar_url, phone, hire_date, specialties, is_active')
+    .select('id, full_name, avatar_url, phone, hire_date, specialties, weekly_hours, is_active')
     .in('id', ids)
 
   const profileMap = new Map((profiles ?? []).map(p => [p.id, p]))
@@ -78,6 +80,7 @@ export async function getEmployeesAction(): Promise<Employee[]> {
       phone: profile?.phone ?? null,
       hire_date: profile?.hire_date ?? null,
       specialties: profile?.specialties ?? [],
+      weekly_hours: profile?.weekly_hours ?? null,
       is_active: profile?.is_active ?? true,
       avatar_url: profile?.avatar_url ?? null,
       last_sign_in: u.last_sign_in_at ?? null,
@@ -94,7 +97,7 @@ export async function getEmployeeByIdAction(id: string): Promise<Employee | null
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name, avatar_url, phone, hire_date, specialties, is_active')
+    .select('full_name, avatar_url, phone, hire_date, specialties, weekly_hours, is_active')
     .eq('id', id)
     .single()
 
@@ -107,6 +110,7 @@ export async function getEmployeeByIdAction(id: string): Promise<Employee | null
     phone: profile?.phone ?? null,
     hire_date: profile?.hire_date ?? null,
     specialties: profile?.specialties ?? [],
+    weekly_hours: profile?.weekly_hours ?? null,
     is_active: profile?.is_active ?? true,
     avatar_url: profile?.avatar_url ?? null,
     last_sign_in: u.last_sign_in_at ?? null,
@@ -241,6 +245,13 @@ export async function updateEmployeeAction(id: string, data: UpdateEmployeeData)
   if (data.phone !== undefined) profileUpdates.phone = data.phone || null
   if (data.hire_date !== undefined) profileUpdates.hire_date = data.hire_date || null
   if (data.specialties !== undefined) profileUpdates.specialties = data.specialties
+  if (data.weekly_hours !== undefined) {
+    const hours = data.weekly_hours
+    if (hours !== null && (!Number.isFinite(hours) || hours < 0 || hours > 80)) {
+      return { error: 'Las horas semanales deben estar entre 0 y 80' }
+    }
+    profileUpdates.weekly_hours = hours
+  }
   if (data.role !== undefined) profileUpdates.role = data.role
 
   const { error } = await supabase.from('profiles').update(profileUpdates).eq('id', id)

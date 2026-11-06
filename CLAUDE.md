@@ -247,6 +247,11 @@ Para sesiones grupales: hasta `max_clients` filas, cada una con su `difficulty` 
 | `plan_session_exercises` | Ejercicios de las sesiones individuales |
 | `session_logs` | Registro de ejecución: `started_at`, `completed_at`, `status` |
 | `exercise_logs` | `sets_done`, `reps_done`, `load_kg`, `rpe` (1-10), `rir` (0-10), `skipped` |
+| `client_periods` | Historial de altas y bajas del cliente (`started_on`, `ended_on` = fecha de baja, motivo). Un trigger crea el primero al dar de alta y mantiene `clients.is_active` |
+| `client_end_reasons` | Motivos de baja (catálogo del centro) |
+| `kpi_targets` / `cycle_week_targets` | Objetivos de los indicadores y RPE/RIR objetivo de cada semana del ciclo |
+| `center_settings` | Configuración del centro (hoy solo `timezone`) |
+| Vistas `kpi_plan_spans`, `client_sessions` | Planes con fin efectivo y sesiones de cada cliente (individuales y grupales) con su estado. Base de los indicadores (`docs/spec-kpis.md`) |
 
 ### Convenciones de RLS
 
@@ -436,6 +441,13 @@ La estructura de la BD se versiona en `supabase/migrations/`. **No se hacen camb
 - **Cada commit `feat:` actualiza el FRD en el mismo commit** (estado del módulo y descripción de la funcionalidad).
 - Las ideas nuevas van al roadmap del FRD (§6), no a archivos sueltos.
 - Una funcionalidad grande tiene su propia `docs/spec-<tema>.md`, enlazada desde el FRD.
+
+### Tests y datos de demo (desde el 2026-11-06)
+
+- `npm test`: Vitest. Los tests de integración contra la BD (`tests/kpis/db.test.ts`) solo se ejecutan con `ALLOW_DEMO_SEED=true`.
+- `npm run seed:demo` (con `ALLOW_DEMO_SEED=true`): 12 meses de datos de demo para el panel de indicadores, marcados con `is_demo`. `--reset` los borra sin tocar lo creado a mano. En PowerShell: `$env:ALLOW_DEMO_SEED='true'; npm run seed:demo`.
+- Las funciones `kpi_*` solo las puede ejecutar `service_role` (el servidor). La API devuelve como máximo 1.000 filas por llamada: `lib/kpis/load.ts` pagina.
+- No lanzar `npm run build` con `npm run dev` en marcha: comparten `.next` y el servidor de desarrollo se queda colgado.
 
 ### Registro de bugs
 

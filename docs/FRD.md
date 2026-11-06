@@ -70,7 +70,7 @@ Nació como app a medida de **Girona Activa** (centro de entrenamiento personal 
 | 4.11 | Panel | `/dashboard` | ✅ |
 | 4.12 | Configuración del centro | `/dashboard/configuracion` | ⏳ |
 | 4.13 | Informes, ranking, comunidad, nutrición | — | ⏳ fases posteriores |
-| 4.14 | Indicadores del centro (KPIs, solo admin) | `/dashboard/indicadores` | ⏳ v1 especificada |
+| 4.14 | Indicadores del centro (KPIs, solo admin) | `/dashboard/indicadores` | 🟡 v1 implementada, pendiente de QA |
 
 ---
 
@@ -111,7 +111,7 @@ Nació como app a medida de **Girona Activa** (centro de entrenamiento personal 
 
 Reglas: un cliente solo tiene un plan activo a la vez.
 
-⏳ **Estados y baja** (especificado en [`spec-kpis.md`](./spec-kpis.md) §8): estados Activo (con plan vigente), Inactivo (de alta sin plan vigente) y Baja. Cualquier miembro del personal da de baja (fecha y motivo obligatorios) y reactiva la misma ficha. Se guarda el historial de periodos de alta y baja. El borrado físico queda solo para el RGPD.
+✅ **Estados y baja** ([`spec-kpis.md`](./spec-kpis.md) §8): estados Activo (con plan vigente), Inactivo (de alta sin plan vigente) y Baja. Cualquier miembro del personal da de baja (fecha y motivo obligatorios) y reactiva la misma ficha. Se guarda el historial de periodos de alta y baja. El borrado físico queda solo para el RGPD.
 
 ### 4.3 Empleados ✅
 
@@ -121,7 +121,7 @@ Solo el admin gestiona empleados; el employee puede ver el listado.
 - Alta de empleado o admin: crea la cuenta y envía la invitación con diseño corporativo.
 - Ficha: editar datos y rol, activar o desactivar, cambiar la contraseña y ver las sesiones asignadas.
 - ⏳ Pendiente: ocultar al employee los botones que no puede usar (hoy los ve, pero el servidor los rechaza).
-- ⏳ Horas semanales disponibles por empleado (para el % de ocupación de los indicadores, ver `spec-kpis.md` §7.5).
+- Horas semanales disponibles por empleado (base del % de ocupación de los indicadores, `spec-kpis.md` §7.5).
 
 ### 4.4 Galería de ejercicios 🟡
 
@@ -257,7 +257,7 @@ Módulo opcional. Diseño en `docs/arquitectura-pantallas.md` y propuesta comerc
 
 `/dashboard`: estadísticas y accesos rápidos.
 
-⏳ El admin verá además una franja con 4 indicadores clave y el enlace al panel de indicadores (§4.14). Hay que retirar el texto fijo "centre de gestió de Girona Activa".
+El admin ve además una franja con 4 indicadores clave del mes (clientes activos, churn, adherencia y alertas) y el enlace al panel de indicadores (§4.14).
 
 ### 4.12 Configuración del centro ⏳
 
@@ -278,9 +278,9 @@ Preparados en el modelo de datos de la spec de la vista de cliente, pero sin con
 - **Comunidad.**
 - **Nutrición:** para el prospecto Pragma Health Club.
 
-### 4.14 Indicadores del centro (KPIs) ⏳
+### 4.14 Indicadores del centro (KPIs) 🟡
 
-**Especificación completa:** [`docs/spec-kpis.md`](./spec-kpis.md) (aprobada el 2026-11-06).
+**Especificación completa:** [`docs/spec-kpis.md`](./spec-kpis.md) (aprobada el 2026-11-06; implementación en su §15). Falta la ronda de QA.
 
 Panel en `/dashboard/indicadores`, **solo para el admin** (permiso `indicadores.ver`, con el employee en `false`). Responde a los KPIs que pide Girona Activa.
 
@@ -324,7 +324,6 @@ Panel en `/dashboard/indicadores`, **solo para el admin** (permiso `indicadores.
   - Las sesiones individuales siguen en `plan_sessions`. Solo los ciclos grupales usan `training_sessions`; la unificación está a medias. Las filas individuales copiadas a `training_sessions` en octubre no se mantienen. Decisión pendiente: terminarla o renunciar a ella.
   - El correo de invitación y `/client` tienen la marca de Girona Activa fija.
   - El menú dice "Empleats" (en catalán).
-  - La adherencia de la ficha del cliente cuenta también las sesiones futuras. Se unifica con la definición de `spec-kpis.md` §5.3 (completadas ÷ programadas hasta hoy).
   - El estado de los planes no es fiable: un plan sigue `active` después de su fecha de fin. Los indicadores calculan la vigencia con las fechas (`spec-kpis.md` §5.2).
 
 ---

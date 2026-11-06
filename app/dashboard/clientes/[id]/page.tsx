@@ -4,6 +4,11 @@ import Link from 'next/link'
 import { ArrowLeft, User, Calendar, Dumbbell, ClipboardList, CheckCircle2, Clock, XCircle } from 'lucide-react'
 import { DeleteClientButton } from './delete-button'
 import { AccessCard, type AccessStatus } from './access-card'
+import { StatusCard, type PeriodRow } from './status-card'
+import { getStaffUser, hasPermission } from '@/lib/auth/permissions'
+import { getCenterToday } from '@/lib/center-settings'
+import { ageOn } from '@/lib/center'
+import { CLIENT_STATE_BADGE, CLIENT_STATE_LABEL, clientStateOn, isPlanCurrent, planEffectiveEnd } from '@/lib/client-state'
 
 export default async function ClienteDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -32,11 +37,33 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
     }
   }
 
+  const [staff, today, { data: periodsData }, { data: reasonsData }] = await Promise.all([
+    getStaffUser(),
+    getCenterToday(supabase),
+    supabase
+      .from('client_periods')
+      .select('id, started_on, ended_on, end_notes, client_end_reasons(label)')
+      .eq('client_id', id)
+      .order('started_on', { ascending: false }),
+    supabase
+      .from('client_end_reasons')
+      .select('id, label, requires_notes')
+      .eq('is_active', true)
+      .order('sort_order'),
+  ])
+
+  const periods: PeriodRow[] = (periodsData ?? []).map(p => {
+    // PostgREST puede devolver la relación como objeto o como array
+    const rel = p.client_end_reasons as { label: string } | { label: string }[] | null
+    const reason = Array.isArray(rel) ? rel[0] : rel
+    return { id: p.id, started_on: p.started_on, ended_on: p.ended_on, reason: reason?.label ?? null, notes: p.end_notes }
+  })
+
   const { data: planes } = await supabase
     .from('training_plans')
     .select(`
       id, type, level, status, duration_months, weekly_frequency,
-      session_duration, start_date, end_date, created_at,
+      session_duration, start_date, end_date, ended_on, created_at,
       plan_sessions (
         id, session_date,
         plan_session_exercises (id),
@@ -46,12 +73,13 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
     .eq('client_id', id)
     .order('created_at', { ascending: false })
 
-  const planActivo = planes?.find(p => p.status === 'active') ?? null
-  const planesAnteriores = planes?.filter(p => p.status !== 'active') ?? []
+  // Plan activo = el vigente hoy (por fechas, no por el campo status)
+  const planActivo = planes?.find(p => isPlanCurrent(p, today)) ?? null
+  const planesAnteriores = planes?.filter(p => p.id !== planActivo?.id) ?? []
+  const state = clientStateOn(periods, planes ?? [], today) ?? 'inactive'
+  const canChangeState = !!staff && hasPermission(staff.role, 'clientes.baja')
 
-  const edad = cliente.birth_date
-    ? Math.floor((Date.now() - new Date(cliente.birth_date).getTime()) / (1000 * 60 * 60 * 24 * 365.25))
-    : null
+  const edad = ageOn(cliente.birth_date, today)
 
   const sexoLabel = cliente.sex === 'male' ? 'Hombre' : cliente.sex === 'female' ? 'Mujer' : 'Otro'
 
@@ -70,10 +98,8 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
             <h1 className="text-2xl font-bold text-white">
               {cliente.first_name} {cliente.last_name}
             </h1>
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-              cliente.is_active ? 'bg-green-500/15 text-green-400' : 'bg-white/5 text-white/40'
-            }`}>
-              {cliente.is_active ? 'Activo' : 'Inactivo'}
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${CLIENT_STATE_BADGE[state]}`}>
+              {CLIENT_STATE_LABEL[state]}
             </span>
           </div>
         </div>
@@ -110,6 +136,15 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
           )}
         </div>
 
+        <StatusCard
+          clientId={id}
+          state={state}
+          today={today}
+          periods={periods}
+          reasons={reasonsData ?? []}
+          canChange={canChangeState}
+        />
+
         <AccessCard
           clientId={id}
           email={cliente.email ?? null}
@@ -132,20 +167,22 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
                     Editar
                   </Link>
                 )}
-                <Link href={`/dashboard/planes/nuevo?client=${id}`}
-                  className="text-sm font-medium text-[#FF914D] hover:underline">
-                  + Nuevo plan
-                </Link>
+                {state !== 'baja' && (
+                  <Link href={`/dashboard/planes/nuevo?client=${id}`}
+                    className="text-sm font-medium text-[#FF914D] hover:underline">
+                    + Nuevo plan
+                  </Link>
+                )}
               </div>
             </div>
 
             {!planActivo ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <Dumbbell className="h-8 w-8 text-white/10 mb-2" />
-                <p className="text-sm text-white/40">Este cliente no tiene plan activo</p>
+                <p className="text-sm text-white/40">Este cliente no tiene un plan vigente</p>
               </div>
             ) : (
-              <PlanCard plan={planActivo} active />
+              <PlanCard plan={planActivo} active today={today} />
             )}
           </div>
 
@@ -155,7 +192,7 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
               <h2 className="font-semibold text-white mb-4">Historial de planes</h2>
               <div className="flex flex-col gap-3">
                 {planesAnteriores.map(plan => (
-                  <PlanCard key={plan.id} plan={plan} active={false} />
+                  <PlanCard key={plan.id} plan={plan} active={false} today={today} />
                 ))}
               </div>
             </div>
@@ -175,9 +212,10 @@ function DataRow({ label, value }: { label: string; value: string }) {
   )
 }
 
-function PlanCard({ plan, active }: { plan: any; active: boolean }) {
-  const today = new Date().toISOString().split('T')[0]
-  const sessions: any[] = plan.plan_sessions ?? []
+function PlanCard({ plan, active, today }: { plan: any; active: boolean; today: string }) {
+  // Las sesiones posteriores al fin efectivo del plan (plan sustituido o baja) no cuentan
+  const effEnd = planEffectiveEnd(plan)
+  const sessions: any[] = (plan.plan_sessions ?? []).filter((s: any) => s.session_date <= effEnd)
 
   const completadas = sessions.filter(s => {
     const logs: any[] = s.session_logs ?? []
@@ -196,8 +234,10 @@ function PlanCard({ plan, active }: { plan: any; active: boolean }) {
     return !completada && s.session_date >= today
   }).length
 
+  // Adherencia = completadas ÷ (completadas + no asistidas), solo hasta hoy (docs/spec-kpis.md §5.3)
   const totalSessions = sessions.length
-  const adherencia = totalSessions > 0 ? Math.round((completadas / totalSessions) * 100) : null
+  const pasadas = completadas + expiradas
+  const adherencia = pasadas > 0 ? Math.round((completadas / pasadas) * 100) : null
 
   const totalExercises = sessions.reduce(
     (acc: number, s: any) => acc + (s.plan_session_exercises?.length ?? 0), 0

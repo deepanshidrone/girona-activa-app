@@ -25,14 +25,18 @@ export type StaffUser = {
 // El admin siempre las tiene todas.
 export type Permission =
   | 'clientes.borrar'
+  | 'clientes.baja'
   | 'empleados.gestionar'
+  | 'indicadores.ver'
 
 // Valores fijos hasta que exista la página de Configuración (sección
 // "Permisos por rol", solo admin). Entonces se leerán de base de datos y las
 // acciones no tendrán que cambiar.
 const EMPLOYEE_PERMISSIONS: Record<Permission, boolean> = {
   'clientes.borrar': false,
+  'clientes.baja': true,          // dar de baja y reactivar (docs/spec-kpis.md §8)
   'empleados.gestionar': false,
+  'indicadores.ver': false,       // panel de indicadores, solo admin (docs/spec-kpis.md §10)
 }
 
 export type AuthResult =

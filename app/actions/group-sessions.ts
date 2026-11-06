@@ -2,6 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireStaff } from '@/lib/auth/permissions'
+import { closeReplacedPlans, checkClientCanGetPlan } from '@/lib/plans'
 import { CYCLE_PATTERN_20, NEXT_BLOCK, DAY_SLOT_TEMPLATE, getTodayDayIndex } from '@/lib/cycle-utils'
 import { generateCycleDates } from '@/lib/calendar-utils'
 import { getActiveHolidayDatesAction } from './holidays'
@@ -170,15 +171,15 @@ export async function createGroupCycleAction(data: CreateGroupCycleData) {
 
   // Load template pattern and slots (from DB if template_id given, else hardcoded fallback)
   let cyclePattern: ('A' | 'B' | 'C')[] = CYCLE_PATTERN_20
-  type SlotDef = { time: string; hasOverlap: boolean; maxClients: number }
+  type SlotDef = { time: string; hasOverlap: boolean; maxClients: number; durationMin: number }
   let slotsByDow: Record<number, SlotDef[]> = Object.fromEntries(
-    [0,1,2,3,4].map(dow => [dow, DAY_SLOT_TEMPLATE[dow].map(s => ({ time: s.time, hasOverlap: s.hasOverlap, maxClients: 6 }))])
+    [0,1,2,3,4].map(dow => [dow, DAY_SLOT_TEMPLATE[dow].map(s => ({ time: s.time, hasOverlap: s.hasOverlap, maxClients: 6, durationMin: 60 }))])
   )
 
   if (data.template_id) {
     const { data: tmpl } = await adminSupabase
       .from('cycle_templates')
-      .select('cycle_template_days(day_index, block_label), cycle_template_slots(day_of_week, session_time, has_overlap, max_clients)')
+      .select('cycle_template_days(day_index, block_label), cycle_template_slots(day_of_week, session_time, has_overlap, max_clients, duration_min)')
       .eq('id', data.template_id)
       .single()
 
@@ -193,6 +194,7 @@ export async function createGroupCycleAction(data: CreateGroupCycleData) {
           time: s.session_time,
           hasOverlap: s.has_overlap,
           maxClients: s.max_clients,
+          durationMin: s.duration_min ?? 60,
         })
       }
       slotsByDow = slotsByDowRaw
@@ -223,17 +225,17 @@ export async function createGroupCycleAction(data: CreateGroupCycleData) {
     const dow          = new Date(sessionDate + 'T12:00:00').getDay() - 1  // 0=Mon … 4=Fri
     const dowKey       = dow >= 0 && dow <= 4 ? dow : 4
 
-    for (const { time, hasOverlap, maxClients } of (slotsByDow[dowKey] ?? [])) {
+    for (const { time, hasOverlap, maxClients, durationMin } of (slotsByDow[dowKey] ?? [])) {
       sessionsToInsert.push({
         type: 'group', session_date: sessionDate, session_time: time,
         session_label: primaryBlock, cycle_id: cycle.id,
-        day_index, max_clients: maxClients, status: 'scheduled',
+        day_index, max_clients: maxClients, duration_min: durationMin, status: 'scheduled',
       })
       if (hasOverlap) {
         sessionsToInsert.push({
           type: 'group', session_date: sessionDate, session_time: time,
           session_label: nextBlock, cycle_id: cycle.id,
-          day_index, max_clients: maxClients, status: 'scheduled',
+          day_index, max_clients: maxClients, duration_min: durationMin, status: 'scheduled',
         })
       }
     }
@@ -249,12 +251,12 @@ export async function createGroupPlanAction(data: CreateGroupPlanData) {
   if (!auth.user) return { error: auth.error }
   const adminSupabase = createAdminClient()
 
-  // Desactivar plan activo anterior
-  await adminSupabase
-    .from('training_plans')
-    .update({ status: 'completed' })
-    .eq('client_id', data.client_id)
-    .eq('status', 'active')
+  const blocked = await checkClientCanGetPlan(adminSupabase, data.client_id, data.assigned_employee_id)
+  if (blocked) return { error: blocked }
+
+  // Cerrar el plan activo anterior (fin efectivo = día antes del nuevo)
+  const closeError = await closeReplacedPlans(adminSupabase, data.client_id, data.start_date)
+  if (closeError) return { error: closeError }
 
   const endDate = new Date(data.start_date)
   endDate.setMonth(endDate.getMonth() + data.duration_months)

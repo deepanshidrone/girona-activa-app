@@ -8,6 +8,7 @@ export type TemplateSlotData = {
   session_time: string  // 'HH:MM'
   has_overlap: boolean
   max_clients: number
+  duration_min?: number // duración de la sesión en minutos (60 por defecto)
 }
 
 export type TemplateDayData = {
@@ -31,7 +32,7 @@ export async function getTemplatesAction() {
     .select(`
       id, name, notes, is_default, created_at,
       cycle_template_days(id, day_index, block_label),
-      cycle_template_slots(id, day_of_week, session_time, has_overlap, max_clients)
+      cycle_template_slots(id, day_of_week, session_time, has_overlap, max_clients, duration_min)
     `)
     .order('is_default', { ascending: false })
     .order('created_at', { ascending: true })
@@ -49,7 +50,7 @@ export async function getTemplateByIdAction(id: string) {
     .select(`
       id, name, notes, is_default, created_at,
       cycle_template_days(id, day_index, block_label),
-      cycle_template_slots(id, day_of_week, session_time, has_overlap, max_clients)
+      cycle_template_slots(id, day_of_week, session_time, has_overlap, max_clients, duration_min)
     `)
     .eq('id', id)
     .single()
@@ -142,7 +143,7 @@ export async function duplicateTemplateAction(id: string, name: string) {
 
   const { data: src } = await adminSupabase
     .from('cycle_templates')
-    .select('cycle_template_days(day_index, block_label), cycle_template_slots(day_of_week, session_time, has_overlap, max_clients)')
+    .select('cycle_template_days(day_index, block_label), cycle_template_slots(day_of_week, session_time, has_overlap, max_clients, duration_min)')
     .eq('id', id)
     .single()
 
@@ -160,7 +161,7 @@ export async function duplicateTemplateAction(id: string, name: string) {
     (src.cycle_template_days as any[]).map(d => ({ template_id: newTmpl.id, day_index: d.day_index, block_label: d.block_label }))
   )
   await adminSupabase.from('cycle_template_slots').insert(
-    (src.cycle_template_slots as any[]).map(s => ({ template_id: newTmpl.id, day_of_week: s.day_of_week, session_time: s.session_time, has_overlap: s.has_overlap, max_clients: s.max_clients }))
+    (src.cycle_template_slots as any[]).map(s => ({ template_id: newTmpl.id, day_of_week: s.day_of_week, session_time: s.session_time, has_overlap: s.has_overlap, max_clients: s.max_clients, duration_min: s.duration_min ?? 60 }))
   )
 
   return { success: true, id: newTmpl.id }

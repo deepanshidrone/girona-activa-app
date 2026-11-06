@@ -2,6 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireStaff } from '@/lib/auth/permissions'
+import { closeReplacedPlans, checkClientCanGetPlan } from '@/lib/plans'
 
 export type PlanExercise = {
   exercise_id: string
@@ -34,12 +35,12 @@ export async function createPlanAction(data: CreatePlanData) {
   if (!auth.user) return { error: auth.error }
   const adminSupabase = createAdminClient()
 
-  // 1. Desactivar plan activo anterior del cliente
-  await adminSupabase
-    .from('training_plans')
-    .update({ status: 'completed' })
-    .eq('client_id', data.client_id)
-    .eq('status', 'active')
+  const blocked = await checkClientCanGetPlan(adminSupabase, data.client_id, data.assigned_employee_id)
+  if (blocked) return { error: blocked }
+
+  // 1. Cerrar el plan activo anterior del cliente (fin efectivo = día antes del nuevo)
+  const closeError = await closeReplacedPlans(adminSupabase, data.client_id, data.start_date)
+  if (closeError) return { error: closeError }
 
   // 2. Crear el plan
   const endDate = new Date(data.start_date)

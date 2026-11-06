@@ -1,6 +1,6 @@
 # Especificación — Panel de indicadores (KPIs) del centro
 
-- **Estado:** especificación de producto aprobada por el propietario (2026-11-06). Sin código todavía.
+- **Estado:** v1 implementada en `dev` (2026-11-06), pendiente de la ronda de QA. Ver §15.
 - **Fecha:** 2026-11-06
 - **Rama:** `dev`
 - **Relacionado:** `docs/FRD.md` (§4.14 y roadmap §6), `docs/spec-vista-cliente.md` (§7.1 vista `client_sessions`, §7.2 `client_feedback`, §7.3 registro grupal y §7.4 `center_settings`), `input-negocio-GA/Especificaciones de la app – Girona Activa.pdf` (apartado "CRM y KPIs")
@@ -63,7 +63,7 @@ Todos admiten periodo, comparativa y filtros (§6), salvo lo indicado. "Clientes
 | KPI | Definición | Filtros |
 |---|---|---|
 | **Clientes por estado** | Activos, Inactivos y Baja en la fecha final del periodo; evolución mensual (12 meses) en barras apiladas | Entrenador (el de su último plan), tipo de plan |
-| **Altas** | Periodos de alta iniciados en el periodo, separados en **nuevas** (primer periodo del cliente) y **reactivaciones** | Tipo de plan (el del primer plan del periodo) |
+| **Altas** | Periodos de alta iniciados en el periodo, separados en **nuevas** (primer periodo del cliente) y **reactivaciones** | Entrenador y tipo de plan (los de su último plan a final de mes) |
 | **Bajas** | Periodos cerrados en el periodo, con reparto por **motivo** | Entrenador (el de su último plan), tipo de plan |
 | **Churn mensual** | Bajas del mes ÷ clientes de alta el día 1 de ese mes. En periodos de varios meses, la media de los meses. Sin clientes de alta al empezar: "sin datos" (no 0 %) | Entrenador, tipo de plan |
 | **Retención (renovación)** | De los planes cuya fecha de fin efectiva cae en el periodo, % que tienen un plan siguiente del mismo cliente que empieza **antes** o **como mucho 14 días después** (ventana configurable). Un plan sustituido antes de su fin cuenta como renovado. Un plan cerrado por una baja cuenta como no renovado. Los planes que terminaron hace menos de 14 días quedan **pendientes** y no cuentan hasta que se cierra la ventana | Entrenador, tipo de plan |
@@ -132,11 +132,12 @@ Lista con enlace a la ficha del cliente, siempre calculada a fecha de hoy (no de
 ### 5.2 Vigencia de un plan
 - **Fin efectivo** = `coalesce(training_plans.ended_on, end_date)`.
 - `ended_on` se rellena cuando el plan se cierra antes de tiempo: al crear un plan nuevo para el cliente (= día anterior al inicio del nuevo) o al dar de baja al cliente (= fecha de baja).
-- Un plan está **vigente** en la fecha D si `start_date ≤ D ≤ fin efectivo` y su estado no es `cancelled`.
+- Un plan está **vigente** en la fecha D si `start_date ≤ D ≤ fin efectivo`. Un plan cancelado por una baja tiene como fin efectivo la fecha de baja, así que sigue contando como vigente en los meses anteriores.
 - El campo `status` se mantiene por compatibilidad, pero los KPIs no dependen de él. Los planes caducados dejan de contar como activos sin que nadie tenga que cerrarlos.
 
 ### 5.3 Adherencia (definición única)
-- Se basa en la vista unificada `client_sessions` de `spec-vista-cliente.md` §7.1: una fila por cliente y sesión, sea individual o grupal, con estado `completed`, `missed`, `scheduled` o `cancelled`.
+- Se basa en la vista unificada `client_sessions` de `spec-vista-cliente.md` §7.1 (creada con esta v1): una fila por cliente y sesión, sea individual o grupal, con estado `completed`, `missed`, `scheduled`, `cancelled` o `unrecorded`.
+- **`unrecorded`** (solo grupales): sesión pasada en la que no se registró a nadie. Se trata como "asistencia no tomada", no como falta, y no cuenta en la adherencia. Así, mientras no exista el registro de sesiones grupales, sus clientes salen "sin datos" y no al 0 %. El panel muestra cuántas plazas quedan fuera por este motivo.
 - **Adherencia = completadas ÷ (completadas + no asistidas)**, contando solo las sesiones con fecha ≤ hoy y ≤ fin efectivo del plan.
 - Una sesión `in_progress` de hoy no cuenta todavía; una de un día pasado cuenta como no asistida.
 - La ficha del cliente (`clientes/[id]/page.tsx`) pasa a usar esta misma definición.
@@ -434,3 +435,26 @@ En paralelo o después, y compartido con la vista de cliente: registro de sesion
 | Q5 | ¿La ventana de renovación de 14 días encaja con la práctica del centro? | 14 días, configurable |
 | Q6 | ¿Las horas semanales de un entrenador que también es admin (Ezequiel) cuentan solo las de entrenar? | Sí: `weekly_hours` = horas disponibles para sesiones, no la jornada completa |
 | Q7 | ¿Se registra quién captó o atendió al cliente (comercial) para atribuir las altas? | No en la v1; encaja en el CRM fase 1 |
+
+---
+
+## 15. Implementación v1 (2026-11-06)
+
+| Pieza | Dónde |
+|---|---|
+| Migraciones | `supabase/migrations/20261106120000_kpis_v1.sql` (modelo, vistas y funciones `kpi_*`) y `20261106130000_kpis_v1_permisos_vistas.sql` (lectura de las vistas para `service_role`) |
+| Cálculo | SQL: `kpi_monthly`, `kpi_client_states`, `kpi_progress`, `kpi_alerts`, `kpi_working_days`. TypeScript (funciones puras): `lib/kpis/compute.ts` y `lib/kpis/period.ts`. Carga: `lib/kpis/load.ts`, que pagina las llamadas porque la API devuelve como máximo 1.000 filas |
+| Panel | `app/dashboard/indicadores/` (página, filtros, objetivos y `exportar/route.ts`); gráficos en `components/kpis/charts.tsx` (SVG propio, sin librería) |
+| Baja y reactivación | `app/actions/client-status.ts`, `app/dashboard/clientes/[id]/status-card.tsx`; listado con filtro de estado en `app/dashboard/clientes/page.tsx` |
+| Planes | `lib/plans.ts`: entrenador obligatorio, bloqueo para clientes de baja y fin efectivo del plan sustituido |
+| Otros | Horas semanales en la ficha del empleado; duración por franja en las plantillas de ciclo; franja de indicadores en `/dashboard`; entrada "Indicadores" en el menú solo con permiso |
+| Demo | `scripts/seed-demo.mts` (`npm run seed:demo` con `ALLOW_DEMO_SEED=true`; `--reset` la borra) |
+| Tests | `npm test`: unitarios de las fórmulas (`tests/kpis/compute.test.ts`) y de integración contra la BD (`tests/kpis/db.test.ts`, solo con `ALLOW_DEMO_SEED=true`: escribe y borra datos en marzo de 2024) |
+
+**Diferencias con lo especificado:**
+- Las altas y las bajas se filtran por el entrenador y el tipo del último plan del cliente (§4.1).
+- La exportación de bajas lista todas las del periodo, sin aplicar los filtros de entrenador y tipo, y no incluye el comentario de la baja (puede contener datos de salud).
+- `cycle_week_targets` no tiene editor en la interfaz todavía: se cambia en la BD. Los demás objetivos se editan desde el panel.
+- El dolor reportado sale siempre "sin datos" hasta que exista `client_feedback` (vista de cliente).
+- El registro de sesiones grupales sigue pendiente. Ya existe la columna `session_logs.training_session_id` que usan los KPIs y la demo, pero no la pantalla.
+

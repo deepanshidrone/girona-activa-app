@@ -21,6 +21,7 @@ export function EmployeeEditForm({ employee }: { employee: Employee }) {
     full_name: employee.full_name,
     phone: employee.phone ?? '',
     hire_date: employee.hire_date ?? '',
+    weekly_hours: employee.weekly_hours?.toString() ?? '',
     role: employee.role,
   })
   const [specialties, setSpecialties] = useState<string[]>(employee.specialties ?? [])
@@ -42,6 +43,7 @@ export function EmployeeEditForm({ employee }: { employee: Employee }) {
       full_name: form.full_name,
       phone: form.phone,
       hire_date: form.hire_date,
+      weekly_hours: form.weekly_hours.trim() === '' ? null : Number(form.weekly_hours.replace(',', '.')),
       role: form.role,
       specialties,
     })
@@ -103,6 +105,15 @@ export function EmployeeEditForm({ employee }: { employee: Employee }) {
               ))}
             </div>
           </div>
+        </div>
+
+        {/* Horas semanales (base del % de ocupación en Indicadores) */}
+        <div className="flex flex-col gap-2">
+          <label className={labelCls}>Horas semanales para sesiones</label>
+          <input type="number" min={0} max={80} step={0.5} inputMode="decimal" value={form.weekly_hours}
+            onChange={e => setForm(f => ({ ...f, weekly_hours: e.target.value }))}
+            className={`${inputCls} max-w-[12rem]`} placeholder="Ej.: 30" />
+          <p className="text-xs text-white/30">Horas disponibles para entrenar a la semana. Se usan para calcular su ocupación.</p>
         </div>
 
         {/* Especialitats */}

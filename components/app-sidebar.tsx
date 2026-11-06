@@ -13,7 +13,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
-import { Users, Dumbbell, CalendarDays, LogOut, UserCircle, LayoutGrid, CalendarClock, Monitor, UsersRound } from 'lucide-react'
+import { Users, Dumbbell, CalendarDays, LogOut, UserCircle, LayoutGrid, CalendarClock, Monitor, UsersRound, BarChart3 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
@@ -27,6 +27,9 @@ const navItems = [
   { title: 'Pantallas', href: '/dashboard/pantallas', icon: Monitor },
 ]
 
+// Solo con el permiso 'indicadores.ver' (hoy, solo admin). El servidor lo vuelve a comprobar.
+const kpiItem = { title: 'Indicadores', href: '/dashboard/indicadores', icon: BarChart3 }
+
 interface UserInfo {
   name: string
   email: string
@@ -34,7 +37,7 @@ interface UserInfo {
   role: string
 }
 
-export function AppSidebar() {
+export function AppSidebar({ canSeeKpis = false }: { canSeeKpis?: boolean }) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -100,7 +103,7 @@ export function AppSidebar() {
       {/* Nav */}
       <SidebarContent className="px-3 py-4">
         <SidebarMenu className="gap-1">
-          {navItems.map((item) => {
+          {(canSeeKpis ? [...navItems, kpiItem] : navItems).map((item) => {
             const isActive = pathname.startsWith(item.href)
             return (
               <SidebarMenuItem key={item.href}>
