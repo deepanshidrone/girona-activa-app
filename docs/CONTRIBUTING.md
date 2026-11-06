@@ -54,6 +54,7 @@ git push origin main --tags
 
 ## Actualizar el FRD
 
-Cada vez que se implemente una funcionalidad nueva, actualizar `docs/FRD.md`:
-- Mover de ⏳ Pendiente a ✅ Implementado
-- Añadir nuevas funcionalidades identificadas al roadmap
+`docs/FRD.md` es el documento de producto, organizado por módulos. Cada commit `feat:` lo actualiza **en el mismo commit**:
+- Cambiar el estado del módulo (⏳ → 🟡 → ✅) y describir la funcionalidad
+- Añadir las ideas nuevas al roadmap (§6), no a archivos sueltos
+- Ver las reglas completas en la §7 del FRD

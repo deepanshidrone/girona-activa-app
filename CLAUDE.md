@@ -177,9 +177,19 @@ girona-activa-app/
 
 ## Base de datos — tablas principales
 
-### Modelo de datos — sesiones unificadas (octubre 2026)
+### Modelo de datos de sesiones — unificación a medias (revisado 2026-11-06)
 
-Todas las sesiones (individuales y grupales) están unificadas en `training_sessions` y `training_session_clients`. Las tablas legacy `plan_sessions` y `group_cycle_slots` se mantienen por compatibilidad, pero ya no se usan para funcionalidad nueva.
+En octubre de 2026 se creó `training_sessions` + `training_session_clients` para unificar todas las sesiones, pero **la migración del código no se terminó**:
+
+| Tipo de sesión | Dónde se escribe y se lee hoy |
+|---|---|
+| **Grupal** (ciclos) | `training_sessions` + `training_session_clients` (`group-sessions.ts`: creación de ciclo, planificación, "Hoy") |
+| **Individual** | `plan_sessions` + `plan_session_exercises` (wizard `plans.ts`, edición `edit-plan.ts`, registro `session-logs.ts`, ficha del cliente, `/client`, TrainWall) |
+
+- Las filas `type = 'individual'` de `training_sessions` (198) son una copia de la migración de octubre: **no se mantienen** y no reflejan los planes creados después. No usarlas.
+- `group_cycle_slots` es legacy, pero `employees.ts` todavía la lee.
+- `session_logs` apunta a `plan_session_id`, por eso las sesiones grupales no se pueden registrar todavía.
+- Terminar la unificación (o renunciar a ella) es una decisión pendiente; está como deuda en `docs/FRD.md` §5.
 
 **`training_sessions`** — evento u ocurrencia concreta en el calendario:
 ```
@@ -206,7 +216,7 @@ difficulty  'regression' | 'base' | 'progression'   ← por cliente, progresivo
 UNIQUE(session_id, client_id)
 ```
 
-Para sesiones individuales: 1 fila en `training_session_clients`.
+Para sesiones individuales (diseño previsto, hoy no se usa): 1 fila en `training_session_clients`.
 Para sesiones grupales: hasta `max_clients` filas, cada una con su `difficulty` (el nivel puede cambiar de una sesión a otra para registrar la progresión del cliente).
 
 ### Tablas existentes
@@ -225,15 +235,15 @@ Para sesiones grupales: hasta `max_clients` filas, cada una con su `difficulty` 
 | `group_cycles` | Ciclos de sesiones grupales (4 semanas): `start_date`, `notes` |
 | `group_sessions` | Plantilla de ejercicios por bloque A/B/C × dificultad regression/base/progression |
 | `group_session_exercises` | Ejercicios de la plantilla: `exercise_id`, `sets`, `reps`, `weight_kg`, `order_index` |
-| `training_sessions` | **Tabla unificada** — todas las sesiones individuales y grupales como eventos concretos del calendario |
+| `training_sessions` | Sesiones grupales como eventos concretos del calendario (pensada para unificar también las individuales; ver arriba) |
 | `training_session_clients` | **Unión** — qué cliente participa en qué sesión y a qué nivel (`difficulty`) |
 | `training_plans` | Contrato de suscripción del cliente: `client_id`, `assigned_employee_id`, `type`, `level`, `status`, `duration_months`, `weekly_frequency`, `session_duration`, `start_date`, `end_date` |
 | `public_holidays` | Festivos: `date` (PK), `name`, `scope` (national/catalonia/girona), `is_active`, `is_override` |
 | `cycle_templates` | Plantillas predefinidas para crear ciclos: `name`, `notes`, `is_default`, `created_by` |
 | `cycle_template_days` | Patrón mensual de la plantilla: 20 filas (day_index 0-19) con `block_label` A/B/C |
 | `cycle_template_slots` | Franjas del día de la plantilla por día de la semana: `day_of_week` (0-4), `session_time`, `has_overlap`, `max_clients` |
-| `plan_sessions` | ⚠️ Legacy — sesiones individuales (migradas a `training_sessions`) |
-| `group_cycle_slots` | ⚠️ Legacy — franjas de ciclos grupales (migradas a `training_sessions`) |
+| `plan_sessions` | **Sesiones individuales** — fuente de verdad actual (wizard, edición, registro, `/client`, TrainWall) |
+| `group_cycle_slots` | ⚠️ Legacy — franjas de ciclos grupales (migradas a `training_sessions`); aún la lee `employees.ts` |
 | `plan_session_exercises` | Ejercicios de las sesiones individuales |
 | `session_logs` | Registro de ejecución: `started_at`, `completed_at`, `status` |
 | `exercise_logs` | `sets_done`, `reps_done`, `load_kg`, `rpe` (1-10), `rir` (0-10), `skipped` |
@@ -419,6 +429,13 @@ La estructura de la BD se versiona en `supabase/migrations/`. **No se hacen camb
 - Los datos (galería, festivos, clientes) **no** están en las migraciones; solo la estructura.
 - Sin Docker en este PC, `supabase db dump/pull` no funcionan directamente. Para hacer un volcado: `npx.cmd supabase db dump --remote --dry-run` muestra el script de `pg_dump` (con un usuario temporal) y se ejecuta con el `pg_dump` local (`C:\Program Files\PostgreSQL\17\bin`, solo herramientas cliente). En Windows hay que cambiar `--quote-all-identifier` por `--quote-all-identifiers`.
 - Pendiente antes del go-live: un segundo proyecto de Supabase de pruebas (`brotafit-dev`) donde probar las migraciones antes de producción.
+
+### Documento de producto (FRD)
+
+[docs/FRD.md](./docs/FRD.md) es el documento de producto: qué hace la app por módulos, qué está hecho y el roadmap.
+- **Cada commit `feat:` actualiza el FRD en el mismo commit** (estado del módulo y descripción de la funcionalidad).
+- Las ideas nuevas van al roadmap del FRD (§6), no a archivos sueltos.
+- Una funcionalidad grande tiene su propia `docs/spec-<tema>.md`, enlazada desde el FRD.
 
 ### Registro de bugs
 

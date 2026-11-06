@@ -1,375 +1,352 @@
-# FRD — Girona Activa App
-**Functional Requirements Document**
-Versión: 1.1 | Última actualización: 2026-08-14 | Repo: `deepanshidrone/girona-activa-app`
+# FRD — BrotaFit (Girona Activa)
+**Documento de requisitos funcionales**
+Versión: 2.0 | Última actualización: 2026-11-06 | Repo: `deepanshidrone/girona-activa-app`
+
+Este es el **documento de producto** de BrotaFit: qué hace la app, qué está hecho y qué falta. Se mantiene al día con cada funcionalidad (ver [§7](#7-cómo-se-mantiene-este-documento)). El detalle técnico (convenciones de código, migraciones, RLS) está en `CLAUDE.md`. Las especificaciones de módulos concretos están en `docs/spec-*.md`.
+
+**Leyenda:** ✅ implementado · 🟡 parcial · ⏳ pendiente · ❌ fuera de alcance
 
 ---
 
 ## Índice
 1. [Visión general](#1-visión-general)
 2. [Usuarios y roles](#2-usuarios-y-roles)
-3. [Autenticación](#3-autenticación)
-4. [Stack técnico](#4-stack-técnico)
-5. [Funcionalidades — Empleado](#5-funcionalidades--empleado)
-6. [Funcionalidades — Cliente](#6-funcionalidades--cliente)
-7. [Galería de ejercicios](#7-galería-de-ejercicios)
-8. [Planes grupales predefinidos](#8-planes-grupales-predefinidos)
-9. [Out of scope — MVP](#9-out-of-scope--mvp)
-10. [Roadmap Fase 2](#10-roadmap-fase-2)
-11. [Estado de implementación](#11-estado-de-implementación)
+3. [Mapa de módulos](#3-mapa-de-módulos)
+4. [Módulos](#4-módulos)
+5. [Requisitos transversales](#5-requisitos-transversales)
+6. [Roadmap](#6-roadmap)
+7. [Cómo se mantiene este documento](#7-cómo-se-mantiene-este-documento)
+8. [Historial de versiones](#8-historial-de-versiones)
 
 ---
 
 ## 1. Visión general
 
-Herramienta web para la gestión y visualización de planes de entrenamiento del centro Girona Activa. Permite a los empleados crear y asignar planes personalizados a sus clientes, y a los clientes consultar su plan activo en un calendario.
+Herramienta web para gestionar los entrenamientos de un centro: los entrenadores crean planes individuales y ciclos grupales, registran las sesiones y siguen a sus clientes. Los clientes, opcionalmente, consultan su plan desde el móvil.
+
+Nació como app a medida de **Girona Activa** (centro de entrenamiento personal y fisioterapia en Girona) y se comercializa como **BrotaFit** a otros centros. El módulo opcional **TrainWall** muestra el entrenamiento en pantallas físicas de la sala.
 
 | | |
 |---|---|
-| **URL** | `app.gironaactiva.com` (pendiente DNS) / `dev--girona-activa-app.vercel.app` |
-| **Idioma MVP** | Castellano (interfaz empleado) / Catalán (contenido ejercicios) |
-| **Dispositivos** | Empleados: PC / tablet · Clientes: móvil (mobile-first) |
+| **Estado** | MVP en desarrollo activo en la rama `dev`. Sin versión en producción (sin go-live) |
+| **URL dev** | `girona-activa-app-git-dev-brota-ai.vercel.app` (preview de Vercel) |
+| **URL producción** | `app.gironaactiva.com` (DNS pendiente) / `girona-activa-app.vercel.app` |
+| **Idioma** | Interfaz en castellano. Contenido de la galería de ejercicios en catalán |
+| **Dispositivos** | Personal: PC y tablet. Clientes: móvil (mobile-first) |
+| **Stack** | Next.js 16 (App Router, Server Actions) · Supabase (PostgreSQL, Auth, RLS, Storage, Realtime) · Vercel · Tailwind v4 + shadcn/ui · Resend (correo) |
+
+**Marca blanca:** decidido que cada centro tendrá su propia instancia (mismo repo, un proyecto de Vercel y uno de Supabase por centro, con la configuración en la tabla `center_settings`). No se construye hasta que firme un segundo centro. Mientras tanto, no se añaden más textos ni datos de Girona Activa fijos en el código.
 
 ---
 
 ## 2. Usuarios y roles
 
-| Rol | Descripción | Acceso MVP |
+| Rol | Quién es | Acceso |
 |---|---|---|
-| **Empleado** | Entrenador del centro | Alta clientes + creación de planes + galería de ejercicios |
-| **Cliente** | Miembro del centro | Vista de su plan activo en calendario |
-| **Admin** | *(fuera del MVP)* | — |
+| **admin** | Jefe del centro (también entrena). Puede haber varios | Todo |
+| **employee** | Entrenador contratado | Todo el dashboard salvo **borrar clientes** y **gestionar empleados** (valores por defecto hasta que exista la página de Configuración) |
+| **client** | Socio del centro | Solo su área `/client`, y solo si se le ha dado acceso. Muchos socios no usarán la app |
 
-Un único rol de empleado para el MVP. Sin distinción admin/entrenador.
-
----
-
-## 3. Autenticación
-
-- Login por email + contraseña para ambos roles
-- El empleado crea la cuenta del cliente (el cliente no se registra solo)
-- Sesión persistente (no expirar en cada visita)
-- Proveedor: **Supabase Auth**
-- El cliente recibe un email de invitación con link de acceso directo
+- El rol vive en `app_metadata.role` de Supabase Auth (viaja en el token y solo se cambia desde el servidor). `profiles.role` es una copia que mantiene un trigger.
+- `proxy.ts` deniega por defecto: `/dashboard` solo para personal, `/client` solo para clientes.
+- La base de datos aplica lo mismo con RLS (BUG-002): el personal ve todo el centro y el cliente no tiene acceso directo a ninguna tabla.
 
 ---
 
-## 4. Stack técnico
+## 3. Mapa de módulos
 
-| Capa | Tecnología |
+| # | Módulo | Ruta | Estado |
+|---|---|---|---|
+| 4.1 | Acceso y cuentas | `/login`, `/auth/*` | ✅ |
+| 4.2 | Clientes | `/dashboard/clientes` | ✅ |
+| 4.3 | Empleados | `/dashboard/empleados` | ✅ |
+| 4.4 | Galería de ejercicios | `/dashboard/ejercicios` | 🟡 faltan imágenes, edición y zonas |
+| 4.5 | Planes individuales | `/dashboard/planes` | ✅ |
+| 4.6 | Sesiones grupales (ciclos, plantillas, festivos) | `/dashboard/sesiones` | ✅ |
+| 4.7 | Agenda del día y registro de sesión | `/dashboard/hoy` | 🟡 registro solo de sesiones individuales |
+| 4.8 | TrainWall (pantallas en sala) | `/dashboard/pantallas`, `/pantalla/[id]` | 🟡 software hecho, hardware sin confirmar |
+| 4.9 | Vista de cliente (móvil) | `/client` | 🟡 versión básica; v1 especificada |
+| 4.10 | Perfil del personal | `/dashboard/perfil` | ✅ |
+| 4.11 | Panel | `/dashboard` | ✅ |
+| 4.12 | Configuración del centro | `/dashboard/configuracion` | ⏳ |
+| 4.13 | Informes, ranking, comunidad, nutrición | — | ⏳ fases posteriores |
+
+---
+
+## 4. Módulos
+
+### 4.1 Acceso y cuentas ✅
+
+- Login con email y contraseña (Supabase Auth). Sesión persistente.
+- Nadie se registra solo: el personal crea las cuentas.
+- **Activación de cuenta:** el correo de invitación (Resend) lleva a `/auth/confirm`, que valida el enlace y manda a `/auth/set-password`. Esta página es común a todos los roles (BUG-001). Después, cada rol va a su inicio: el personal a `/dashboard` y los clientes a `/client`.
+- El enlace de invitación caduca a las 24 horas; se puede reenviar.
+- Usuario de pruebas: "Cliente Test" (cliente con login y un plan individual de lunes de noviembre a enero).
+
+### 4.2 Clientes ✅
+
+**Listado:** estadísticas (activos, nuevos este mes) y tabla de clientes.
+
+**Alta de cliente** (`/clientes/nuevo`): crea **solo la ficha**, sin cuenta de acceso.
+
+| Campo | Obligatorio |
 |---|---|
-| Frontend + Backend | Next.js 16 (App Router, Server Components, Server Actions) |
-| Base de datos + Auth | Supabase (PostgreSQL + Auth + RLS) |
-| Almacenamiento | Supabase Storage (bucket `avatars`) |
-| Hosting | Vercel |
-| UI | Tailwind CSS v4 + shadcn/ui |
-| Dominio | `app.gironaactiva.com` (pendiente configuración DNS) |
-| Repo | `deepanshidrone/girona-activa-app` |
+| Nombre, apellido | ✅ |
+| Sexo (Hombre / Mujer / Otro) | ✅ |
+| Fecha de nacimiento | ✅ |
+| Altura (cm), peso (kg) | ✅ |
+| Fecha de inicio | ✅ |
+| Email | ❌ Solo hace falta si el cliente va a usar la app |
+| Comentarios (notas internas) | ❌ |
 
-### Esquema de base de datos
+**Ficha del cliente** (`/clientes/[id]`):
+- Datos personales y notas internas.
+- **Acceso a la app** (opcional, decidido 2026-11-05): estado *sin acceso*, *invitado* o *activo*. Botones "Enviar invitación", "Reenviar invitación" y "Guardar email e invitar". Al invitar se crea la cuenta con rol `client` y se enlaza a la ficha.
+  - No se puede invitar con un email de personal ni con uno ya enlazado a otro cliente.
+  - Si el cliente ya ha entrado, no se reenvía.
+- Plan activo con enlace a editar, botón "Nuevo plan" (preselecciona al cliente en el wizard) e historial de planes.
+- **Adherencia** por plan: sesiones completadas / expiradas / pendientes y % de adherencia.
+- Eliminar cliente (solo admin).
 
-| Tabla | Schema | Descripción |
+Reglas: un cliente solo tiene un plan activo a la vez.
+
+### 4.3 Empleados ✅
+
+Solo el admin gestiona empleados; el employee puede ver el listado.
+
+- Listado del personal con su rol y estado.
+- Alta de empleado o admin: crea la cuenta y envía la invitación con diseño corporativo.
+- Ficha: editar datos y rol, activar o desactivar, cambiar la contraseña y ver las sesiones asignadas.
+- ⏳ Pendiente: ocultar al employee los botones que no puede usar (hoy los ve, pero el servidor los rechaza).
+
+### 4.4 Galería de ejercicios 🟡
+
+- Catálogo en Supabase, ampliable desde la app. Hoy hay **238 ejercicios**: cadera (Maluc) 88, rodilla (Genoll) 59, core 50 y tobillo/pie (Turmell i peu) 41.
+- Los primeros se importaron desde los Excel del cliente (script Python → SQL / CSV).
+- **Filtros:** zona corporal, nivel, patrón de movimiento, grupo muscular, equipamiento, objetivo, nivel técnico y búsqueda por nombre.
+- **Alta de ejercicio** (`/ejercicios/nuevo`): formulario completo. Los catálogos (por ejemplo, grupos musculares) se pueden crear al vuelo.
+- **Campos:** nombre (catalán), nombre técnico, código, subpatrón, nivel 1-3, nivel técnico, progresión y regresión (FK a otro ejercicio), músculos secundarios, contraindicaciones, notas técnicas, errores comunes, zona, patrón, equipamiento y objetivo.
+- **Pendiente:**
+  - ⏳ Editar y borrar ejercicios desde la app.
+  - ⏳ Imagen por ejercicio (Supabase Storage).
+  - ⏳ Zona de hombro.
+  - ⏳ Completar `regression_id` / `progression_id`. Mientras estén vacíos, el código usa el ejercicio base.
+  - ❌ Vídeo (fase posterior).
+- La galería es propiedad de Girona Activa: otro centro usaría la suya (o se le podría vender aparte).
+
+**Selector de ejercicios (`ExercisePickerModal`)**, compartido por el wizard y la edición de planes:
+- Modal a pantalla completa con los mismos filtros que la galería.
+- Por ejercicio se configuran series, repeticiones, peso (opcional) y notas (opcional).
+- El panel "En este día" muestra los ejercicios añadidos, con editar y eliminar.
+
+### 4.5 Planes individuales ✅
+
+**Wizard de creación** (`/planes/nuevo`), en 6 pasos:
+
+| Paso | Contenido |
+|---|---|
+| 1. Cliente | Clientes activos. Se salta si se llega con `?client=uuid` |
+| 2. Entrenador | Empleado asignado al plan |
+| 3. Tipo | Individual o grupal (con elección de ciclo; ver 4.6) |
+| 4. Nivel | 1 Regresión · 2 Base · 3 Progresión |
+| 5. Parámetros | Fecha de inicio, hora, meses de duración, frecuencia semanal, días de la semana, duración por sesión (30 o 60 min) |
+| 6. Calendario | Vista mensual; clic en un día abre el selector de ejercicios. La `×` roja quita una sesión. Guardar deja el plan activo |
+
+**Edición de plan** (`/planes/[id]/editar`):
+- Calendario mensual con estados de cada sesión: verde (completada), naranja (pendiente) y gris (expirada).
+- Al pulsar un día se abre una hoja inferior con los ejercicios: añadir (con el selector), editar, eliminar y mover la sesión a otro día.
+
+**Listado de planes**, con acceso a la edición de los activos.
+
+### 4.6 Sesiones grupales ✅
+
+El centro trabaja con **ciclos de 4 semanas** (20 días laborables). Cada día toca un bloque A, B o C. Cada bloque tiene ejercicios en **3 dificultades**: regresión, base y progresión.
+
+**Plantillas de ciclo** (`/sesiones/plantillas`):
+- Patrón mensual: cuadrícula de 4 semanas × 5 días; un clic cambia A → B → C.
+- Franjas del día por día de la semana: hora, solapamiento y máximo de clientes (normalmente 6).
+- Crear, editar, duplicar y eliminar plantillas. La "Plantilla estàndard" es la de por defecto y no se puede borrar.
+
+**Nuevo ciclo** (`/sesiones/nuevo`):
+1. Elegir la plantilla.
+2. Fecha de inicio (cualquier día laborable), notas y ejercicios de A/B/C por dificultad.
+
+Al guardar se generan las sesiones de los 20 días laborables, saltando fines de semana y festivos activos.
+
+**Detalle del ciclo** (`/sesiones/[id]`):
+- Pestaña **Ejercicios:** bloques A/B/C × 3 dificultades, con el selector con filtros.
+- Pestaña **Planificación:** calendario de 4 semanas × 5 días. Cada franja abre un panel lateral para:
+  - editar los ejercicios del bloque;
+  - asignar el entrenador;
+  - asignar clientes (máximo 6), cada uno con su dificultad.
+  - Los festivos salen en gris, con un botón "Revertir".
+- **Requisitos (octubre 2026):**
+  - varias sesiones por día;
+  - entrenador distinto por sesión;
+  - poder cambiar el bloque de una sesión concreta;
+  - máximo 6 clientes;
+  - cada sesión grupal visible por separado en "Hoy".
+
+**Listado de ciclos:** calendario de 4 semanas y estado (Activo / Próximo / Expirado).
+
+**Plan grupal de un cliente** (wizard, tipo grupal): asigna al cliente a un ciclo con su nivel.
+- Rotación A/B/C.
+- Nivel 1 usa la regresión de cada ejercicio, nivel 2 la base y nivel 3 la progresión.
+
+**Festivos** (`public_holidays`):
+- Cargados de 2026 a 2027: nacionales, Cataluña y Sant Narcís (Girona).
+- Cada festivo se puede desactivar (`is_active`), y el cambio manual queda protegido (`is_override`).
+- `syncHolidaysFromApiAction(año)` carga un año desde la API Nager.Date, pero todavía no tiene interfaz (irá a Configuración).
+
+### 4.7 Agenda del día y registro de sesión 🟡
+
+**Hoy** (`/dashboard/hoy`):
+- Sesiones del día, individuales y franjas grupales.
+- Primero salen las del usuario conectado; el resto, agrupadas por entrenador.
+- Estadísticas: total, completadas y pendientes.
+- Las sesiones se muestran con su rango horario (07:00–08:00).
+
+**Registro de sesión** (`/dashboard/hoy/[sessionId]`):
+- El entrenador va ejercicio a ejercicio desde la tablet: series, reps, carga (kg), RPE (1-10), RIR (0-10), comentarios y opción "Saltar".
+- Colores: RPE verde ≤ 3, amarillo ≤ 6, rojo > 6. RIR al revés (rojo ≤ 2, amarillo ≤ 5, verde > 5).
+- "Completar sesión" se activa cuando todos los ejercicios están guardados.
+- ⏳ **Solo funciona para sesiones individuales.** Registrar las grupales requiere enlazar `session_logs` con `training_sessions` (previsto en `docs/spec-vista-cliente.md` §7).
+
+### 4.8 TrainWall — pantallas en sala 🟡
+
+Módulo opcional. Diseño en `docs/arquitectura-pantallas.md` y propuesta comercial en `brota-ai-web/comercial/trainwall.html`.
+
+- **Check-in** (`/dashboard/pantallas`): el entrenador elige el cliente o la clase, la sesión (sugerida por fecha) y la pantalla de destino. También puede finalizar la asignación.
+- **Pantalla** (`/pantalla/[screenId]?token=…`): ruta pública protegida por un token no adivinable. Se actualiza en tiempo real (Supabase Realtime).
+  - Sesión individual: tabla por bloques.
+  - Sesión grupal: 3 columnas (regresión / base / progresión).
+  - Sin sesión: reposo con el logo del centro.
+- Hay 4 pantallas dadas de alta en la BD.
+- **Pendiente:**
+  - confirmar el número y el tamaño de las pantallas con Girona Activa, y comprar el hardware (monitor de 32" + Android TV box + Fully Kiosk);
+  - decidir si "finalizar sesión" es manual o automático.
+
+### 4.9 Vista de cliente (móvil) 🟡
+
+**Especificación completa:** [`docs/spec-vista-cliente.md`](./spec-vista-cliente.md).
+
+**Hoy:** `/client` es una sola página con tarjeta del plan activo, calendario mensual y detalle del día. Usa tema claro y marca de Girona Activa fija.
+
+**v1 decidida:**
+- Solo consulta, con feedback opcional (sin registrar pesos).
+- Del entrenador, el cliente solo ve las indicaciones de cada ejercicio; las notas internas no.
+- Pantallas:
+  - Hoy;
+  - Calendario;
+  - Detalle de sesión;
+  - Historial de sesiones seguidas;
+  - Mi progreso;
+  - Perfil.
+- Los datos se le darán con vistas de solo lectura, sin columnas internas.
+
+### 4.10 Perfil del personal ✅
+
+- Editar el nombre visible y subir foto (bucket `avatars`). El email se ve, pero no se edita.
+- El nombre, el avatar y el rol se muestran en el pie del sidebar.
+
+### 4.11 Panel ✅
+
+`/dashboard`: estadísticas y accesos rápidos.
+
+### 4.12 Configuración del centro ⏳
+
+Página `/dashboard/configuracion`, todavía sin crear:
+
+| Sección | Quién |
+|---|---|
+| Festivos: listado con interruptor, alta de festivos locales y cierres, botón "Cargar festivos [año]" | employee y admin |
+| Horarios del centro | employee y admin |
+| Permisos por rol: qué puede hacer el employee (hoy fijo en `lib/auth/permissions.ts`) | solo admin |
+| Marca y módulos: nombre, logo, color y módulos activos (`center_settings`) | solo admin |
+
+### 4.13 Fases posteriores ⏳
+
+Preparados en el modelo de datos de la spec de la vista de cliente, pero sin construir:
+- **Informes y métricas:** del cliente (evolución de RPE, RIR y carga) y del centro (altas, bajas, leads).
+- **Ranking:** con consentimiento del cliente (`ranking_opt_in`).
+- **Comunidad.**
+- **Nutrición:** para el prospecto Pragma Health Club.
+
+---
+
+## 5. Requisitos transversales
+
+- **Seguridad:**
+  - Toda Server Action comprueba la sesión y el rol (`requireStaff()` / `requirePermission()`) antes de tocar datos.
+  - RLS por rol en todas las tablas (BUG-002).
+  - Las claves secretas nunca llegan al navegador.
+- **Privacidad:** las notas internas y los datos de salud del cliente solo los ve el personal.
+- **Tema:** el dashboard usa fondo oscuro con naranja `#FF914D` como color primario.
+- **Base de datos versionada:** los cambios de esquema van en `supabase/migrations/`.
+- **Sin dependencias de un solo centro nuevas:** no se añaden más textos ni datos de Girona Activa fijos (ver marca blanca, §1).
+- **Deuda conocida:**
+  - Las sesiones individuales siguen en `plan_sessions`. Solo los ciclos grupales usan `training_sessions`; la unificación está a medias. Las filas individuales copiadas a `training_sessions` en octubre no se mantienen. Decisión pendiente: terminarla o renunciar a ella.
+  - El correo de invitación y `/client` tienen la marca de Girona Activa fija.
+  - El menú dice "Empleats" (en catalán).
+
+---
+
+## 6. Roadmap
+
+### Antes del go-live (MVP)
+- [ ] Vista de cliente v1 (spec aprobada)
+- [ ] Registro de sesiones grupales
+- [ ] Página de Configuración (festivos y permisos como mínimo)
+- [ ] Imágenes de ejercicios y edición de ejercicios
+- [ ] Zona de hombro en la galería
+- [ ] Ocultar al employee las acciones sin permiso
+- [ ] Proyecto de Supabase de pruebas (`brotafit-dev`) para probar las migraciones
+- [ ] Planes de pago de Vercel (Pro) y Supabase (Pro, con backups) antes del uso comercial
+- [ ] DNS `app.gironaactiva.com`, merge `dev` → `main` y tag `v1.0.0`
+
+### Mejoras de producto (backlog; incluye el antiguo `FASE2.md`)
+| Área | Mejora |
+|---|---|
+| Planes | Duplicar el plan anterior como base de uno nuevo; sugerencias de ejercicios a partir del plan anterior |
+| Planes | Cambiar los días de la semana de todo el plan a la vez (por ejemplo, de L/X a M/J) |
+| Planes | Arrastrar sesiones en el calendario de edición (drag & drop) |
+| Planes | Al crear un plan, replicar los ejercicios de un día o de una semana al resto |
+| Planes | Pulsación larga en el calendario del wizard para borrar una sesión (alternativa móvil a la `×`) |
+| Galería | Vídeo por ejercicio |
+| Galería | Vista visual por zona corporal (clic en el cuerpo → ejercicios) |
+| Clientes | El cliente cambia su contraseña desde la app |
+| Informes | Gráficos de evolución de RPE, RIR y carga por ejercicio |
+| Centro | Métricas del centro: altas, bajas, leads, contactos fallidos |
+| Calidad | Tests automáticos: Playwright (invitación, creación de plan, vista de cliente) y Vitest (calendario) |
+
+### Si se vende a más centros
+- [ ] Marca blanca: `center_settings`, textos y correo parametrizados, una instancia por centro
+
+### Fuera de alcance por ahora
+- ❌ App nativa (iOS / Android): la vista de cliente es web móvil
+- ❌ Notificaciones push
+- ❌ Multi-idioma de la interfaz
+- ❌ Integración con wearables o apps de fitness
+- ❌ Registro de pesos por parte del cliente (v1 solo consulta y feedback)
+
+---
+
+## 7. Cómo se mantiene este documento
+
+- **Cada commit `feat:` actualiza este FRD en el mismo commit:**
+  - cambiar el estado del módulo;
+  - describir la funcionalidad;
+  - mover del roadmap a "implementado".
+- Las ideas nuevas van al roadmap (§6), no a archivos sueltos.
+- Una funcionalidad grande tiene su propia `docs/spec-<tema>.md`, enlazada desde su módulo.
+- Al cambiar de versión, se añade una fila en §8.
+
+---
+
+## 8. Historial de versiones
+
+| Versión | Fecha | Cambios |
 |---|---|---|
-| `users` | `auth` | Credenciales + email + `app_metadata.role` |
-| `profiles` | `public` | Nombre visible + avatar. FK → `auth.users` |
-| `clients` | `public` | Datos físicos/entrenamiento del cliente. FK → `auth.users` |
-| `exercises` | `public` | Catálogo de ejercicios con metadata completa |
-| `body_zones` | `public` | Partes del cuerpo (pie/turmell, rodilla, cadera…) |
-| `movement_patterns` | `public` | Patrones de movimiento |
-| `muscle_groups` | `public` | Grupos musculares |
-| `equipment` | `public` | Equipamiento necesario |
-| `objectives` | `public` | Objetivos del ejercicio |
-| `exercise_muscle_groups` | `public` | Relación N:M ejercicios ↔ grupos musculares |
-| `plans` | `public` | Planes de entrenamiento |
-| `plan_days` | `public` | Días de entrenamiento dentro de un plan |
-| `plan_exercises` | `public` | Ejercicios asignados a un día del plan |
-
-### Ramas Git
-
-| Rama | Propósito | Deploy |
-|---|---|---|
-| `main` | Producción estable | Vercel prod (pendiente DNS) |
-| `dev` | Desarrollo activo | Vercel preview (auto) |
-| `feature/nombre` | Funcionalidad nueva | Solo local |
-| `fix/nombre` | Bug fix puntual | Solo local |
-
-**Flujo:** `feature/*` → `dev` → (MVP listo) → `main` + tag `v1.0.0`
-
-### Versionado
-
-Semántico: `vMAJOR.MINOR.PATCH`
-- `v1.0.0` → lanzamiento MVP (cuando se configure DNS y se mergee a main)
-- `v1.x.0` → nueva funcionalidad mayor
-- `v1.0.x` → bug fix
-
-**Estado actual:** todo en `dev`, sin versión en producción todavía.
-
----
-
-## 5. Funcionalidades — Empleado
-
-### 5.1 Alta de cliente nuevo ✅
-
-Formulario con los siguientes campos:
-
-| Campo | Tipo | Obligatorio |
-|---|---|---|
-| Nombre | Texto | ✅ |
-| Apellido | Texto | ✅ |
-| Sexo | Desplegable (Hombre / Mujer / Otro) | ✅ |
-| Fecha de nacimiento | Fecha | ✅ |
-| Altura (cm) | Número | ✅ |
-| Peso (kg) | Número | ✅ |
-| Fecha de inicio | Fecha | ✅ |
-| Email | Email | ✅ |
-| Comentarios adicionales | Texto largo | ❌ |
-
-**Resultado:** Registro en `public.clients` + cuenta de acceso en `auth.users` vía Supabase invite + fila en `public.profiles`.
-
----
-
-### 5.2 Generación de plan individual ✅
-
-**Paso 1 — Selección de cliente**
-Desplegable con todos los clientes activos (`is_active = true`). Muestra nombre + apellido.
-
-**Paso 2 — Tipo de entrenamiento**
-Selector: Grupal / Individual.
-
-**Paso 3 — Nivel del cliente**
-| Nivel | Descripción |
-|---|---|
-| Nivel 1 (Groc) | Amateur, sin experiencia previa |
-| Nivel 2 (Blau) | Experiencia básica-intermedia |
-| Nivel 3 (Vermell) | Experiencia avanzada |
-
-**Paso 4 — Parámetros del ciclo (solo Individual)**
-| Parámetro | Opciones |
-|---|---|
-| Duración del ciclo | Número de meses (libre) |
-| Frecuencia semanal | Días/semana (libre) |
-| Días de la semana | Selector multi-día (L/M/X/J/V/S/D) |
-| Duración por sesión | 30 min / 1 hora |
-
-**Paso 5 — Planificación día a día**
-- Vista de calendario mensual con los días de entrenamiento disponibles
-- Al clicar un día → se abre el **modal de selección de ejercicios** (pantalla completa)
-
-**Modal de selección de ejercicios:**
-
-Layout de tres columnas:
-- **Izquierda:** filtros (Parte del cuerpo, Nivel, Patrón, Músculo, Equipamiento, Objetivo) + búsqueda
-- **Centro:** galería de ejercicios / formulario de configuración del ejercicio seleccionado
-- **Derecha:** panel "En este día" — lista de ejercicios ya agregados
-
-Comportamiento:
-- Al seleccionar un ejercicio se configuran: Series · Repeticiones · Peso (kg, opcional) · Notas (opcional)
-- Se pueden agregar múltiples ejercicios por día
-- El panel derecho muestra los ejercicios del día en tiempo real (tanto al añadir como al reabrir el modal)
-- Cada ejercicio del panel tiene botón **Editar** (abre formulario pre-relleno) y **Eliminar**
-
-**Paso 6 — Confirmación**
-El empleado guarda el plan completo → queda activo para el cliente.
-
----
-
-### 5.3 Generación de plan grupal ✅
-
-Los planes grupales se basan en un ciclo de 2 semanas con 3 sesiones predefinidas (A, B, C). El empleado define los ciclos con antelación desde la sección **Sesiones grupales**, y al crear el plan grupal selecciona el ciclo vigente.
-
-**Flujo de creación de plan grupal:**
-
-| Paso | Descripción |
-|---|---|
-| 1 — Cliente | Desplegable con todos los clientes activos |
-| 2 — Tipo | Selección **Grupal** + elección del ciclo activo |
-| 3 — Nivel | Nivel 1/2/3 — determina pesos y repeticiones (los ejercicios son los mismos para todos los niveles) |
-| 4 — Parámetros | Fecha de inicio, duración (meses), frecuencia semanal, días de la semana, duración de sesión |
-| 5 — Calendario | Vista mensual con sesión A/B/C asignada a cada día de entrenamiento |
-| 6 — Confirmación | Guardar → plan queda activo para el cliente |
-
-**Rotación de sesiones:** el índice de sesión de entrenamiento módulo 3 determina la sesión asignada (0→A, 1→B, 2→C). El ciclo se repite continuamente durante toda la duración del plan.
-
-### 5.3.1 Gestión de ciclos de sesiones grupales ✅
-
-Los empleados definen los ciclos desde `/dashboard/sesiones` antes del inicio de cada período de 2 semanas.
-
-**Estructura de un ciclo:**
-- Fecha de inicio (la fecha de fin se calcula automáticamente: +13 días)
-- 3 sesiones (A, B, C) con su lista de ejercicios y notas
-- Cada sesión usa el mismo selector de ejercicios que el plan individual (series, repeticiones, peso, notas)
-
-**Estados de un ciclo:** Activo · Próximo · Expirado
-
-**Base de datos:**
-
-| Tabla | Descripción |
-|---|---|
-| `group_cycles` | Un registro por ciclo de 2 semanas |
-| `group_sessions` | 3 filas por ciclo (label A, B o C) |
-| `group_session_exercises` | Ejercicios de cada sesión con parámetros |
-
-Los planes grupales en `training_plans` incluyen `type = 'group'` y `cycle_id`. Cada sesión en `plan_sessions` almacena `session_label` (A/B/C).
-
----
-
-### 5.4 Gestión de planes ⏳
-
-- Ver el plan activo de cualquier cliente
-- Ver el historial de planes anteriores de un cliente
-- Un cliente solo puede tener 1 plan activo simultáneamente
-- Al asignar un plan nuevo, el anterior pasa automáticamente a histórico
-
----
-
-### 5.5 Perfil de empleado ✅
-
-- Editar nombre visible
-- Subir foto de perfil (almacenada en Supabase Storage, bucket `avatars`)
-- Email visible (no editable)
-- Nombre y avatar se muestran en el footer del sidebar
-
----
-
-### 5.6 Galería de ejercicios ✅
-
-Ver sección 7.
-
----
-
-## 6. Funcionalidades — Cliente (MVP)
-
-| Funcionalidad | Estado |
-|---|---|
-| Vista del plan activo en calendario | ⏳ Pendiente |
-| Navegación entre semanas/meses | ⏳ Pendiente |
-| Vista detalle de un día (ejercicios + parámetros) | ⏳ Pendiente |
-| Diseño mobile-first | ⏳ Pendiente |
-
----
-
-## 7. Galería de ejercicios
-
-### Gestión ✅
-- Catálogo almacenado en Supabase (no estático — se pueden añadir ejercicios)
-- Actualmente: **41 ejercicios** de la zona tobillo/pie (turmell/peu)
-- Importados desde Excel via script Python → SQL
-
-### Campos por ejercicio
-
-| Campo | Tipo | Estado |
-|---|---|---|
-| `name` | Texto (catalán) | ✅ |
-| `technical_name` | Nombre técnico inglés | ✅ |
-| `exercise_code` | Código único (ej. `ANK_MOB_001`) | ✅ |
-| `subpattern` | Subpatrón de movimiento | ✅ |
-| `level` | 1 / 2 / 3 | ✅ |
-| `technical_level` | basico / intermedio / avanzado | ✅ |
-| `progression` | Ejercicio de progresión | ✅ |
-| `regression` | Ejercicio de regresión | ✅ |
-| `secondary_muscles` | Músculos secundarios | ✅ |
-| `contraindications` | Contraindicaciones | ✅ |
-| `technical_notes` | Notas técnicas | ✅ |
-| `common_errors` | Errores comunes | ✅ |
-| `body_zone_id` | FK → `body_zones` | ✅ |
-| `movement_pattern_id` | FK → `movement_patterns` | ✅ |
-| `equipment_id` | FK → `equipment` | ✅ |
-| `objective_id` | FK → `objectives` | ✅ |
-| Imagen | Supabase Storage | ⏳ Pendiente |
-| Vídeo | YouTube/Vimeo link | ❌ Fuera MVP |
-
-### Filtros de la galería ✅
-
-- Parte del cuerpo
-- Nivel (Groc / Blau / Vermell)
-- Patrón de movimiento
-- Músculo
-- Equipamiento
-- Objetivo
-- Nivel técnico (Básico / Intermedio / Avanzado)
-- Búsqueda por nombre
-
-### Partes del cuerpo planificadas
-
-El catálogo se irá ampliando por zonas. Cada zona tiene su propio Excel de ejercicios:
-
-| Zona | Estado |
-|---|---|
-| Tobillo / Pie (turmell/peu) | ✅ Importado (41 ejercicios) |
-| Rodilla | ⏳ Pendiente recibir Excel |
-| Cadera | ⏳ Pendiente recibir Excel |
-| Columna / Core | ⏳ Pendiente recibir Excel |
-| Hombro | ⏳ Pendiente recibir Excel |
-
----
-
-## 8. Planes grupales predefinidos
-
-- 3 plantillas (una por nivel: Groc / Blau / Vermell)
-- Almacenadas en Supabase, editables por el empleado desde la app
-- Misma estructura que un plan individual: días + ejercicios + parámetros
-- **Estado:** ⏳ Pendiente recibir las 3 plantillas del cliente
-
----
-
-## 9. Out of scope — MVP
-
-| | |
-|---|---|
-| ❌ | Notificaciones (email, push) |
-| ❌ | Rol admin diferenciado |
-| ❌ | Registro de entrenamiento por parte del cliente (pesos, RPE, sensaciones) |
-| ❌ | Vídeos en la galería de ejercicios |
-| ❌ | Multi-idioma (català / inglés) |
-| ❌ | App nativa (iOS / Android) |
-| ❌ | Integración con wearables o apps de fitness |
-| ❌ | Métricas del centro (bajas, altas, leads) |
-
----
-
-## 10. Roadmap Fase 2
-
-Funcionalidades identificadas para después del MVP:
-
-| Funcionalidad | Descripción |
-|---|---|
-| Duplicar plan | Al crear un plan nuevo para un cliente, poder duplicar el plan anterior como base |
-| Sugerencias de rutina | El sistema sugiere ejercicios del plan anterior |
-| Registro de sesión | El empleado apunta pesos y observaciones desde tablet durante la sesión |
-| Visualización en TV | Ver sesiones activas en pantalla grande |
-| Métricas del centro | Dashboard con bajas, altas, leads, contactos fallidos |
-| Galería visual por zona | Clicar en una parte del cuerpo → ver ejercicios agrupados visualmente |
-| Contraseña personalizable | El cliente puede cambiar su contraseña desde la app |
-
----
-
-## 11. Estado de implementación
-
-### ✅ Implementado
-
-- Autenticación (login dark UI, sesión persistente, roles empleado/cliente)
-- Dashboard empleado (dark theme, sidebar con perfil)
-- Perfil de empleado (nombre, avatar, Supabase Storage)
-- Alta de clientes (formulario completo + Supabase invite)
-- Lista de clientes (tabla con badges de nivel)
-- Galería de ejercicios (41 ejercicios, filtros completos, dark theme)
-- Importación de ejercicios desde Excel (script Python → SQL)
-- Plan individual — wizard completo (selección cliente, nivel, parámetros, calendario, modal ejercicios)
-- Modal de selección de ejercicios (pantalla completa, mismos filtros que galería, panel "En este día" con editar/eliminar)
-- Base de datos: `body_zones`, `profiles`, `exercises` con metadata extendida
-- **Sesiones grupales** — gestión de ciclos A/B/C desde `/dashboard/sesiones`
-- **Plan grupal** — wizard completo con rotación A/B/C en calendario, nivel del cliente, ciclo seleccionable
-
-### ⏳ Pendiente (MVP)
-
-- Vista del cliente (calendario con plan activo, mobile-first)
-- Gestión de planes (ver activo/historial desde perfil cliente)
-- Imágenes de ejercicios en Supabase Storage
-- DNS: `app.gironaactiva.com` → Vercel
-- Deploy producción: merge `dev` → `main`
-
-### 🔜 Próximos pasos inmediatos
-
-1. Recibir plantillas de planes grupales del cliente
-2. Recibir Excels de ejercicios de otras zonas corporales
-3. Implementar vista cliente (calendario)
-4. Configurar DNS
+| 1.0 | 2026-08-14 | Primera versión (organizada por perfiles) |
+| 1.1 | 2026-08-14 | Estrategia de ramas y versionado; modal de ejercicios |
+| 2.0 | 2026-11-06 | Reorganizado por módulos. Incluye lo hecho de agosto a noviembre: entrenador asignado, agenda "Hoy" y registro con RPE/RIR, adherencia, ciclos de 4 semanas con plantillas, franjas y 3 dificultades, festivos, TrainWall, empleados, roles admin/employee/client con RLS (BUG-002) y alta de cliente con acceso opcional. Integra `FASE2.md` en el roadmap |
