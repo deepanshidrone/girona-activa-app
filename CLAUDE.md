@@ -1,7 +1,7 @@
 # CLAUDE.md — Girona Activa App
 
 Contexto completo del proyecto para Claude Code. Se carga automáticamente al inicio de cada sesión.
-**Última actualización:** 2026-11-04 (traducido del catalán al castellano)
+**Última actualización:** 2026-11-08 (vista de cliente v1, recuperar contraseña y feedback)
 
 ---
 
@@ -295,12 +295,20 @@ create trigger on_auth_user_created after insert on auth.users ...
 
 ## Funcionalidades implementadas (estado actual)
 
+> **La referencia al día de qué hace la app es [docs/FRD.md](./docs/FRD.md).** Esta sección resume detalles técnicos útiles para programar y puede ir por detrás del FRD.
+
 ### Clientes (`/dashboard/clientes`)
-- Listado con estadísticas (activos, nuevos este mes)
-- Alta de cliente: crea la cuenta en Supabase Auth + la fila en `clients` + envía el email para fijar la contraseña
-- Detalle del cliente: datos personales + plan activo + historial de planes
+- Listado con estadísticas y filtro por estado (Activo / Inactivo / Baja)
+- Alta de cliente: crea solo la ficha en `clients` (email opcional). El acceso a la app es aparte y opcional: tarjeta "Acceso a la app" de la ficha → `inviteClientAction`
+- Detalle del cliente: datos personales, estado y baja/reactivación, acceso a la app, feedback del cliente, plan activo e historial de planes
 - Desde el detalle: botón "Nuevo plan" que preselecciona al cliente en el wizard
-- Eliminar cliente
+- Eliminar cliente (solo admin)
+
+### Vista de cliente (`/client`, móvil)
+- Código en `app/client/` y `lib/client-portal/` (datos en `data.ts`, cálculos en `stats.ts` y `feedback.ts`, con tests en `tests/client-portal/`)
+- Pantallas: Hoy, Calendario, Detalle de sesión (con feedback), Historial, Progreso y Perfil (cambio de contraseña)
+- Lee solo las vistas `mi_*` con `createClient()`; escribe solo el feedback (`submitSessionFeedbackAction`)
+- Especificación: `docs/spec-vista-cliente.md`
 
 ### Galería de ejercicios (`/dashboard/ejercicios`)
 - Filtros: zona corporal, patrón de movimiento, grupo muscular, equipamiento, objetivo, nivel
@@ -486,7 +494,8 @@ Los bugs abiertos y resueltos se registran en [docs/BUGS.md](./docs/BUGS.md) (ID
 
 - [ ] **DNS:** configurar `app.gironaactiva.com` → Vercel
 - [ ] **Merge dev → main** cuando el MVP sea estable, tag `v1.0.0`
-- [ ] **Vista de cliente:** calendario móvil del plan activo (el cliente ve su plan). Especificación en `docs/spec-vista-cliente.md`
+- [x] **Vista de cliente v1** (2026-11-08): 6 pantallas y feedback. Faltan marca desde `center_settings`, PWA y QA (`docs/spec-vista-cliente.md` §9)
+- [x] **Recuperar contraseña** desde el login (2026-11-08)
 - [ ] **Imágenes de ejercicios:** Supabase Storage — mostrar foto/vídeo en la galería
 - [ ] **Zonas de ejercicio pendientes:** rodilla, cadera, columna/core, hombro (vienen de Excels del cliente)
 - [ ] **Gráficos de evolución:** RPE/RIR/carga por ejercicio a lo largo del tiempo (aplazado)

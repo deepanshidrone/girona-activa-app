@@ -1,7 +1,7 @@
 # Especificación — Vista de cliente en móvil (BrotaFit)
 
-- **Estado:** **aprobada** por el propietario el 2026-11-06. Hechos los requisitos previos (BUG-002, alta con acceso opcional) y parte del modelo de datos (con los KPIs). Las pantallas v1 están sin construir.
-- **Fecha:** 2026-11-04 · **Revisada:** 2026-11-06 (tras BUG-002, BUG-003 y los KPIs)
+- **Estado:** **aprobada** el 2026-11-06 y **v1 construida** el 2026-11-08: acceso de lectura, las 6 pantallas y el feedback. Faltan la marca desde `center_settings`, el registro de sesiones grupales por el empleado, la PWA y la ronda de QA (§9).
+- **Fecha:** 2026-11-04 · **Revisada:** 2026-11-08
 - **Rama:** `dev`
 - **Relacionado:** `docs/FRD.md` §4.9, `docs/spec-kpis.md` (adherencia §5.3, estados del cliente §5.4 y §8, piezas compartidas §7.9), `docs/BUGS.md` (BUG-002, BUG-003), `input-negocio-GA/`
 
@@ -15,22 +15,23 @@ La v1 tiene que ser **vendible por sí sola** (a Girona Activa y en demos a otro
 
 ---
 
-## 2. Estado actual (revisado en código y BD el 2026-11-06)
+## 2. Estado actual (revisado el 2026-11-08, tras construir la v1)
 
 | Pieza | Estado real |
 |---|---|
 | Alta y acceso del cliente | ✅ El alta crea solo la ficha (email opcional). El acceso a la app es opcional y se da desde la ficha: invitación → `/auth/confirm` → `/auth/set-password` → `/client` (§4.3, BUG-003). Pendiente de la prueba manual del propietario |
+| Recuperar contraseña | ✅ "¿Has olvidado tu contraseña?" en el login → `/auth/recuperar` → correo → mismo flujo que la invitación (FRD 4.1) |
 | Protección de rutas | ✅ `proxy.ts` deniega por defecto: `/client` solo para `client` y `/dashboard` solo para `employee` y `admin` |
-| RLS | ✅ BUG-002 cerrado (pendiente de la prueba manual). El cliente **no tiene acceso directo a ninguna tabla**: se borraron todas las políticas, también las antiguas "Cliente lee sus planes/sesiones/ejercicios". Lo que vea en la v1 hay que abrírselo de cero (§8.2) |
-| `/client` | ⚠️ Una sola página: tarjeta del plan activo, calendario mensual y hoja inferior con ejercicios. Tema claro, distinto del dashboard. Hoy funciona porque lee con `createAdminClient()` (se salta la RLS) y comprueba la sesión con `getSession()` |
-| Fuente de datos | ⚠️ `/client` solo lee `plan_sessions` + `plan_session_exercises`. Ya existe la vista unificada `client_sessions` (creada con los KPIs, §7.1), pero `/client` no la usa |
-| Planes grupales | ❌ El cliente no ve los ejercicios: los de grupal viven en `group_sessions` (ciclo × bloque × dificultad) y no en `plan_session_exercises`. Los clientes apuntados a franjas de ciclo (`training_session_clients`) no aparecen |
-| Registro de sesiones grupales | 🟡 La BD ya lo admite (`session_logs.training_session_id`, creado con los KPIs), pero el empleado no tiene pantalla para registrarlas. Hasta entonces, sus sesiones salen `unrecorded` (sin datos) |
-| Registro realizado | ❌ `/client` no muestra `session_logs` / `exercise_logs` |
-| Historial, progreso, racha | ❌ No existen |
-| Estado del cliente | ✅ Activo / Inactivo / Baja con historial de periodos (`client_periods`, `spec-kpis.md` §8). La vista de cliente no lo tiene en cuenta todavía (P9) |
-| Marca | ❌ "GIRONA ACTIVA", `/logo.png` y `#FF914D` fijos en `/client`, `/auth/set-password`, el login y el correo de invitación. `center_settings` existe, pero solo con la zona horaria |
-| `app/client/set-password/` | Código muerto (lo sustituyó `app/auth/set-password/`, BUG-001) |
+| RLS y acceso del cliente | ✅ BUG-002 cerrado (pendiente de la prueba manual). El cliente no lee ninguna tabla: solo las vistas `mi_*` (§8.2) |
+| `/client` | ✅ Tema oscuro y barra inferior: Hoy, Calendario, Detalle de sesión, Historial, Progreso y Perfil (§9.6). Lee las vistas `mi_*` con la sesión del cliente |
+| Planes grupales | ✅ El cliente ve sus sesiones de plan grupal y de ciclo con los ejercicios de su dificultad |
+| Registro realizado | ✅ En el detalle de la sesión: lo previsto frente a lo hecho |
+| Historial, progreso, racha | ✅ Historial, Progreso (mes, año, racha, récord, asistencia D6 y sesiones por mes) |
+| Feedback | ✅ Dolor sí/no, zona y comentario hasta 7 días después de la sesión; el personal lo ve en la ficha y en "Hoy" (§7.2) |
+| Estado del cliente | ✅ Activo / Inactivo / Baja (`spec-kpis.md` §8). El cliente de baja ve su historial en solo lectura y no deja feedback (P9) |
+| Registro de sesiones grupales | 🟡 La BD ya lo admite (`session_logs.training_session_id`), pero el empleado no tiene pantalla para registrarlas. Hasta entonces, el cliente las ve como "Sin registrar" y no cuentan en su asistencia |
+| Marca | 🟡 En un solo archivo (`lib/brand.ts`) para `/client`, la recuperación de contraseña y su correo. Siguen fijos en el login, `/auth/set-password`, el sidebar del dashboard y los correos de invitación. Falta leerla de `center_settings` |
+| PWA | ⏳ Sin manifest: todavía no se puede instalar en la pantalla de inicio |
 
 **Modelo de sesiones a medias:** los planes individuales y grupales del wizard escriben en `plan_sessions`; los ciclos grupales, en `training_sessions` + `training_session_clients`. Las filas `individual` de `training_sessions` son una copia antigua que no se usa. La vista `client_sessions` junta las dos fuentes (§7.1).
 
@@ -303,9 +304,9 @@ Comprobado el 2026-11-06 en una transacción deshecha, antes de aplicarla:
 - **KPIs:** las mismas 3675 sesiones, y sus funciones siguen funcionando.
 
 **Pendiente:**
-1. **`/client` deja de usar `createAdminClient()`** y lee las vistas `mi_*` con el cliente de Supabase de la sesión. Se hará con las pantallas v1.
-2. ✅ **`requireClient()`** en `lib/auth/permissions.ts`, para las Server Actions del cliente (`submitFeedbackAction`). El `clientId` sale de la sesión, nunca del formulario.
-3. **Escritura del feedback:** `client_feedback` con una Server Action y `requireClient()`, sin política de escritura para el cliente.
+1. ✅ **`/client` deja de usar `createAdminClient()`** y lee las vistas `mi_*` con el cliente de Supabase de la sesión (`lib/client-portal/data.ts`).
+2. ✅ **`requireClient()`** en `lib/auth/permissions.ts`, para las Server Actions del cliente (`submitSessionFeedbackAction`). El `clientId` sale de la sesión, nunca del formulario.
+3. ✅ **Escritura del feedback:** `client_feedback` con `submitSessionFeedbackAction` y `requireClient()`, sin política de escritura para el cliente. Lee lo suyo con `mi_feedback`.
 4. ✅ **Comprobación por API** (2026-11-08, 49 pruebas con "Cliente Test", sin sesión y con `service_role`):
    - Cliente Test lee sus vistas (1 ficha, 1 plan, 13 sesiones, 39 ejercicios) y sigue sin leer ninguna tabla.
    - No puede pedir `notes`, ni escribir o borrar por las vistas, ni leer `client_sessions`.
@@ -327,7 +328,7 @@ Solo aparecen los clientes con `ranking_opt_in = true` y con su `display_alias` 
 3. `center_settings`: columnas de marca y módulos, y retirada de la marca fija (cliente, set-password, login y correo). 🟡 tabla creada.
 4. Registro de sesiones grupales por el empleado (§7.3). 🟡 BD hecha.
 5. ~~Acceso de lectura del cliente: vistas `mi_*`, `requireClient()` y columnas `session_label` y `difficulty` en `client_sessions` (§7.1, §8.2)~~ ✅ aplicado el 2026-11-08 y comprobado por API (49 pruebas).
-6. Pantallas v1: Hoy → Calendario → Detalle → Historial → Progreso → Perfil.
+6. ~~Pantallas v1: Hoy → Calendario → Detalle → Historial → Progreso → Perfil~~ ✅ (2026-11-08).
    - ✅ **Primera entrega** (2026-11-08): barra inferior, Hoy, Calendario y Detalle de sesión, con tema oscuro, sobre las vistas `mi_*` y con la sesión del usuario (sin `createAdminClient()`). Código en `app/client/` y `lib/client-portal/` (la marca, en un solo sitio: `lib/brand.ts`). Racha con tests (`tests/client-portal/`).
    - ✅ **Segunda entrega** (2026-11-08):
      - **Historial:** sesiones pasadas agrupadas por mes y lista de planes.

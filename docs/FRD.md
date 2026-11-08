@@ -1,6 +1,6 @@
 # FRD — BrotaFit (Girona Activa)
 **Documento de requisitos funcionales**
-Versión: 2.2 | Última actualización: 2026-11-06 | Repo: `deepanshidrone/girona-activa-app`
+Versión: 2.3 | Última actualización: 2026-11-08 | Repo: `deepanshidrone/girona-activa-app`
 
 Este es el **documento de producto** de BrotaFit: qué hace la app, qué está hecho y qué falta. Se mantiene al día con cada funcionalidad (ver [§7](#7-cómo-se-mantiene-este-documento)). El detalle técnico (convenciones de código, migraciones, RLS) está en `CLAUDE.md`. Las especificaciones de módulos concretos están en `docs/spec-*.md`.
 
@@ -65,12 +65,12 @@ Nació como app a medida de **Girona Activa** (centro de entrenamiento personal 
 | 4.6 | Sesiones grupales (ciclos, plantillas, festivos) | `/dashboard/sesiones` | ✅ |
 | 4.7 | Agenda del día y registro de sesión | `/dashboard/hoy` | 🟡 registro solo de sesiones individuales |
 | 4.8 | TrainWall (pantallas en sala) | `/dashboard/pantallas`, `/pantalla/[id]` | 🟡 software hecho, hardware sin confirmar |
-| 4.9 | Vista de cliente (móvil) | `/client` | 🟡 versión básica; v1 especificada |
+| 4.9 | Vista de cliente (móvil) | `/client` | 🟡 v1 construida (6 pantallas y feedback); faltan marca configurable, PWA y QA |
 | 4.10 | Perfil del personal | `/dashboard/perfil` | ✅ |
 | 4.11 | Panel | `/dashboard` | ✅ |
 | 4.12 | Configuración del centro | `/dashboard/configuracion` | ⏳ |
 | 4.13 | Informes, ranking, comunidad, nutrición | — | ⏳ fases posteriores |
-| 4.14 | Indicadores del centro (KPIs, solo admin) | `/dashboard/indicadores` | 🟡 v1 implementada, pendiente de QA |
+| 4.14 | Indicadores del centro (KPIs, solo admin) | `/dashboard/indicadores` | 🟡 v1 implementada (con dolor reportado), pendiente de QA |
 
 ---
 
@@ -78,15 +78,18 @@ Nació como app a medida de **Girona Activa** (centro de entrenamiento personal 
 
 ### 4.1 Acceso y cuentas ✅
 
-- Login con email y contraseña (Supabase Auth). Sesión persistente.
+- Login con email y contraseña (Supabase Auth). Sesión persistente. Textos del login en castellano (2026-11-08; antes había restos en catalán).
 - Nadie se registra solo: el personal crea las cuentas.
-- **Activación de cuenta:** el correo de invitación (Resend) lleva a `/auth/confirm`, que valida el enlace y manda a `/auth/set-password`. Esta página es común a todos los roles (BUG-001). Después, cada rol va a su inicio: el personal a `/dashboard` y los clientes a `/client`.
+- **Activación de cuenta:** el correo de invitación (Resend) lleva a `/auth/confirm`, que valida el enlace y manda a `/auth/set-password` ("Elige tu contraseña" → "Guardar y entrar"; el mismo texto sirve para la invitación y para la recuperación). Esta página es común a todos los roles (BUG-001). Después, cada rol va a su inicio: el personal a `/dashboard` y los clientes a `/client`.
 - El enlace de invitación caduca a las 24 horas; se puede reenviar.
 - **Recuperar contraseña** (2026-11-08): enlace "¿Has olvidado tu contraseña?" en el login → `/auth/recuperar`.
   - El usuario escribe su email y recibe un correo (Resend, con la marca del centro) con un enlace que lleva al mismo flujo de la invitación (`/auth/confirm` → `/auth/set-password`). Sirve para clientes y personal.
   - La respuesta es siempre la misma, exista o no la cuenta, y el correo se envía después de responder: no sirve para averiguar quién tiene cuenta.
   - Límites: 1 correo cada 2 minutos y 5 al día por email, y 10 solicitudes por hora desde la misma conexión. Se guardan en `password_reset_requests` (solo servidor) y se borran a los 7 días.
-- Usuario de pruebas: "Cliente Test" (cliente con login y un plan individual de lunes de noviembre a enero).
+- **Cuentas y datos de prueba** (las credenciales no van en el repo):
+  - **"Cliente Test":** cliente con login. Tiene un plan individual (lunes de noviembre a enero) y un ciclo de prueba, "Prueba vista de cliente (Cliente Test)", con una sesión grupal completada y registrada (6 nov) y otra prevista (11 nov). También tiene un feedback de prueba con dolor, ya leído.
+  - **`entrenador1@demo.brotafit.invalid`** ("Demo · Lucía Entrenadora"): empleada de la demo de KPIs, con contraseña de prueba para probar el dashboard como employee.
+  - Todo se borra con la limpieza de antes del go-live.
 
 ### 4.2 Clientes ✅
 
@@ -111,6 +114,9 @@ Nació como app a medida de **Girona Activa** (centro de entrenamiento personal 
   - Si el cliente ya ha entrado, no se reenvía.
 - Plan activo con enlace a editar, botón "Nuevo plan" (preselecciona al cliente en el wizard) e historial de planes.
 - **Adherencia** por plan: sesiones completadas / expiradas / pendientes y % de adherencia.
+- **Feedback del cliente** (2026-11-08): lo que el cliente cuenta tras cada sesión desde la app (4.9).
+  - Cada feedback muestra la sesión, si hubo dolor (resaltado en rojo, con la zona) y el comentario. Lo no leído lleva "Nuevo", y el botón "Marcar como leído" lo marca todo.
+  - Solo aparece si el cliente tiene acceso a la app o ya ha dejado feedback.
 - Eliminar cliente (solo admin).
 
 Reglas: un cliente solo tiene un plan activo a la vez.
@@ -213,6 +219,7 @@ Al guardar se generan las sesiones de los 20 días laborables, saltando fines de
 - Primero salen las del usuario conectado; el resto, agrupadas por entrenador.
 - Estadísticas: total, completadas y pendientes.
 - Las sesiones se muestran con su rango horario (07:00–08:00).
+- **Feedback de clientes sin leer** (2026-11-08): arriba de la agenda, una fila por cliente con feedback pendiente. Los que marcan dolor salen primero, en rojo, y llevan a la ficha del cliente. Lo ve todo el personal; pendiente destacar los clientes del propio entrenador (spec P4).
 
 **Registro de sesión** (`/dashboard/hoy/[sessionId]`):
 - El entrenador va ejercicio a ejercicio desde la tablet: series, reps, carga (kg), RPE (1-10), RIR (0-10), comentarios y opción "Saltar".
@@ -258,7 +265,12 @@ Módulo opcional. Diseño en `docs/arquitectura-pantallas.md` y propuesta comerc
 - El personal lo ve en la ficha del cliente y en la agenda "Hoy", con el dolor resaltado, y lo marca como leído.
 - Alimenta el indicador "Dolor reportado" (4.14).
 
-**Pendiente:** marca desde `center_settings`, registro de sesiones grupales por el empleado, PWA y ronda de QA.
+**Pendiente:**
+- **Marca configurable:** leer nombre, logo y color de `center_settings` en lugar de `lib/brand.ts`.
+- **Registro de sesiones grupales por el empleado** (4.7). Sin él, las grupales salen "Sin registrar" para el cliente y no cuentan en su asistencia.
+- **PWA:** instalable en la pantalla de inicio, sin notificaciones.
+- **Ronda de QA** con un cliente individual, uno de plan grupal y uno de ciclo.
+- Destacar en "Hoy" el feedback de los clientes del propio entrenador (spec P4).
 
 **Hecho como requisito previo:**
 - RLS por rol (BUG-002) y alta con acceso opcional (4.2).
@@ -336,7 +348,10 @@ Panel en `/dashboard/indicadores`, **solo para el admin** (permiso `indicadores.
   - Horas semanales del empleado y duración de las sesiones grupales.
   - Objetivos de los KPIs y de las 4 semanas del ciclo.
 - **Datos de prueba:** script de demo determinista (12 meses y escenarios) en el proyecto de Supabase actual. Antes del go-live se limpian todos los datos de prueba.
-- **Dependencias compartidas con la vista de cliente:** registro de sesiones grupales, vista `client_sessions` y `client_feedback`.
+- **Dependencias compartidas con la vista de cliente:**
+  - ✅ vista `client_sessions`;
+  - ✅ `client_feedback`: desde el 2026-11-08 el indicador **"Dolor reportado"** muestra el % de sesiones con feedback que marcaron dolor, con filtros y comparativa;
+  - ⏳ registro de sesiones grupales: hasta entonces, la asistencia, la adherencia y el RPE/RIR de los grupales salen "sin datos".
 - **Fuera de la v1:** leads (CRM fase 1), indicadores económicos (fase 2), resumen con IA e informe en PDF.
 
 ---
@@ -344,17 +359,21 @@ Panel en `/dashboard/indicadores`, **solo para el admin** (permiso `indicadores.
 ## 5. Requisitos transversales
 
 - **Seguridad:**
-  - Toda Server Action comprueba la sesión y el rol (`requireStaff()` / `requirePermission()`) antes de tocar datos.
-  - RLS por rol en todas las tablas (BUG-002).
+  - Toda Server Action comprueba la sesión y el rol (`requireStaff()` / `requirePermission()`; `requireClient()` en las del cliente) antes de tocar datos.
+  - Solo dos acciones son públicas a propósito: el token de las pantallas de TrainWall y "Olvidé mi contraseña" (respuesta siempre igual y límites de envío).
+  - RLS por rol en todas las tablas (BUG-002). El cliente no lee tablas: solo sus vistas `mi_*`, que filtran por su cuenta y no tienen notas internas.
   - Las claves secretas nunca llegan al navegador.
-- **Privacidad:** las notas internas y los datos de salud del cliente solo los ve el personal.
+- **Privacidad:**
+  - Las notas internas solo las ve el personal.
+  - Los datos de salud (datos físicos y el dolor del feedback) solo los ven el propio cliente y el personal. Nunca salen en exportaciones fuera de la sección de bajas ni en el ranking.
 - **Tema:** el dashboard usa fondo oscuro con naranja `#FF914D` como color primario.
 - **Base de datos versionada:** los cambios de esquema van en `supabase/migrations/`.
 - **Sin dependencias de un solo centro nuevas:** no se añaden más textos ni datos de Girona Activa fijos (ver marca blanca, §1).
 - **Deuda conocida:**
   - Las sesiones individuales siguen en `plan_sessions`. Solo los ciclos grupales usan `training_sessions`; la unificación está a medias. Las filas individuales copiadas a `training_sessions` en octubre no se mantienen. Decisión pendiente: terminarla o renunciar a ella.
-  - El correo de invitación y `/client` tienen la marca de Girona Activa fija.
+  - Marca de Girona Activa fija en el login, `/auth/set-password`, el sidebar del dashboard y los correos de invitación (`clients.ts`, `employees.ts`). La vista de cliente, la recuperación de contraseña y su correo ya la leen de `lib/brand.ts`.
   - El menú dice "Empleats" (en catalán).
+  - La fecha de la agenda "Hoy" del dashboard sale como "Domingo, 8 De Noviembre De 2026" (mayúscula en cada palabra).
   - El estado de los planes no es fiable: un plan sigue `active` después de su fecha de fin. Los indicadores calculan la vigencia con las fechas (`spec-kpis.md` §5.2).
 
 ---
@@ -362,7 +381,9 @@ Panel en `/dashboard/indicadores`, **solo para el admin** (permiso `indicadores.
 ## 6. Roadmap
 
 ### Antes del go-live (MVP)
-- [ ] Vista de cliente v1 (spec aprobada)
+- [x] Vista de cliente v1: acceso de lectura, 6 pantallas y feedback (2026-11-08)
+- [x] Recuperar contraseña desde el login (2026-11-08)
+- [ ] Vista de cliente: marca desde `center_settings`, PWA y ronda de QA
 - [ ] Registro de sesiones grupales
 - [ ] Página de Configuración (festivos y permisos como mínimo)
 - [ ] Imágenes de ejercicios y edición de ejercicios
@@ -389,7 +410,9 @@ Panel solo para el admin con los indicadores que pide Girona Activa (`input-nego
 | Planes | Pulsación larga en el calendario del wizard para borrar una sesión (alternativa móvil a la `×`) |
 | Galería | Vídeo por ejercicio |
 | Galería | Vista visual por zona corporal (clic en el cuerpo → ejercicios) |
-| Clientes | El cliente cambia su contraseña desde la app |
+| ~~Clientes~~ | ~~El cliente cambia su contraseña desde la app~~ ✅ hecho en Perfil (2026-11-08) |
+| Clientes | Destacar en "Hoy" el feedback de los clientes del propio entrenador (spec P4) |
+| Clientes | Falta justificada: que el entrenador marque una ausencia como justificada para no romper la racha del cliente (spec P1) |
 | Informes | Gráficos de evolución de RPE, RIR y carga por ejercicio |
 | Calidad | Tests automáticos: Playwright (invitación, creación de plan, vista de cliente) y Vitest (calendario) |
 
@@ -426,3 +449,4 @@ Panel solo para el admin con los indicadores que pide Girona Activa (`input-nego
 | 2.0 | 2026-11-06 | Reorganizado por módulos. Incluye lo hecho de agosto a noviembre: entrenador asignado, agenda "Hoy" y registro con RPE/RIR, adherencia, ciclos de 4 semanas con plantillas, franjas y 3 dificultades, festivos, TrainWall, empleados, roles admin/employee/client con RLS (BUG-002) y alta de cliente con acceso opcional. Integra `FASE2.md` en el roadmap |
 | 2.1 | 2026-11-06 | Módulo 4.14 Indicadores del centro (KPIs) especificado en `spec-kpis.md`: estados del cliente y flujo de baja (4.2), horas de los empleados (4.3), franja en el Panel (4.11). Roadmap de gestión del centro por fases: KPIs v1 → CRM fase 1 (leads) → KPIs económicos |
 | 2.2 | 2026-11-06 | 4.9 Vista de cliente: spec aprobada y puesta al día tras BUG-002, BUG-003 y los KPIs |
+| 2.3 | 2026-11-08 | 4.9 Vista de cliente v1 construida: acceso de lectura con vistas `mi_*`, Hoy, Calendario, Detalle, Historial, Progreso y Perfil (con cambio de contraseña) y feedback tras la sesión. 4.1 Recuperar contraseña desde el login y textos del login en castellano. 4.2 y 4.7 feedback del cliente para el personal. 4.14 indicador "Dolor reportado". §5 seguridad y privacidad del cliente. Datos de prueba de la vista de cliente |
