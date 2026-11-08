@@ -1,6 +1,6 @@
 # Especificación — CRM fase 1: leads de la web
 
-- **Estado:** aprobada por el propietario el 2026-11-08. En desarrollo: hechos la migración, el permiso y `/api/leads` (§15).
+- **Estado:** aprobada por el propietario el 2026-11-08. En desarrollo: hechos la migración, el permiso, `/api/leads` y las pantallas (§15); falta la web.
 - **Fecha:** 2026-11-08
 - **Rama:** `dev` (brotafit) · `dev` (girona-activa-web)
 - **Relacionado:** `docs/FRD.md` (§4.15, §5 y roadmap §6, punto 2), `docs/spec-kpis.md` (K1, Q7 y §4.7), `input-negocio-GA/Especificaciones de la app – Girona Activa.pdf` (apartado "CRM y KPIs"), repo `girona-activa-web` (`index.html`, `netlify/functions/submission-created.js`)
@@ -427,10 +427,13 @@ Resueltas el 2026-11-08:
 | Entrada | ✅ `POST /api/leads`: firma, tamaño, validación, idempotencia y límite por hora | `app/api/leads/route.ts`, `lib/leads/signature.ts`, `lib/leads/validate.ts`; salto en `proxy.ts` |
 | Tests | ✅ 45 tests (firma, normalización del teléfono, validación y la ruta con la BD simulada) | `tests/leads/leads.test.ts` |
 | Prueba local de extremo a extremo | ✅ 2026-11-08 contra la BD real: 201, reenvío 200, secreto incorrecto y firma caducada 401, sin consentimiento 400, GET 405. Fila de prueba borrada | — |
-| Pantallas y contador del menú | ⏳ | §8 |
+| Pantallas y contador del menú | ✅ 2026-11-08. Probadas en local con un admin: listado, filtros (periodo, visto, canal, respuesta, búsqueda y spam), detalle, marcar visto al abrir y todos a la vez, nota, spam, borrado y contador. Vista móvil sin revisar a ojo | `app/dashboard/crm/`, `app/actions/leads.ts`, `lib/leads/{data,filters,duplicates,contact}.ts`, `components/app-sidebar.tsx`; 21 tests en `tests/leads/list.test.ts` |
 | Web de Girona Activa | ⏳ | §9 |
 | Secreto en Vercel y protección del preview | ⏳ | §6.1 y §6.4 |
 
 **Diferencias con lo especificado:**
 - `phone_normalized` en formato internacional (§7.1). El comentario de la columna en la BD todavía dice "sin el prefijo del país": se corregirá en la próxima migración del CRM.
 - En los campos de una línea se juntan los espacios repetidos, además de quitar los caracteres de control.
+- El lead se marca como visto desde el navegador al abrir el detalle, no al pintar la página en el servidor, para que una precarga del enlace no lo marque.
+- Filtro "Respuesta": solo ofrece preguntas con entre 2 y 12 valores distintos que no sean números (la edad y los textos libres no salen). "Primera respuesta" del listado muestra la primera respuesta de texto.
+- El color del centro llega a las pantallas nuevas como variable CSS `--brand` (desde `lib/brand.ts`, definida en el layout del dashboard), sin escribir el color en el código.

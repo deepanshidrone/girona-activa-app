@@ -13,7 +13,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
-import { Users, Dumbbell, CalendarDays, LogOut, UserCircle, LayoutGrid, CalendarClock, Monitor, UsersRound, BarChart3 } from 'lucide-react'
+import { Users, Dumbbell, CalendarDays, LogOut, UserCircle, LayoutGrid, CalendarClock, Monitor, UsersRound, BarChart3, Inbox } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
@@ -30,6 +30,9 @@ const navItems = [
 // Solo con el permiso 'indicadores.ver' (hoy, solo admin). El servidor lo vuelve a comprobar.
 const kpiItem = { title: 'Indicadores', href: '/dashboard/indicadores', icon: BarChart3 }
 
+// Solo con el permiso 'leads.gestionar' (hoy, solo admin). Lleva el contador de leads sin ver.
+const crmItem = { title: 'CRM', href: '/dashboard/crm', icon: Inbox }
+
 interface UserInfo {
   name: string
   email: string
@@ -37,7 +40,7 @@ interface UserInfo {
   role: string
 }
 
-export function AppSidebar({ canSeeKpis = false }: { canSeeKpis?: boolean }) {
+export function AppSidebar({ canSeeKpis = false, unseenLeads = null }: { canSeeKpis?: boolean; unseenLeads?: number | null }) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -103,8 +106,9 @@ export function AppSidebar({ canSeeKpis = false }: { canSeeKpis?: boolean }) {
       {/* Nav */}
       <SidebarContent className="px-3 py-4">
         <SidebarMenu className="gap-1">
-          {(canSeeKpis ? [...navItems, kpiItem] : navItems).map((item) => {
+          {[...navItems, ...(unseenLeads !== null ? [crmItem] : []), ...(canSeeKpis ? [kpiItem] : [])].map((item) => {
             const isActive = pathname.startsWith(item.href)
+            const badge = item === crmItem && unseenLeads ? unseenLeads : 0
             return (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
@@ -119,6 +123,16 @@ export function AppSidebar({ canSeeKpis = false }: { canSeeKpis?: boolean }) {
                   <Link href={item.href} className="flex items-center gap-3 w-full">
                     <item.icon className="h-4 w-4 shrink-0" />
                     {item.title}
+                    {badge > 0 && (
+                      <span
+                        className={`ml-auto min-w-5 h-5 px-1.5 rounded-full text-[11px] font-bold flex items-center justify-center ${
+                          isActive ? 'bg-white text-[var(--brand)]' : 'bg-[var(--brand)] text-white'
+                        }`}
+                        aria-label={`${badge} leads sin ver`}
+                      >
+                        {badge > 99 ? '99+' : badge}
+                      </span>
+                    )}
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

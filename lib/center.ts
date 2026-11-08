@@ -55,3 +55,31 @@ export function formatDateEs(date: string | null | undefined, opts: Intl.DateTim
   if (!date) return '—'
   return new Date(date + 'T12:00:00Z').toLocaleDateString('es-ES', { ...opts, timeZone: 'UTC' })
 }
+
+// Diferencia en minutos entre la hora local de `timezone` y UTC en el instante `d`.
+function tzOffsetMinutes(d: Date, timezone: string): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone, hourCycle: 'h23',
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
+  }).formatToParts(d)
+  const get = (t: string) => Number(parts.find(p => p.type === t)!.value)
+  const asUtc = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second'))
+  return Math.round((asUtc - d.getTime()) / 60000)
+}
+
+// Instante (ISO, UTC) en que empieza el día 'YYYY-MM-DD' en la zona del centro.
+// Sirve para filtrar columnas timestamptz por días del centro.
+export function zonedDayStart(date: string, timezone: string = DEFAULT_TIMEZONE): string {
+  const midnightUtc = new Date(date + 'T00:00:00Z').getTime()
+  let t = midnightUtc - tzOffsetMinutes(new Date(midnightUtc), timezone) * 60000
+  t = midnightUtc - tzOffsetMinutes(new Date(t), timezone) * 60000
+  return new Date(t).toISOString()
+}
+
+// Fecha y hora de un instante en la zona del centro: "08/11/2026, 10:15".
+export function formatDateTimeEs(iso: string | null | undefined, timezone: string = DEFAULT_TIMEZONE): string {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleString('es-ES', {
+    timeZone: timezone, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  })
+}

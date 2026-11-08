@@ -71,7 +71,7 @@ Nació como app a medida de **Girona Activa** (centro de entrenamiento personal 
 | 4.12 | Configuración del centro | `/dashboard/configuracion` | ⏳ |
 | 4.13 | Informes, ranking, comunidad, nutrición | — | ⏳ fases posteriores |
 | 4.14 | Indicadores del centro (KPIs, solo admin) | `/dashboard/indicadores` | 🟡 v1 implementada (con dolor reportado), pendiente de QA |
-| 4.15 | CRM: leads de la web (solo admin) | `/dashboard/crm/leads` | 🟡 entrada `/api/leads` hecha; faltan las pantallas y la web |
+| 4.15 | CRM: leads de la web (solo admin) | `/dashboard/crm/leads` | 🟡 app hecha (entrada y pantallas); falta conectar la web |
 
 ---
 
@@ -378,8 +378,8 @@ Panel en `/dashboard/indicadores`, **solo para el admin** (permiso `indicadores.
 - **Permiso:** `leads.gestionar`, solo admin por defecto. La tabla solo es accesible desde el servidor.
 - **Marca blanca:** contrato de entrada genérico; las preguntas y los canales llegan como datos.
 - **Después (fase 2):** estados del lead, seguimiento de llamadas (incluidos los contactos fallidos), conversión a cliente, quién lo atendió e indicadores de leads.
-- **Hecho (2026-11-08):** tabla `leads` (solo accesible desde el servidor), permiso `leads.gestionar` y entrada `/api/leads` con sus tests.
-- **Pendiente:** pantallas y contador del menú, cambios en la web de Girona Activa, secreto en Vercel y revisión legal con Girona Activa de los datos de los leads (conservación, datos de salud y encargado del tratamiento).
+- **Hecho (2026-11-08):** tabla `leads` (solo accesible desde el servidor), permiso `leads.gestionar`, entrada `/api/leads` y las pantallas (menú CRM con contador, listado con filtros y detalle con contacto, nota, spam y borrado), con sus tests.
+- **Pendiente:** revisar la vista móvil, cambios en la web de Girona Activa, secreto en Vercel y revisión legal con Girona Activa de los datos de los leads (conservación, datos de salud y encargado del tratamiento).
 
 ---
 
