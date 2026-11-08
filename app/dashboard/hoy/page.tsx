@@ -2,6 +2,8 @@ import { getTodaySessionsAction } from '@/app/actions/session-logs'
 import { getTodayGroupSlotsAction } from '@/app/actions/group-sessions'
 import { CalendarClock, Clock, Dumbbell, Users, CheckCircle2, Circle, User } from 'lucide-react'
 import Link from 'next/link'
+import { getUnreadFeedbackAction } from '@/app/actions/client-feedback'
+import { UnreadFeedback } from './unread-feedback'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,9 +20,10 @@ function formatTime(time: string | null) {
 }
 
 export default async function HoyPage() {
-  const [{ sessions, error, currentUserId }, { slots: groupSlots }] = await Promise.all([
+  const [{ sessions, error, currentUserId }, { slots: groupSlots }, unreadFeedback] = await Promise.all([
     getTodaySessionsAction(),
     getTodayGroupSlotsAction(),
+    getUnreadFeedbackAction(),
   ])
 
   const today = new Date().toLocaleDateString('es-ES', {
@@ -69,6 +72,8 @@ export default async function HoyPage() {
         <h1 className="text-2xl font-bold text-white capitalize">{today}</h1>
         <p className="text-white/40 text-sm mt-0.5">Agenda de sesiones de hoy</p>
       </div>
+
+      <UnreadFeedback items={unreadFeedback} />
 
       {totalToday > 0 && (
         <div className="grid grid-cols-3 gap-3 mb-6">

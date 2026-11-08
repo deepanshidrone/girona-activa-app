@@ -484,7 +484,30 @@ function Progreso({ data }: { data: KpiData }) {
         </p>
       </Card>
       <Card title="Dolor reportado" subtitle="% de sesiones con feedback en las que el cliente marcó dolor">
-        <EmptyChart height={120} message="Sin datos: llegará con el feedback del cliente de la vista de cliente (docs/spec-vista-cliente.md §7.2)" />
+        {data.pain.total === 0 ? (
+          <EmptyChart height={120} message="Aún no hay feedback de clientes en este periodo (lo dejan desde la app tras cada sesión)" />
+        ) : (() => {
+          // Menos dolor es mejor: una subida se pinta en rojo
+          const d = fmtDelta(data.pain.pct, data.painPrev.pct, 'pct')
+          const DIcon = d?.dir === 'up' ? ArrowUpRight : d?.dir === 'down' ? ArrowDownRight : Minus
+          const color = !d || d.dir === 'flat' ? 'text-white/50' : d.dir === 'up' ? 'text-[#e66767]' : 'text-[#0ca30c]'
+          return (
+            <div className="flex flex-col gap-1">
+              <p className="text-3xl font-semibold text-white">{fmtPct(data.pain.pct)}</p>
+              <p className="text-sm text-white/60">
+                {fmtNum(data.pain.withPain)} de {fmtNum(data.pain.total)} sesiones con feedback marcaron dolor
+              </p>
+              {d && (
+                <p className={`flex items-center gap-0.5 text-xs ${color}`}>
+                  <DIcon className="h-3.5 w-3.5" /> {d.text} frente al periodo de comparación
+                </p>
+              )}
+              <p className="text-xs text-white/40 mt-2">
+                Detalle por cliente en su ficha y en la agenda “Hoy”. Es un dato de salud: no se exporta.
+              </p>
+            </div>
+          )
+        })()}
       </Card>
       <Card title="RPE frente al objetivo del ciclo" subtitle="Media por semana del ciclo · sesiones grupales registradas">
         <WeekTargetChart metric="RPE"

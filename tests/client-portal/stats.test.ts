@@ -1,6 +1,30 @@
 import { describe, expect, it } from 'vitest'
 import { completedByMonth, computeAdherence, computeStreaks, countCompleted } from '@/lib/client-portal/stats'
 import type { SessionStatus } from '@/lib/client-portal/types'
+import { feedbackWindow, parseFeedbackInput, pendingFeedbackSession } from '@/lib/client-portal/feedback'
+import { computePain } from '@/lib/kpis/compute'
+
+describe('computePain (KPI dolor reportado)', () => {
+  const rows = [
+    { session_date: '2026-11-02', employee_id: 'e1', plan_type: 'individual', pain: true },
+    { session_date: '2026-11-06', employee_id: 'e1', plan_type: 'group', pain: false },
+    { session_date: '2026-11-07', employee_id: 'e2', plan_type: 'group', pain: false },
+    { session_date: '2026-10-15', employee_id: 'e1', plan_type: 'individual', pain: true },
+  ]
+  it('% de sesiones con feedback que marcan dolor, por mes de la sesión', () => {
+    const r = computePain(rows, ['2026-11-01'], { employee: 'all', type: 'all' })
+    expect(r.total).toBe(3)
+    expect(r.withPain).toBe(1)
+    expect(r.pct).toBeCloseTo(33.33, 1)
+  })
+  it('respeta los filtros de entrenador y tipo', () => {
+    expect(computePain(rows, ['2026-11-01'], { employee: 'e1', type: 'all' })).toEqual({ pct: 50, withPain: 1, total: 2 })
+    expect(computePain(rows, ['2026-11-01'], { employee: 'all', type: 'group' }).pct).toBe(0)
+  })
+  it('sin feedback en el periodo → null (sin datos)', () => {
+    expect(computePain(rows, ['2026-09-01'], { employee: 'all', type: 'all' }).pct).toBeNull()
+  })
+})
 
 const s = (session_date: string, status: SessionStatus, session_time: string | null = '18:00:00') =>
   ({ session_date, session_time, status })
@@ -81,6 +105,50 @@ describe('completedByMonth', () => {
   })
   it('cruza el cambio de año', () => {
     expect(completedByMonth([], '2027-01-10', 3).map(r => r.month)).toEqual(['2026-11', '2026-12', '2027-01'])
+  })
+})
+
+describe('feedbackWindow', () => {
+  it('abierto desde el día de la sesión hasta 7 días después', () => {
+    expect(feedbackWindow(s('2026-11-06', 'completed'), '2026-11-06').open).toBe(true)
+    expect(feedbackWindow(s('2026-11-06', 'completed'), '2026-11-13')).toEqual({ open: true, until: '2026-11-13' })
+    expect(feedbackWindow(s('2026-11-06', 'completed'), '2026-11-14').open).toBe(false)
+  })
+  it('cerrado en futuras, canceladas y no asistidas; abierto en grupales sin registrar', () => {
+    expect(feedbackWindow(s('2026-11-11', 'scheduled'), '2026-11-08').open).toBe(false)
+    expect(feedbackWindow(s('2026-11-06', 'cancelled'), '2026-11-08').open).toBe(false)
+    expect(feedbackWindow(s('2026-11-06', 'missed'), '2026-11-08').open).toBe(false)
+    expect(feedbackWindow(s('2026-11-06', 'unrecorded'), '2026-11-08').open).toBe(true)
+    expect(feedbackWindow(s('2026-11-08', 'scheduled'), '2026-11-08').open).toBe(true)
+  })
+})
+
+describe('pendingFeedbackSession', () => {
+  const list = [
+    { ...s('2026-10-20', 'completed'), source_id: 'vieja' },     // fuera de plazo
+    { ...s('2026-11-04', 'completed'), source_id: 'a' },
+    { ...s('2026-11-06', 'completed'), source_id: 'b' },
+    { ...s('2026-11-07', 'missed'), source_id: 'c' },
+  ]
+  it('la completada más reciente sin feedback y dentro de plazo', () => {
+    expect(pendingFeedbackSession(list, new Set(), '2026-11-08')?.source_id).toBe('b')
+    expect(pendingFeedbackSession(list, new Set(['b']), '2026-11-08')?.source_id).toBe('a')
+    expect(pendingFeedbackSession(list, new Set(['a', 'b']), '2026-11-08')).toBeNull()
+  })
+})
+
+describe('parseFeedbackInput', () => {
+  it('exige indicar dolor sí/no', () => {
+    expect(parseFeedbackInput({ pain: undefined })).toEqual({ error: 'Indica si has tenido dolor.' })
+  })
+  it('limpia textos y descarta la zona si no hay dolor', () => {
+    expect(parseFeedbackInput({ pain: false, painArea: 'rodilla', comment: '  bien  ' }))
+      .toEqual({ pain: false, pain_area: null, comment: 'bien' })
+    expect(parseFeedbackInput({ pain: true, painArea: ' rodilla ', comment: '' }))
+      .toEqual({ pain: true, pain_area: 'rodilla', comment: null })
+  })
+  it('rechaza textos demasiado largos', () => {
+    expect('error' in parseFeedbackInput({ pain: false, comment: 'x'.repeat(1001) })).toBe(true)
   })
 })
 

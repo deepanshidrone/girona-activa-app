@@ -3,8 +3,8 @@ import 'server-only'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { getCenterToday } from '@/lib/center-settings'
 import {
-  type Filters, type MonthlyRow, type PlanTypeFilter, type ProgressRow, type Snapshot, type Target,
-  NO_EMPLOYEE, computeHeatmap, computeSnapshot, computeTrainerRows, filterRows, matchesEmployee, summarizeProgress,
+  type Filters, type MonthlyRow, type PainRow, type PlanTypeFilter, type ProgressRow, type Snapshot, type Target,
+  NO_EMPLOYEE, computeHeatmap, computePain, computeSnapshot, computeTrainerRows, filterRows, matchesEmployee, summarizeProgress,
 } from './compute'
 import {
   type CompareKey, type Period, comparisonPeriod, periodRefDate, resolvePeriod, seriesMonths,
@@ -73,6 +73,33 @@ async function fetchAll<T>(admin: AdminClient, fn: 'kpi_progress' | 'kpi_alerts'
   }
 }
 
+// Feedback del cliente con la fecha, el entrenador y el tipo de su sesión
+// (client_sessions solo la lee service_role). Se pagina igual que el resto.
+async function fetchPainRows(admin: AdminClient): Promise<PainRow[]> {
+  const feedback: { target_id: string; pain: boolean }[] = []
+  for (let offset = 0; ; offset += PAGE) {
+    const { data, error } = await admin.from('client_feedback').select('target_id, pain')
+      .eq('kind', 'feedback').order('id').range(offset, offset + PAGE - 1)
+    if (error) throw new Error('Error al calcular los indicadores: ' + error.message)
+    feedback.push(...(data ?? []))
+    if ((data ?? []).length < PAGE) break
+  }
+  if (feedback.length === 0) return []
+
+  const sessions = new Map<string, { session_date: string; employee_id: string | null; type: string | null }>()
+  const ids = [...new Set(feedback.map(f => f.target_id))]
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data, error } = await admin.from('client_sessions').select('source_id, session_date, employee_id, type')
+      .in('source_id', ids.slice(i, i + 200))
+    if (error) throw new Error('Error al calcular los indicadores: ' + error.message)
+    for (const s of data ?? []) sessions.set(s.source_id, s)
+  }
+  return feedback.flatMap(f => {
+    const s = sessions.get(f.target_id)
+    return s ? [{ session_date: s.session_date, employee_id: s.employee_id, plan_type: s.type, pain: f.pain }] : []
+  })
+}
+
 export async function loadKpis(admin: AdminClient, params: KpiParams) {
   const today = await getCenterToday(admin)
   const period: Period = resolvePeriod(params.periodo, today)
@@ -84,7 +111,7 @@ export async function loadKpis(admin: AdminClient, params: KpiParams) {
   const refDate = periodRefDate(period, today)
   const compRefDate = periodRefDate(comparison, today)
 
-  const [rows, progressNow, progressPrev, alerts, targetsRes, weekRes, profilesRes] = await Promise.all([
+  const [rows, progressNow, progressPrev, alerts, targetsRes, weekRes, profilesRes, painRows] = await Promise.all([
     fetchMonthly(admin, fetchFrom, period.to),
     fetchAll<ProgressRow>(admin, 'kpi_progress', { p_to: refDate }),
     fetchAll<ProgressRow>(admin, 'kpi_progress', { p_to: compRefDate }),
@@ -92,6 +119,7 @@ export async function loadKpis(admin: AdminClient, params: KpiParams) {
     admin.from('kpi_targets').select('key, label, unit, value_min, value_max, sort_order').order('sort_order'),
     admin.from('cycle_week_targets').select('*').order('week'),
     admin.from('profiles').select('id, full_name, role, is_active, weekly_hours'),
+    fetchPainRows(admin),
   ])
 
   // Entrenadores: el personal activo más cualquiera que aparezca en los datos
@@ -142,6 +170,8 @@ export async function loadKpis(admin: AdminClient, params: KpiParams) {
     trainers,
     progress: summarizeProgress(progressNow, filters),
     progressPrev: summarizeProgress(progressPrev, filters),
+    pain: computePain(painRows, period.months, filters),
+    painPrev: computePain(painRows, comparison.months, filters),
     alerts: filteredAlerts,
     targets: (targetsRes.data ?? []) as Target[],
     weekTargets: (weekRes.data ?? []) as WeekTarget[],

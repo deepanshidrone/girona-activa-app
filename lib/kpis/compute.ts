@@ -263,3 +263,22 @@ export function trafficLight(value: number | null, target: Target | undefined): 
   }
   return null
 }
+
+// Dolor reportado (docs/spec-kpis.md §4.5): % de sesiones con feedback del
+// cliente en las que marcó dolor. Se atribuye por la fecha de la sesión, su
+// entrenador y su tipo de plan. Sin feedback en el periodo → null (sin datos).
+export type PainRow = { session_date: string; employee_id: string | null; plan_type: string | null; pain: boolean }
+
+export function computePain(rows: PainRow[], months: string[], filters: Filters): { pct: number | null; withPain: number; total: number } {
+  const inPeriod = new Set(months.map(m => m.slice(0, 7)))
+  let total = 0
+  let withPain = 0
+  for (const r of rows) {
+    if (!inPeriod.has(r.session_date.slice(0, 7))) continue
+    if (!matchesEmployee(r.employee_id, filters.employee)) continue
+    if (filters.type !== 'all' && r.plan_type !== filters.type) continue
+    total++
+    if (r.pain) withPain++
+  }
+  return { pct: total ? (withPain / total) * 100 : null, withPain, total }
+}

@@ -455,6 +455,8 @@ En paralelo o después, y compartido con la vista de cliente: registro de sesion
 - Las altas y las bajas se filtran por el entrenador y el tipo del último plan del cliente (§4.1).
 - La exportación de bajas lista todas las del periodo, sin aplicar los filtros de entrenador y tipo, y no incluye el comentario de la baja (puede contener datos de salud).
 - `cycle_week_targets` no tiene editor en la interfaz todavía: se cambia en la BD. Los demás objetivos se editan desde el panel.
-- El dolor reportado sale siempre "sin datos" hasta que exista `client_feedback` (vista de cliente).
+- ~~El dolor reportado sale siempre "sin datos" hasta que exista `client_feedback` (vista de cliente).~~ Implementado el 2026-11-08 con el feedback del cliente.
+  - `computePain` en `lib/kpis/compute.ts` calcula el % de sesiones con feedback que marcan dolor.
+  - Se atribuye por la fecha de la sesión, su entrenador y su tipo de plan (vía `client_sessions`), y respeta los filtros y el periodo de comparación.
 - El registro de sesiones grupales sigue pendiente. Ya existe la columna `session_logs.training_session_id` que usan los KPIs y la demo, pero no la pantalla.
 

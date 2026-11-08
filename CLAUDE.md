@@ -265,7 +265,7 @@ create policy "personal_todo" on public.<tabla> for all to authenticated
   using ((select public.is_staff())) with check ((select public.is_staff()));
 ```
 - **Nunca** usar `auth.role() = 'authenticated'` ni `using (true)`: deja entrar a los clientes con login.
-- Los clientes no tienen acceso directo a ninguna tabla. Solo leen las vistas `mi_*` (`mi_ficha`, `mi_planes`, `mi_sesiones`, `mi_ejercicios_planificados`, `mi_registros`, `mi_registros_ejercicios`) y `festivos_centro`, de la migración `20261106140000_vista_cliente_lectura.sql` (detalle en `docs/spec-vista-cliente.md` §8.2):
+- Los clientes no tienen acceso directo a ninguna tabla. Solo leen las vistas `mi_*` (`mi_ficha`, `mi_planes`, `mi_sesiones`, `mi_ejercicios_planificados`, `mi_registros`, `mi_registros_ejercicios`, `mi_feedback`) y `festivos_centro`, de las migraciones `20261106140000_vista_cliente_lectura.sql` y `20261108140000_feedback_cliente.sql`. Su única escritura es el feedback, con `submitSessionFeedbackAction` (detalle en `docs/spec-vista-cliente.md` §8.2):
   - se ejecutan con los permisos del dueño y filtran siempre por `my_client_id()`, que solo devuelve algo con rol `client`;
   - no tienen columnas internas (`notes`);
   - solo tienen `GRANT SELECT` a `authenticated`.

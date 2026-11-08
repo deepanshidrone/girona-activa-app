@@ -251,7 +251,14 @@ Módulo opcional. Diseño en `docs/arquitectura-pantallas.md` y propuesta comerc
 - **Progreso:** sesiones del mes y del año, racha actual y récord, asistencia al plan vigente con la definición única de los KPIs y gráfico de sesiones hechas por mes (6 meses).
 - **Perfil:** ficha en solo lectura, cambio de contraseña (pide la actual) y cerrar sesión.
 
-**Pendiente:** feedback del cliente tras la sesión, marca desde `center_settings`, registro de sesiones grupales por el empleado, PWA y ronda de QA.
+**Implementado (feedback, 2026-11-08):**
+- Tras una sesión, el cliente cuenta si ha tenido dolor (sí/no, con la zona opcional) y deja un comentario para el entrenador.
+- Puede hacerlo o cambiarlo hasta 7 días después de la sesión, y ve si el entrenador ya lo ha leído.
+- Hoy le recuerda la última sesión completada sin feedback.
+- El personal lo ve en la ficha del cliente y en la agenda "Hoy", con el dolor resaltado, y lo marca como leído.
+- Alimenta el indicador "Dolor reportado" (4.14).
+
+**Pendiente:** marca desde `center_settings`, registro de sesiones grupales por el empleado, PWA y ronda de QA.
 
 **Hecho como requisito previo:**
 - RLS por rol (BUG-002) y alta con acceso opcional (4.2).

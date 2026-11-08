@@ -5,6 +5,8 @@ import { ArrowLeft, User, Calendar, Dumbbell, ClipboardList, CheckCircle2, Clock
 import { DeleteClientButton } from './delete-button'
 import { AccessCard, type AccessStatus } from './access-card'
 import { StatusCard, type PeriodRow } from './status-card'
+import { FeedbackCard } from './feedback-card'
+import { getClientFeedbackAction } from '@/app/actions/client-feedback'
 import { getStaffUser, hasPermission } from '@/lib/auth/permissions'
 import { getCenterToday } from '@/lib/center-settings'
 import { ageOn } from '@/lib/center'
@@ -37,7 +39,7 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
     }
   }
 
-  const [staff, today, { data: periodsData }, { data: reasonsData }] = await Promise.all([
+  const [staff, today, { data: periodsData }, { data: reasonsData }, feedback] = await Promise.all([
     getStaffUser(),
     getCenterToday(supabase),
     supabase
@@ -50,6 +52,7 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
       .select('id, label, requires_notes')
       .eq('is_active', true)
       .order('sort_order'),
+    getClientFeedbackAction(id),
   ])
 
   const periods: PeriodRow[] = (periodsData ?? []).map(p => {
@@ -154,8 +157,10 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
         />
         </div>
 
-        {/* Planes */}
+        {/* Planes y feedback */}
         <div className="md:col-span-2 flex flex-col gap-4">
+          {/* Solo si usa la app (o dejó feedback antes): sin acceso no puede dejarlo */}
+          {(feedback.length > 0 || access.status !== 'none') && <FeedbackCard clientId={id} items={feedback} />}
           {/* Plan activo */}
           <div className="bg-[#1C1C1C] rounded-2xl border border-white/10 p-5">
             <div className="flex items-center justify-between mb-4">

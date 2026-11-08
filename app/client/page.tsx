@@ -1,5 +1,7 @@
-import { Flame, CheckCircle2 } from 'lucide-react'
-import { getEjercicios, getMisSesiones, getPortal } from '@/lib/client-portal/data'
+import Link from 'next/link'
+import { Flame, CheckCircle2, MessageSquare, ChevronRight } from 'lucide-react'
+import { getEjercicios, getMiFeedback, getMisSesiones, getPortal } from '@/lib/client-portal/data'
+import { pendingFeedbackSession } from '@/lib/client-portal/feedback'
 import { computeStreaks, countCompleted } from '@/lib/client-portal/stats'
 import { formatDateEs, monthStart } from '@/lib/center'
 import { capitalizeFirst } from '@/lib/client-portal/types'
@@ -13,7 +15,10 @@ export default async function ClientTodayPage() {
   if (!portal?.ficha) return null
   const { ficha, today } = portal
 
-  const sesiones = await getMisSesiones()
+  const [sesiones, misFeedback] = await Promise.all([getMisSesiones(), getMiFeedback()])
+  const pendienteFeedback = ficha.state === 'baja'
+    ? null
+    : pendingFeedbackSession(sesiones, new Set(misFeedback.map(f => f.target_id)), today)
   const hoy = sesiones.filter(s => s.session_date === today && s.status !== 'cancelled')
   const proxima = hoy.length ? null : sesiones.find(s => s.session_date > today && s.status === 'scheduled') ?? null
   const mostrar = hoy.length ? hoy : proxima ? [proxima] : []
@@ -50,6 +55,22 @@ export default async function ClientTodayPage() {
           </h2>
           <SessionCard sesion={proxima} ejercicios={ejercicios} />
         </section>
+      )}
+
+      {pendienteFeedback && (
+        <Link
+          href={`/client/sesion/${pendienteFeedback.source_id}#feedback`}
+          className="flex items-center gap-3 rounded-2xl border border-[var(--brand)]/30 bg-[var(--brand)]/10 px-4 py-3.5 active:bg-[var(--brand)]/20"
+        >
+          <MessageSquare className="h-5 w-5 text-[var(--brand)] shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium">
+              ¿Qué tal fue la sesión del {formatDateEs(pendienteFeedback.session_date, { weekday: 'long', day: 'numeric' })}?
+            </p>
+            <p className="text-xs text-white/55">Cuéntaselo a tu entrenador</p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-white/40" />
+        </Link>
       )}
 
       {mostrar.length === 0 && ficha.state !== 'baja' && (

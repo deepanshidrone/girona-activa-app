@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation'
 import { Info } from 'lucide-react'
-import { getEjercicios, getPortal, getRegistro, getSesion } from '@/lib/client-portal/data'
+import { getEjercicios, getMiFeedback, getPortal, getRegistro, getSesion } from '@/lib/client-portal/data'
+import { feedbackWindow } from '@/lib/client-portal/feedback'
+import { FeedbackSection } from './feedback-section'
 import {
   DIFFICULTY_LABEL, capitalizeFirst, formatKg, formatPrescription, formatTimeRange, sessionTypeLabel,
   type MiEjercicio, type MiRegistroEjercicio,
@@ -12,7 +14,7 @@ import { BackButton } from './back-button'
 export const dynamic = 'force-dynamic'
 
 // Detalle de sesión: ejercicios previstos y, si está registrada, lo hecho.
-// Aquí irá el feedback del cliente (docs/spec-vista-cliente.md §4.1.3, punto 5 del §9).
+// Al final, el feedback del cliente (docs/spec-vista-cliente.md §4.1.3).
 export default async function ClientSessionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const portal = await getPortal()
@@ -21,9 +23,18 @@ export default async function ClientSessionPage({ params }: { params: Promise<{ 
   const sesion = await getSesion(id)
   if (!sesion) notFound()
 
-  const [ejercicios, log] = await Promise.all([getEjercicios([id]), getRegistro(id)])
+  const [ejercicios, log, misFeedback] = await Promise.all([getEjercicios([id]), getRegistro(id), getMiFeedback()])
   const { rows, extras } = matchLogs(ejercicios, log?.ejercicios ?? [])
   const time = formatTimeRange(sesion.session_time, sesion.duration_min)
+
+  // Feedback: dentro del plazo (7 días desde la sesión) y no para clientes de baja (P9)
+  const feedback = misFeedback.find(f => f.target_id === id) ?? null
+  const plazo = feedbackWindow(sesion, portal.today)
+  const isBaja = portal.ficha.state === 'baja'
+  const feedbackOpen = plazo.open && !isBaja
+  const closedReason = sesion.session_date > portal.today
+    ? undefined
+    : isBaja ? 'No tienes un plan activo, así que no puedes dejar comentarios nuevos.' : plazo.reason
 
   return (
     <div className="flex flex-col gap-4">
@@ -76,6 +87,15 @@ export default async function ClientSessionPage({ params }: { params: Promise<{ 
           ))}
         </ul>
       )}
+
+      <FeedbackSection
+        key={feedback?.updated_at ?? 'nuevo'}
+        sourceId={id}
+        feedback={feedback}
+        open={feedbackOpen}
+        closedReason={closedReason}
+        untilLabel={`hasta el ${formatDateEs(plazo.until, { day: 'numeric', month: 'short' })}`}
+      />
     </div>
   )
 }

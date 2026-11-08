@@ -199,7 +199,16 @@ Los ejercicios del detalle salen de `plan_session_exercises` (individual) o de `
 
 > A medio plazo, lo correcto es terminar la migración a `training_sessions` (CLAUDE.md ya la da por hecha). La vista desacopla la app de cliente de esa migración: si se completa, solo cambia la definición de la vista.
 
-### 7.2 Tabla nueva `client_feedback` (genérica, preparada para nutrición)
+### 7.2 Tabla nueva `client_feedback` (genérica, preparada para nutrición) ✅ implementada (2026-11-08)
+
+> **Como quedó** (migración `20261108140000_feedback_cliente.sql`):
+> - `target_type` guarda la tabla de la sesión (`plan_session` / `training_session`; más adelante `meal`) y `target_id` su id.
+> - `pain` es obligatorio (sí/no). `pain_area` admite hasta 200 caracteres y `comment` hasta 1000.
+> - El cliente lee lo suyo con la vista `mi_feedback` y escribe solo con `submitSessionFeedbackAction` (`requireClient()`). No tiene políticas sobre la tabla.
+> - Plazo: desde el día de la sesión hasta 7 días después, y no en sesiones canceladas ni no asistidas (`lib/client-portal/feedback.ts`).
+> - Si el cliente lo edita, vuelve a quedar sin leer.
+>
+> El diseño original sigue abajo como referencia.
 ```
 client_feedback
   id            uuid pk
@@ -326,7 +335,10 @@ Solo aparecen los clientes con `ranking_opt_in = true` y con su `display_alias` 
      - **Perfil:** datos de la ficha en solo lectura, cambio de contraseña (pide la actual; mínimo 8 caracteres) y cerrar sesión.
      - Tests de adherencia y del recuento por mes.
    - Datos de prueba: Cliente Test tiene, además de su plan individual, un ciclo de prueba ("Prueba vista de cliente (Cliente Test)") con una sesión grupal completada con registro (6 nov) y otra prevista (11 nov).
-7. `client_feedback` y su visualización en el dashboard (también alimenta el KPI de dolor, `spec-kpis.md` §7.9).
+7. ~~`client_feedback` y su visualización en el dashboard (también alimenta el KPI de dolor, `spec-kpis.md` §7.9)~~ ✅ (2026-11-08):
+   - **Cliente:** formulario "Tu feedback" en el detalle de la sesión (dolor sí/no, zona y comentario; editable dentro del plazo; muestra si el entrenador ya lo ha leído) y tarjeta "¿Qué tal fue la sesión del…?" en Hoy.
+   - **Personal:** tarjeta "Feedback del cliente" en la ficha (dolor resaltado, etiqueta "Nuevo" y botón "Marcar como leído") y aviso "Feedback de clientes sin leer" en la agenda "Hoy" (los de dolor, primero).
+   - **KPIs:** el indicador "Dolor reportado" ya se calcula (`computePain`).
 8. PWA (manifest).
 9. Ronda de QA en `qa/rondas/` con un cliente individual, uno de plan grupal y uno de ciclo grupal.
 
@@ -341,7 +353,7 @@ Limpieza asociada: ~~borrar `app/client/set-password/`~~ ✅ borrado con la prim
 | P1 | ¿Quién decide que una sesión pasada sin log es "no asistida"? ¿Puede el empleado marcar "falta justificada" para no romper la racha? | v1: sin log = no asistida. v1.1: estado `excused` que no rompe la racha |
 | P2 | ¿El cliente ve las cargas de las sesiones **futuras** o solo series y reps? En grupal, la carga planificada a veces no aplica | Mostrar la carga solo si está informada |
 | P3 | ¿Ve el cliente el bloque A/B/C y el nombre de la fase (semana 1 "Consolidar técnica"… semana 4 "Estabilización", spec GA)? | Bloque sí. Fase cuando el ciclo la guarde (hoy no existe el dato) |
-| P4 | ¿Plazo de edición del feedback (7 días) y quién lo lee: el entrenador asignado o cualquier empleado? | 7 días; lo ven todos los empleados y se resalta para el asignado |
+| P4 | ¿Plazo de edición del feedback (7 días) y quién lo lee: el entrenador asignado o cualquier empleado? | **Aplicado 2026-11-08:** se puede dejar o editar hasta 7 días después de la sesión, y lo ve todo el personal. Pendiente: resaltar el del entrenador asignado |
 | P5 | ¿Debe avisarse al empleado (email) cuando un cliente marca "dolor: sí"? | No en v1 (sin notificaciones); se resalta en "Hoy" y en la ficha |
 | P6 | Nutrición (Pragma): ¿el plan lo hace un nutricionista del centro dentro de BrotaFit o se importa? | Pendiente de la propuesta comercial a Pragma |
 | P7 | ~~Marca blanca: ¿`center_settings` en BD o variables de entorno?~~ | **Decidido 2026-11-04:** en BD, con valores de Girona Activa por ahora |
