@@ -28,6 +28,7 @@ export type Permission =
   | 'clientes.baja'
   | 'empleados.gestionar'
   | 'indicadores.ver'
+  | 'leads.gestionar'
 
 // Valores fijos hasta que exista la página de Configuración (sección
 // "Permisos por rol", solo admin). Entonces se leerán de base de datos y las
@@ -37,6 +38,7 @@ const EMPLOYEE_PERMISSIONS: Record<Permission, boolean> = {
   'clientes.baja': true,          // dar de baja y reactivar (docs/spec-kpis.md §8)
   'empleados.gestionar': false,
   'indicadores.ver': false,       // panel de indicadores, solo admin (docs/spec-kpis.md §10)
+  'leads.gestionar': false,       // CRM: ver y gestionar los leads de la web, solo admin (docs/spec-crm.md §10)
 }
 
 export type AuthResult =

@@ -2,6 +2,10 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function proxy(request: NextRequest) {
+  // Entrada de leads (app/api/leads): la llama la web del centro, servidor a
+  // servidor y sin sesión; se protege con firma HMAC. No hace falta getUser().
+  if (request.nextUrl.pathname.startsWith('/api/leads')) return NextResponse.next()
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(

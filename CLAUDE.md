@@ -60,10 +60,11 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 SUPABASE_SECRET_KEY=sb_secret_...
 SUPABASE_JWKS_URL=https://woomjsjbmrasydpirwap.supabase.co/auth/v1/.well-known/jwks.json
 RESEND_API_KEY=re_...
+LEADS_WEBHOOK_SECRET=...        # entrada de leads; en local, uno de prueba. En Vercel, otro (y LEADS_WEBHOOK_SECRET_PREVIOUS al cambiarlo)
 ```
 
 ### Regla de seguridad crítica
-- `SUPABASE_SECRET_KEY` y `RESEND_API_KEY` **nunca** se exponen al navegador
+- `SUPABASE_SECRET_KEY`, `RESEND_API_KEY` y `LEADS_WEBHOOK_SECRET` **nunca** se exponen al navegador
 - Todas las operaciones de admin (crear usuarios, saltarse RLS) → Server Actions / Server Components
 - `lib/supabase/admin.ts` expone `createAdminClient()`, que usa la secret key — **solo servidor**
 
@@ -86,7 +87,7 @@ RESEND_API_KEY=re_...
 
 **Control de acceso en el código** (`lib/auth/permissions.ts`):
 - Toda Server Action empieza con `requireStaff()` o `requirePermission('...')` antes de usar `createAdminClient()`. Las Server Actions se pueden llamar por POST directo, sin pasar por la UI.
-- Excepciones públicas a propósito (sin sesión), cada una con su comentario: `getScreenByTokenAction` (TrainWall, protegida por token) y `requestPasswordResetAction` ("Olvidé mi contraseña": respuesta siempre igual, correo enviado con `after()`, límites por IP y por email en `password_reset_requests`).
+- Excepciones públicas a propósito (sin sesión), cada una con su comentario: `getScreenByTokenAction` (TrainWall, protegida por token), `requestPasswordResetAction` ("Olvidé mi contraseña": respuesta siempre igual, correo enviado con `after()`, límites por IP y por email en `password_reset_requests`) y el Route Handler `POST /api/leads` (leads de la web del centro, servidor a servidor: firma HMAC con hora, validación estricta, idempotencia y límite por hora; `docs/spec-crm.md` §6). `proxy.ts` deja pasar `/api/leads` sin mirar la sesión.
 - La marca (nombre, logo, color, remitente de correo) está en `lib/brand.ts`. No escribir "Girona Activa" ni `#FF914D` en código nuevo.
 - Para decidir permisos se usa `getUser()`, nunca `getSession()` (en el servidor no verifica el token).
 - Los permisos del employee están fijos en `EMPLOYEE_PERMISSIONS` hasta que exista la página de Configuración.
@@ -273,6 +274,7 @@ create policy "personal_todo" on public.<tabla> for all to authenticated
   - Para añadir una vista de cliente nueva: mismo patrón (`security_barrier`, filtro por `my_client_id()`, `revoke all` + `grant select`). **Nunca** crear una vista sin ese filtro con permisos del dueño: vería todo el centro.
   - Una vista con `security_invoker = on` (como `client_sessions`) no sirve como base de una `mi_*`, porque dentro se aplica la RLS del cliente. La lógica compartida va en el esquema `private` (no publicado en la API, solo `service_role`).
 - Excepción: `screen_assignments` tiene lectura pública para el tiempo real de las pantallas de TrainWall.
+- Tablas **solo de servidor** (RLS sin políticas, sin permisos para `anon` ni `authenticated`): `password_reset_requests` y `leads`. Se leen con `createAdminClient()` después de `requirePermission()`; así un permiso configurable (como `leads.gestionar`) no se puede saltar leyendo por la API con la sesión.
 - `profiles`: cada usuario lee el suyo y solo puede editar `full_name`, `avatar_url` y `updated_at`.
 
 Permisos necesarios (ejecutar después de crear tablas nuevas):
@@ -451,6 +453,7 @@ La estructura de la BD se versiona en `supabase/migrations/`. **No se hacen camb
   2. Revisarlo y hacer commit junto con el código que lo usa
   3. Aplicarlo: `npx.cmd supabase db push --remote` (pide confirmación; se hace cuando el propietario lo aprueba)
   4. Comprobarlo: `npx.cmd supabase migration list --remote`
+- **Probar una migración antes de aplicarla** (en una transacción que se deshace): el usuario temporal de la CLI no es propietario de las tablas, así que el script empieza con `begin; set local role postgres; \i supabase/migrations/<archivo>.sql`, hace las comprobaciones y termina con `rollback;`. Se conecta con el `psql` local cargando las variables `PG*` que imprime `npx.cmd supabase db dump --remote --dry-run` (sin copiarlas a ningún archivo).
 - Si algún día se cambia algo a mano en el panel, hay que capturarlo después en una migración.
 - Los datos (galería, festivos, clientes) **no** están en las migraciones; solo la estructura.
 - Sin Docker en este PC, `supabase db dump/pull` no funcionan directamente. Para hacer un volcado: `npx.cmd supabase db dump --remote --dry-run` muestra el script de `pg_dump` (con un usuario temporal) y se ejecuta con el `pg_dump` local (`C:\Program Files\PostgreSQL\17\bin`, solo herramientas cliente). En Windows hay que cambiar `--quote-all-identifier` por `--quote-all-identifiers`.

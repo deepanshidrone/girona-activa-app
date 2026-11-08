@@ -1,6 +1,6 @@
 # FRD — BrotaFit (Girona Activa)
 **Documento de requisitos funcionales**
-Versión: 2.4 | Última actualización: 2026-11-08 | Repo: `deepanshidrone/girona-activa-app`
+Versión: 2.5 | Última actualización: 2026-11-08 | Repo: `deepanshidrone/girona-activa-app`
 
 Este es el **documento de producto** de BrotaFit: qué hace la app, qué está hecho y qué falta. Se mantiene al día con cada funcionalidad (ver [§7](#7-cómo-se-mantiene-este-documento)). El detalle técnico (convenciones de código, migraciones, RLS) está en `CLAUDE.md`. Las especificaciones de módulos concretos están en `docs/spec-*.md`.
 
@@ -71,6 +71,7 @@ Nació como app a medida de **Girona Activa** (centro de entrenamiento personal 
 | 4.12 | Configuración del centro | `/dashboard/configuracion` | ⏳ |
 | 4.13 | Informes, ranking, comunidad, nutrición | — | ⏳ fases posteriores |
 | 4.14 | Indicadores del centro (KPIs, solo admin) | `/dashboard/indicadores` | 🟡 v1 implementada (con dolor reportado), pendiente de QA |
+| 4.15 | CRM: leads de la web (solo admin) | `/dashboard/crm/leads` | 🟡 entrada `/api/leads` hecha; faltan las pantallas y la web |
 
 ---
 
@@ -364,7 +365,21 @@ Panel en `/dashboard/indicadores`, **solo para el admin** (permiso `indicadores.
   - ✅ vista `client_sessions`;
   - ✅ `client_feedback`: desde el 2026-11-08 el indicador **"Dolor reportado"** muestra el % de sesiones con feedback que marcaron dolor, con filtros y comparativa;
   - ✅ registro de clases grupales (2026-11-08): la asistencia, la adherencia y el RPE/RIR de los grupales se llenan a medida que el personal pasa lista y registra el detalle.
-- **Fuera de la v1:** leads (CRM fase 1), indicadores económicos (fase 2), resumen con IA e informe en PDF.
+- **Fuera de la v1:** leads (CRM fase 1, §4.15), indicadores económicos (fase 2), resumen con IA e informe en PDF.
+
+### 4.15 CRM: leads de la web 🟡
+
+**Especificación:** [`docs/spec-crm.md`](./spec-crm.md) (aprobada el 2026-11-08; orden de trabajo en su §13).
+
+**Fase 1:** los contactos que llegan por el formulario de la web del centro se ven en la app.
+- **Entrada:** la función de Netlify de la web envía cada lead a `/api/leads`, firmado con HMAC, y sigue escribiendo en Notion hasta que el propietario decida retirarlo (doble envío). Hasta el go-live envía al preview de `dev`, que usa la misma BD. Los leads antiguos de Notion no se importan. Si BrotaFit no responde, hay 3 intentos y un script de reenvío desde Netlify Forms, sin duplicados.
+- **Datos:** contacto, canal ("cómo nos ha conocido"), respuestas del formulario tal como las ve la persona, origen, fecha y prueba del consentimiento RGPD. Sin consentimiento no se guarda.
+- **Pantallas:** menú "CRM" con contador de no vistos → Leads. Listado con filtros (periodo, visto, canal, respuesta, búsqueda y spam) y detalle con llamar, WhatsApp y email, nota interna, marcar como spam y borrar. Se señalan los duplicados ("Ha escrito N veces", "Ya es cliente").
+- **Permiso:** `leads.gestionar`, solo admin por defecto. La tabla solo es accesible desde el servidor.
+- **Marca blanca:** contrato de entrada genérico; las preguntas y los canales llegan como datos.
+- **Después (fase 2):** estados del lead, seguimiento de llamadas (incluidos los contactos fallidos), conversión a cliente, quién lo atendió e indicadores de leads.
+- **Hecho (2026-11-08):** tabla `leads` (solo accesible desde el servidor), permiso `leads.gestionar` y entrada `/api/leads` con sus tests.
+- **Pendiente:** pantallas y contador del menú, cambios en la web de Girona Activa, secreto en Vercel y revisión legal con Girona Activa de los datos de los leads (conservación, datos de salud y encargado del tratamiento).
 
 ---
 
@@ -372,7 +387,7 @@ Panel en `/dashboard/indicadores`, **solo para el admin** (permiso `indicadores.
 
 - **Seguridad:**
   - Toda Server Action comprueba la sesión y el rol (`requireStaff()` / `requirePermission()`; `requireClient()` en las del cliente) antes de tocar datos.
-  - Solo dos acciones son públicas a propósito: el token de las pantallas de TrainWall y "Olvidé mi contraseña" (respuesta siempre igual y límites de envío).
+  - Solo dos acciones son públicas a propósito: el token de las pantallas de TrainWall y "Olvidé mi contraseña" (respuesta siempre igual y límites de envío). La entrada de leads (`/api/leads`, §4.15) es la tercera, autenticada con firma HMAC.
   - RLS por rol en todas las tablas (BUG-002). El cliente no lee tablas: solo sus vistas `mi_*`, que filtran por su cuenta y no tienen notas internas.
   - Las claves secretas nunca llegan al navegador.
 - **Privacidad:**
@@ -411,7 +426,9 @@ Panel en `/dashboard/indicadores`, **solo para el admin** (permiso `indicadores.
 ### Gestión del centro: KPIs y CRM (por fases, decidido 2026-11-06)
 Panel solo para el admin con los indicadores que pide Girona Activa (`input-negocio-GA/`). Especificación: [`docs/spec-kpis.md`](./spec-kpis.md).
 1. [ ] **KPIs v1** (§4.14): indicadores de clientes, retención, asistencia, ocupación, entrenadores y progreso, con alertas. Incluye registrar los datos que hoy no existen: baja de cliente con fecha y motivo, estados Activo / Inactivo / Baja, horas de los empleados y el script de datos de demo.
-2. [ ] **CRM fase 1, leads:** todos los contactos que llegan por la web quedan registrados en BrotaFit (integración con el formulario web, que también es nuestro) y seguimiento de cada contacto (incluidos los contactos fallidos). Va justo después de los KPIs v1.
+2. [ ] **CRM fase 1, leads** (§4.15, [`spec-crm.md`](./spec-crm.md)): todos los contactos que llegan por la web quedan registrados en BrotaFit y se ven en la app (integración con el formulario web, que también es nuestro). Va justo después de los KPIs v1.
+   - [ ] Revisar con Girona Activa los temas legales de los datos de los leads: plazo de conservación, datos de salud en las respuestas, encargado del tratamiento y política de privacidad (`spec-crm.md` §10.3).
+   - [ ] **CRM fase 2:** estados del lead y seguimiento de cada contacto (incluidos los contactos fallidos), conversión a cliente, quién lo atendió e indicadores de leads (`spec-crm.md` §11).
 3. [ ] **KPIs fase 2, económicos:** facturación, gastos, ticket medio y LTV. Antes hay que definir cómo se registran los ingresos en la app (por ejemplo, la cuota por plan).
 
 ### Mejoras de producto (backlog; incluye el antiguo `FASE2.md`)
@@ -465,3 +482,4 @@ Panel solo para el admin con los indicadores que pide Girona Activa (`input-nego
 | 2.2 | 2026-11-06 | 4.9 Vista de cliente: spec aprobada y puesta al día tras BUG-002, BUG-003 y los KPIs |
 | 2.4 | 2026-11-08 | 4.7 Registro de clases grupales: pasar lista (con estado `absent`) y detalle opcional por asistente; aviso de clases sin pasar lista en "Hoy" |
 | 2.3 | 2026-11-08 | 4.9 Vista de cliente v1 construida: acceso de lectura con vistas `mi_*`, Hoy, Calendario, Detalle, Historial, Progreso y Perfil (con cambio de contraseña) y feedback tras la sesión. 4.1 Recuperar contraseña desde el login y textos del login en castellano. 4.2 y 4.7 feedback del cliente para el personal. 4.14 indicador "Dolor reportado". §5 seguridad y privacidad del cliente. Datos de prueba de la vista de cliente |
+| 2.5 | 2026-11-08 | 4.15 CRM fase 1 (leads de la web) especificado en `spec-crm.md`, en borrador. Roadmap: el seguimiento de los contactos pasa a la fase 2 del CRM y se añade la revisión legal de los datos de los leads |
