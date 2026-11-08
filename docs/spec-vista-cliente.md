@@ -319,11 +319,14 @@ Solo aparecen los clientes con `ranking_opt_in = true` y con su `display_alias` 
 4. Registro de sesiones grupales por el empleado (§7.3). 🟡 BD hecha.
 5. ~~Acceso de lectura del cliente: vistas `mi_*`, `requireClient()` y columnas `session_label` y `difficulty` en `client_sessions` (§7.1, §8.2)~~ ✅ aplicado el 2026-11-08 y comprobado por API (49 pruebas).
 6. Pantallas v1: Hoy → Calendario → Detalle → Historial → Progreso → Perfil.
+   - ✅ **Primera entrega** (2026-11-08): barra inferior, Hoy, Calendario y Detalle de sesión, con tema oscuro, sobre las vistas `mi_*` y con la sesión del usuario (sin `createAdminClient()`). Código en `app/client/` y `lib/client-portal/` (la marca, en un solo sitio: `lib/client-portal/brand.ts`). Racha con tests (`tests/client-portal/`).
+   - ⏳ **Segunda entrega:** Historial, Progreso (con la adherencia D6) y Perfil completo (datos de la ficha y cambio de contraseña). Hoy, Progreso es un aviso "Muy pronto" y Perfil solo tiene nombre, email y cerrar sesión.
+   - Datos de prueba: Cliente Test tiene, además de su plan individual, un ciclo de prueba ("Prueba vista de cliente (Cliente Test)") con una sesión grupal completada con registro (6 nov) y otra prevista (11 nov).
 7. `client_feedback` y su visualización en el dashboard (también alimenta el KPI de dolor, `spec-kpis.md` §7.9).
 8. PWA (manifest).
 9. Ronda de QA en `qa/rondas/` con un cliente individual, uno de plan grupal y uno de ciclo grupal.
 
-Limpieza asociada: borrar `app/client/set-password/`.
+Limpieza asociada: ~~borrar `app/client/set-password/`~~ ✅ borrado con la primera entrega, junto con el calendario antiguo (`app/client/calendar.tsx`).
 
 ---
 

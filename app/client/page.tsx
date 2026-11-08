@@ -1,118 +1,73 @@
-import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
-import { redirect } from 'next/navigation'
-import { ClientCalendar } from './calendar'
-import Image from 'next/image'
-import Link from 'next/link'
+import { Flame, CheckCircle2 } from 'lucide-react'
+import { getEjercicios, getMisSesiones, getPortal } from '@/lib/client-portal/data'
+import { computeStreaks, countCompleted } from '@/lib/client-portal/stats'
+import { formatDateEs, monthStart } from '@/lib/center'
+import { capitalizeFirst } from '@/lib/client-portal/types'
+import { EmptyState, Notice, SessionCard } from './ui'
 
-export default async function ClientPage() {
-  const supabase = await createClient()
-  const adminSupabase = createAdminClient()
+export const dynamic = 'force-dynamic'
 
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) redirect('/login')
+// Hoy: la sesión de hoy o, si no hay, la próxima. Resumen de progreso.
+export default async function ClientTodayPage() {
+  const portal = await getPortal()
+  if (!portal?.ficha) return null
+  const { ficha, today } = portal
 
-  // Buscar el cliente asociado a este usuario
-  const { data: clientData } = await adminSupabase
-    .from('clients')
-    .select('id, first_name, last_name')
-    .eq('user_id', session.user.id)
-    .single()
+  const sesiones = await getMisSesiones()
+  const hoy = sesiones.filter(s => s.session_date === today && s.status !== 'cancelled')
+  const proxima = hoy.length ? null : sesiones.find(s => s.session_date > today && s.status === 'scheduled') ?? null
+  const mostrar = hoy.length ? hoy : proxima ? [proxima] : []
+  const ejercicios = await getEjercicios(mostrar.map(s => s.source_id))
 
-  if (!clientData) {
-    return (
-      <div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center p-6">
-        <div className="text-center">
-          <h2 className="text-lg font-bold text-[#1C1C1C] mb-2">Sin perfil asignado</h2>
-          <p className="text-[#666666] text-sm">Contacta con tu entrenador.</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Buscar plan activo
-  const { data: plan } = await adminSupabase
-    .from('training_plans')
-    .select('id, level, duration_months, weekly_frequency, session_duration, start_date, end_date')
-    .eq('client_id', clientData.id)
-    .eq('status', 'active')
-    .single()
-
-  if (!plan) {
-    return (
-      <div className="min-h-screen bg-[#F5F5F5] flex flex-col">
-        <ClientHeader name={clientData.first_name} />
-        <div className="flex-1 flex items-center justify-center p-6">
-          <div className="text-center">
-            <div className="w-16 h-16 rounded-full bg-[#FF914D]/10 flex items-center justify-center mx-auto mb-4">
-              <span className="text-2xl">📅</span>
-            </div>
-            <h2 className="text-lg font-bold text-[#1C1C1C] mb-1">Sin plan activo</h2>
-            <p className="text-[#666666] text-sm">Tu entrenador todavía no ha creado tu plan.</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Buscar sesiones del plan con ejercicios
-  const { data: sessions } = await adminSupabase
-    .from('plan_sessions')
-    .select(`
-      id, session_date, notes,
-      plan_session_exercises (
-        id, sets, reps, weight_kg, notes, order_index,
-        exercises (id, name)
-      )
-    `)
-    .eq('plan_id', plan.id)
-    .order('session_date')
+  const { current: racha } = computeStreaks(sesiones, today)
+  const esteMes = countCompleted(sesiones, monthStart(today), today)
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] flex flex-col">
-      <ClientHeader name={clientData.first_name} />
-      <div className="flex-1 p-4 max-w-lg mx-auto w-full">
-        {/* Info plan */}
-        <div className="bg-white rounded-2xl border border-[#E5E5E5] p-4 mb-4">
-          <p className="text-xs text-[#666666] uppercase tracking-wider font-medium mb-1">Tu plan activo</p>
-          <p className="text-[#1C1C1C] font-semibold">
-            Nivel {plan.level} · {plan.duration_months} mes{plan.duration_months > 1 ? 'es' : ''} · {plan.weekly_frequency}x/semana · {plan.session_duration} min
-          </p>
-          <p className="text-xs text-[#666666] mt-1">
-            {new Date(plan.start_date + 'T12:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}
-            {' → '}
-            {new Date(plan.end_date + 'T12:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
-          </p>
-        </div>
-
-        {/* Calendario */}
-        <ClientCalendar
-          sessions={sessions as any ?? []}
-          startDate={plan.start_date}
-          durationMonths={plan.duration_months}
-        />
+    <div className="flex flex-col gap-4">
+      <div>
+        <p className="text-xs uppercase tracking-wider text-white/40 font-medium">Hoy</p>
+        <h1 className="text-xl font-bold">
+          {capitalizeFirst(formatDateEs(today, { weekday: 'long', day: 'numeric', month: 'long' }))}
+        </h1>
       </div>
+
+      {ficha.state === 'baja' && <Notice>No tienes un plan activo. Habla con tu centro.</Notice>}
+
+      {hoy.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-sm font-semibold text-white/70">{hoy.length > 1 ? 'Tus sesiones de hoy' : 'Tu sesión de hoy'}</h2>
+          {hoy.map(s => (
+            <SessionCard key={s.source_id} sesion={s} ejercicios={ejercicios.filter(e => e.source_id === s.source_id)} />
+          ))}
+        </section>
+      )}
+
+      {proxima && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-sm font-semibold text-white/70">
+            Hoy no tienes sesión · Próxima:{' '}
+            <span className="text-white">{formatDateEs(proxima.session_date, { weekday: 'long', day: 'numeric', month: 'short' })}</span>
+          </h2>
+          <SessionCard sesion={proxima} ejercicios={ejercicios} />
+        </section>
+      )}
+
+      {mostrar.length === 0 && ficha.state !== 'baja' && (
+        <EmptyState title="Sin sesiones previstas" text="Tu entrenador está preparando tu plan." />
+      )}
+
+      <section className="grid grid-cols-2 gap-3">
+        <div className="bg-[#1C1C1C] rounded-2xl border border-white/10 p-4">
+          <CheckCircle2 className="h-4 w-4 text-green-400 mb-2" />
+          <p className="text-2xl font-bold">{esteMes}</p>
+          <p className="text-xs text-white/45">{esteMes === 1 ? 'sesión este mes' : 'sesiones este mes'}</p>
+        </div>
+        <div className="bg-[#1C1C1C] rounded-2xl border border-white/10 p-4">
+          <Flame className="h-4 w-4 text-[var(--brand)] mb-2" />
+          <p className="text-2xl font-bold">{racha}</p>
+          <p className="text-xs text-white/45">{racha === 1 ? 'sesión seguida' : 'sesiones seguidas'}</p>
+        </div>
+      </section>
     </div>
-  )
-}
-
-function ClientHeader({ name }: { name: string }) {
-  return (
-    <header className="bg-[#1C1C1C] px-4 py-3 flex items-center justify-between sticky top-0 z-10">
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-full overflow-hidden">
-          <Image src="/logo.png" alt="Girona Activa" width={32} height={32} className="object-cover w-full h-full" />
-        </div>
-        <span className="text-white text-sm font-semibold tracking-wider uppercase" style={{ fontStyle: 'italic' }}>
-          GIRONA ACTIVA
-        </span>
-      </div>
-      <div className="flex items-center gap-3">
-        <span className="text-white/70 text-sm">Hola, {name}</span>
-        <Link href="/logout" className="text-white/50 hover:text-white text-xs transition-colors">
-          Salir
-        </Link>
-      </div>
-    </header>
   )
 }

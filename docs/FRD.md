@@ -234,7 +234,15 @@ Módulo opcional. Diseño en `docs/arquitectura-pantallas.md` y propuesta comerc
 
 **Especificación completa:** [`docs/spec-vista-cliente.md`](./spec-vista-cliente.md) (aprobada el 2026-11-06; orden de trabajo en su §9).
 
-**Hoy:** `/client` es una sola página con tarjeta del plan activo, calendario mensual y detalle del día. Usa tema claro y marca de Girona Activa fija. Solo muestra planes de `plan_sessions` y lee saltándose la RLS.
+**Implementado (primera entrega, 2026-11-08):**
+- Vista móvil con tema oscuro y barra inferior: Hoy · Calendario · Progreso · Perfil.
+- **Hoy:** la sesión de hoy o la próxima, con la hora, el tipo (individual, o grupal con bloque), el entrenador y los ejercicios de su nivel. También las sesiones completadas este mes y la racha. Aviso para clientes de baja y estado vacío sin sesiones.
+- **Calendario:** mes a mes, con el estado de cada día (hecha, no asistida, prevista, festivo, cancelada) y la lista de sesiones del día elegido.
+- **Detalle de sesión:** los ejercicios previstos con las indicaciones del entrenador y, si está registrada, lo hecho (series, reps, carga, RPE, RIR o "saltado"). Sin notas internas.
+- Muestra sesiones individuales, de plan grupal y de ciclo. Lee solo las vistas `mi_*`, con la sesión del cliente.
+- La marca sigue fija, pero en un solo archivo (`lib/client-portal/brand.ts`).
+
+**Pendiente (segunda entrega):** Historial, Progreso y Perfil completo (hoy Progreso es un aviso y Perfil solo tiene nombre, email y cerrar sesión). Después, el feedback del cliente, la marca desde `center_settings` y la PWA.
 
 **Hecho como requisito previo:**
 - RLS por rol (BUG-002) y alta con acceso opcional (4.2).
