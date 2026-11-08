@@ -319,7 +319,7 @@ Solo aparecen los clientes con `ranking_opt_in = true` y con su `display_alias` 
 4. Registro de sesiones grupales por el empleado (§7.3). 🟡 BD hecha.
 5. ~~Acceso de lectura del cliente: vistas `mi_*`, `requireClient()` y columnas `session_label` y `difficulty` en `client_sessions` (§7.1, §8.2)~~ ✅ aplicado el 2026-11-08 y comprobado por API (49 pruebas).
 6. Pantallas v1: Hoy → Calendario → Detalle → Historial → Progreso → Perfil.
-   - ✅ **Primera entrega** (2026-11-08): barra inferior, Hoy, Calendario y Detalle de sesión, con tema oscuro, sobre las vistas `mi_*` y con la sesión del usuario (sin `createAdminClient()`). Código en `app/client/` y `lib/client-portal/` (la marca, en un solo sitio: `lib/client-portal/brand.ts`). Racha con tests (`tests/client-portal/`).
+   - ✅ **Primera entrega** (2026-11-08): barra inferior, Hoy, Calendario y Detalle de sesión, con tema oscuro, sobre las vistas `mi_*` y con la sesión del usuario (sin `createAdminClient()`). Código en `app/client/` y `lib/client-portal/` (la marca, en un solo sitio: `lib/brand.ts`). Racha con tests (`tests/client-portal/`).
    - ✅ **Segunda entrega** (2026-11-08):
      - **Historial:** sesiones pasadas agrupadas por mes y lista de planes.
      - **Progreso:** sesiones del mes y del año, racha actual y récord, asistencia (D6) al plan vigente (si no tiene, de todo su historial), y columnas de sesiones hechas en los últimos 6 meses.

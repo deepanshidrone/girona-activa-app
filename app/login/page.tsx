@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import Link from 'next/link'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -57,7 +58,7 @@ export default function LoginPage() {
         {/* Card */}
         <div className="bg-[#1C1C1C] rounded-2xl border border-white/10 p-8">
           <h2 className="text-xl font-bold text-white mb-1">Accede a tu cuenta</h2>
-          <p className="text-white/50 text-sm mb-6">Introduce tu email i contrasenya</p>
+          <p className="text-white/50 text-sm mb-6">Introduce tu email y contraseña</p>
 
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
@@ -76,9 +77,14 @@ export default function LoginPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="password" className="text-sm font-medium text-white/70">
-                Contraseña
-              </label>
+              <div className="flex items-baseline justify-between gap-3">
+                <label htmlFor="password" className="text-sm font-medium text-white/70">
+                  Contraseña
+                </label>
+                <Link href="/auth/recuperar" className="text-sm text-[#FF914D] hover:underline">
+                  ¿Has olvidado tu contraseña?
+                </Link>
+              </div>
               <input
                 id="password"
                 type="password"
@@ -101,7 +107,7 @@ export default function LoginPage() {
               disabled={loading}
               className="mt-2 bg-[#FF914D] text-white font-bold py-3 rounded-lg hover:bg-[#e07a3a] transition-colors disabled:opacity-60 disabled:cursor-not-allowed tracking-wide"
             >
-              {loading ? 'Entrant...' : 'Entrar'}
+              {loading ? 'Entrando...' : 'Entrar'}
             </button>
           </form>
         </div>

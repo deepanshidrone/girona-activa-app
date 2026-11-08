@@ -1,7 +1,7 @@
 import Image from 'next/image'
 import { redirect } from 'next/navigation'
 import { getPortal } from '@/lib/client-portal/data'
-import { BRAND } from '@/lib/client-portal/brand'
+import { BRAND } from '@/lib/brand'
 import { BottomNav } from './bottom-nav'
 import { EmptyState } from './ui'
 

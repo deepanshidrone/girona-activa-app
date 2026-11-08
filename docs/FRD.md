@@ -82,6 +82,10 @@ Nació como app a medida de **Girona Activa** (centro de entrenamiento personal 
 - Nadie se registra solo: el personal crea las cuentas.
 - **Activación de cuenta:** el correo de invitación (Resend) lleva a `/auth/confirm`, que valida el enlace y manda a `/auth/set-password`. Esta página es común a todos los roles (BUG-001). Después, cada rol va a su inicio: el personal a `/dashboard` y los clientes a `/client`.
 - El enlace de invitación caduca a las 24 horas; se puede reenviar.
+- **Recuperar contraseña** (2026-11-08): enlace "¿Has olvidado tu contraseña?" en el login → `/auth/recuperar`.
+  - El usuario escribe su email y recibe un correo (Resend, con la marca del centro) con un enlace que lleva al mismo flujo de la invitación (`/auth/confirm` → `/auth/set-password`). Sirve para clientes y personal.
+  - La respuesta es siempre la misma, exista o no la cuenta, y el correo se envía después de responder: no sirve para averiguar quién tiene cuenta.
+  - Límites: 1 correo cada 2 minutos y 5 al día por email, y 10 solicitudes por hora desde la misma conexión. Se guardan en `password_reset_requests` (solo servidor) y se borran a los 7 días.
 - Usuario de pruebas: "Cliente Test" (cliente con login y un plan individual de lunes de noviembre a enero).
 
 ### 4.2 Clientes ✅
@@ -240,7 +244,7 @@ Módulo opcional. Diseño en `docs/arquitectura-pantallas.md` y propuesta comerc
 - **Calendario:** mes a mes, con el estado de cada día (hecha, no asistida, prevista, festivo, cancelada) y la lista de sesiones del día elegido.
 - **Detalle de sesión:** los ejercicios previstos con las indicaciones del entrenador y, si está registrada, lo hecho (series, reps, carga, RPE, RIR o "saltado"). Sin notas internas.
 - Muestra sesiones individuales, de plan grupal y de ciclo. Lee solo las vistas `mi_*`, con la sesión del cliente.
-- La marca sigue fija, pero en un solo archivo (`lib/client-portal/brand.ts`).
+- La marca sigue fija, pero en un solo archivo (`lib/brand.ts`), que también usan el login de recuperación y su correo.
 
 **Implementado (segunda entrega, 2026-11-08):**
 - **Historial:** sesiones pasadas por mes y planes (actual y terminados).

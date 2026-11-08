@@ -69,9 +69,10 @@ export default function SetPasswordPage() {
         </div>
 
         <div className="bg-white rounded-2xl border border-[#E5E5E5] p-6">
-          <h2 className="text-xl font-bold text-[#1C1C1C] mb-1">Bienvenido/a 👋</h2>
+          {/* Sirve para la invitación y para "Olvidé mi contraseña" (los dos usan este enlace) */}
+          <h2 className="text-xl font-bold text-[#1C1C1C] mb-1">Elige tu contraseña</h2>
           <p className="text-[#666666] text-sm mb-6">
-            Establece tu contraseña para activar tu cuenta y poder acceder de nuevo cuando quieras.
+            Escribe una contraseña nueva. La usarás con tu email para entrar en tu cuenta.
           </p>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -107,7 +108,7 @@ export default function SetPasswordPage() {
               disabled={loading}
               className="bg-[#FF914D] text-white font-semibold py-3 rounded-lg hover:bg-[#e07a3a] transition-colors disabled:opacity-60 mt-2"
             >
-              {loading ? 'Guardando...' : 'Activar mi cuenta'}
+              {loading ? 'Guardando...' : 'Guardar y entrar'}
             </button>
           </form>
         </div>

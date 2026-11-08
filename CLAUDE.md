@@ -86,6 +86,8 @@ RESEND_API_KEY=re_...
 
 **Control de acceso en el código** (`lib/auth/permissions.ts`):
 - Toda Server Action empieza con `requireStaff()` o `requirePermission('...')` antes de usar `createAdminClient()`. Las Server Actions se pueden llamar por POST directo, sin pasar por la UI.
+- Excepciones públicas a propósito (sin sesión), cada una con su comentario: `getScreenByTokenAction` (TrainWall, protegida por token) y `requestPasswordResetAction` ("Olvidé mi contraseña": respuesta siempre igual, correo enviado con `after()`, límites por IP y por email en `password_reset_requests`).
+- La marca (nombre, logo, color, remitente de correo) está en `lib/brand.ts`. No escribir "Girona Activa" ni `#FF914D` en código nuevo.
 - Para decidir permisos se usa `getUser()`, nunca `getSession()` (en el servidor no verifica el token).
 - Los permisos del employee están fijos en `EMPLOYEE_PERMISSIONS` hasta que exista la página de Configuración.
 - `proxy.ts` deniega por defecto: `/dashboard` solo para employee y admin, `/client` solo para client.
