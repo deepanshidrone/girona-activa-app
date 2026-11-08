@@ -87,7 +87,11 @@ Nació como app a medida de **Girona Activa** (centro de entrenamiento personal 
   - La respuesta es siempre la misma, exista o no la cuenta, y el correo se envía después de responder: no sirve para averiguar quién tiene cuenta.
   - Límites: 1 correo cada 2 minutos y 5 al día por email, y 10 solicitudes por hora desde la misma conexión. Se guardan en `password_reset_requests` (solo servidor) y se borran a los 7 días.
 - **Cuentas y datos de prueba** (las credenciales no van en el repo):
-  - **"Cliente Test":** cliente con login. Tiene un plan individual (lunes de noviembre a enero) y un ciclo de prueba, "Prueba vista de cliente (Cliente Test)", con una sesión grupal completada y registrada (6 nov) y otra prevista (11 nov). También tiene un feedback de prueba con dolor, ya leído.
+  - **"Cliente Test":** cliente con login. Tiene un plan individual (lunes de noviembre a enero) y un ciclo de prueba, "Prueba vista de cliente (Cliente Test)", con tres clases grupales:
+    - **4 nov, bloque B:** registrada desde la pantalla de pasar lista. Cliente Test vino, con un ejercicio detallado; una clienta de la demo consta como "No vino".
+    - **6 nov, bloque C:** completada y registrada.
+    - **11 nov, bloque A:** prevista.
+    - Tiene además un feedback de prueba con dolor, ya leído.
   - **`entrenador1@demo.brotafit.invalid`** ("Demo · Lucía Entrenadora"): empleada de la demo de KPIs, con contraseña de prueba para probar el dashboard como employee.
   - Todo se borra con la limpieza de antes del go-live.
 
