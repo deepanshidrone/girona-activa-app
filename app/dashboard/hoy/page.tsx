@@ -4,6 +4,8 @@ import { CalendarClock, Clock, Dumbbell, Users, CheckCircle2, Circle, User } fro
 import Link from 'next/link'
 import { getUnreadFeedbackAction } from '@/app/actions/client-feedback'
 import { UnreadFeedback } from './unread-feedback'
+import { getUnrecordedGroupSessionsAction } from '@/app/actions/group-session-logs'
+import { UnrecordedGroup } from './unrecorded-group'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,10 +22,11 @@ function formatTime(time: string | null) {
 }
 
 export default async function HoyPage() {
-  const [{ sessions, error, currentUserId }, { slots: groupSlots }, unreadFeedback] = await Promise.all([
+  const [{ sessions, error, currentUserId }, { slots: groupSlots }, unreadFeedback, unrecordedGroup] = await Promise.all([
     getTodaySessionsAction(),
     getTodayGroupSlotsAction(),
     getUnreadFeedbackAction(),
+    getUnrecordedGroupSessionsAction(),
   ])
 
   const today = new Date().toLocaleDateString('es-ES', {
@@ -62,9 +65,11 @@ export default async function HoyPage() {
     byEmployee.get(empId)!.sessions.push(s)
   }
 
+  // Completadas: individuales registradas + clases grupales con la lista pasada
   const completed = sessions.filter((s: any) => s.session_logs?.[0]?.status === 'completed').length
-  const pending = sessions.length - completed
+    + groupSlots.filter((g: any) => g.attended !== null).length
   const totalToday = sessions.length + groupSlots.length
+  const pending = totalToday - completed
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
@@ -74,6 +79,7 @@ export default async function HoyPage() {
       </div>
 
       <UnreadFeedback items={unreadFeedback} />
+      <UnrecordedGroup items={unrecordedGroup} />
 
       {totalToday > 0 && (
         <div className="grid grid-cols-3 gap-3 mb-6">
@@ -152,11 +158,13 @@ export default async function HoyPage() {
 function GroupSlotCard({ slot }: { slot: any }) {
   const time = formatTime(slot.session_time)
   const clientCount = slot.clients?.length ?? 0
+  const recorded = slot.attended !== null && slot.attended !== undefined
 
   return (
     <Link
-      href={`/dashboard/sesiones/${slot.cycle_id}`}
-      className="block rounded-2xl border border-white/10 bg-[#1C1C1C] hover:border-white/20 transition-colors overflow-hidden"
+      href={`/dashboard/hoy/grupo/${slot.id}`}
+      className={`block rounded-2xl border bg-[#1C1C1C] transition-colors overflow-hidden ${
+        recorded ? 'border-green-500/20 hover:border-green-500/40' : 'border-white/10 hover:border-white/20'}`}
     >
       <div className="flex items-center gap-4 p-4">
         <div className="flex flex-col items-center justify-center w-14 shrink-0">
@@ -195,6 +203,19 @@ function GroupSlotCard({ slot }: { slot: any }) {
             <p className="text-[11px] text-white/25 mt-1 truncate">
               {slot.clients.map((c: any) => `${c.first_name} ${c.last_name}`).join(' · ')}
             </p>
+          )}
+        </div>
+
+        <div className="shrink-0 text-right">
+          {recorded ? (
+            <div className="flex items-center gap-1.5 text-green-400">
+              <CheckCircle2 className="h-5 w-5" />
+              <span className="text-xs font-medium hidden sm:block">{slot.attended}/{clientCount} vinieron</span>
+            </div>
+          ) : clientCount > 0 ? (
+            <span className="text-xs font-medium text-[#FF914D]">Pasar lista</span>
+          ) : (
+            <Circle className="h-5 w-5 text-white/20" />
           )}
         </div>
       </div>

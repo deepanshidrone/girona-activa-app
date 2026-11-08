@@ -248,7 +248,7 @@ Para sesiones grupales: hasta `max_clients` filas, cada una con su `difficulty` 
 | `plan_sessions` | **Sesiones individuales** — fuente de verdad actual (wizard, edición, registro, `/client`, TrainWall) |
 | `group_cycle_slots` | ⚠️ Legacy — franjas de ciclos grupales (migradas a `training_sessions`); aún la lee `employees.ts` |
 | `plan_session_exercises` | Ejercicios de las sesiones individuales |
-| `session_logs` | Registro de ejecución: `started_at`, `completed_at`, `status` |
+| `session_logs` | Registro de ejecución: `plan_session_id` (individual) o `training_session_id` (clase grupal, uno por cliente), `client_id`, `started_at`, `completed_at`, `status` (`in_progress` / `completed` / `absent`, este último solo en grupales: "no vino") |
 | `exercise_logs` | `sets_done`, `reps_done`, `load_kg`, `rpe` (1-10), `rir` (0-10), `skipped` |
 | `client_periods` | Historial de altas y bajas del cliente (`started_on`, `ended_on` = fecha de baja, motivo). Un trigger crea el primero al dar de alta y mantiene `clients.is_active` |
 | `client_end_reasons` | Motivos de baja (catálogo del centro) |
@@ -342,6 +342,10 @@ create trigger on_auth_user_created after insert on auth.users ...
 - Muestra las sesiones del día actual de todos los clientes
 - Orden: primero las sesiones del usuario conectado, el resto agrupadas por entrenador
 - Estadísticas: total, completadas, pendientes
+
+### Registro de clase grupal (`/dashboard/hoy/grupo/[id]`)
+- `app/actions/group-session-logs.ts`: `getGroupSessionForLogAction`, `saveGroupAttendanceAction` (pasar lista: `completed` / `absent` por cliente), `saveGroupExerciseLogAction` (detalle opcional, un `exercise_logs` por ejercicio con `plan_exercise_id` null) y `getUnrecordedGroupSessionsAction` (aviso en "Hoy")
+- Los ejercicios de cada asistente salen de `group_sessions` del ciclo × bloque × su `training_session_clients.difficulty`
 
 ### Registro de sesión (`/dashboard/hoy/[sessionId]`)
 - Flujo de entrenamiento sesión a sesión: ejercicio por ejercicio

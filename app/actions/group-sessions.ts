@@ -6,6 +6,7 @@ import { closeReplacedPlans, checkClientCanGetPlan } from '@/lib/plans'
 import { CYCLE_PATTERN_20, NEXT_BLOCK, DAY_SLOT_TEMPLATE, getTodayDayIndex } from '@/lib/cycle-utils'
 import { generateCycleDates } from '@/lib/calendar-utils'
 import { getActiveHolidayDatesAction } from './holidays'
+import { getCenterToday } from '@/lib/center-settings'
 
 export type GroupSessionExercise = {
   exercise_id: string
@@ -448,13 +449,15 @@ export async function getTodayGroupSlotsAction() {
   if (!auth.user) return { slots: [] }
   const adminSupabase = createAdminClient()
 
-  const todayStr = new Date().toISOString().split('T')[0]
+  // "Hoy" en la zona horaria del centro (toISOString daría el día UTC)
+  const todayStr = await getCenterToday(adminSupabase)
 
   const { data: sessions } = await adminSupabase
     .from('training_sessions')
     .select(`
-      id, session_time, session_label, max_clients, cycle_id, assigned_employee_id,
-      training_session_clients(client_id, difficulty, clients(id, first_name, last_name))
+      id, session_time, session_label, max_clients, cycle_id, assigned_employee_id, status,
+      training_session_clients(client_id, difficulty, clients(id, first_name, last_name)),
+      session_logs(id, status)
     `)
     .eq('type', 'group')
     .eq('session_date', todayStr)
@@ -471,6 +474,10 @@ export async function getTodayGroupSlotsAction() {
       block_label:   s.session_label,
       employee_name: s.assigned_employee_id ? (profileMap.get(s.assigned_employee_id) ?? null) : null,
       clients:       (s.training_session_clients ?? []).map((tsc: any) => tsc.clients),
+      // Asistencia: null = sin pasar lista; si no, cuántos vinieron
+      attended:      (s.session_logs ?? []).length
+        ? (s.session_logs as { status: string }[]).filter(l => l.status === 'completed').length
+        : null,
     })),
   }
 }

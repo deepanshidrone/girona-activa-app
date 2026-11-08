@@ -1,6 +1,6 @@
 # FRD — BrotaFit (Girona Activa)
 **Documento de requisitos funcionales**
-Versión: 2.3 | Última actualización: 2026-11-08 | Repo: `deepanshidrone/girona-activa-app`
+Versión: 2.4 | Última actualización: 2026-11-08 | Repo: `deepanshidrone/girona-activa-app`
 
 Este es el **documento de producto** de BrotaFit: qué hace la app, qué está hecho y qué falta. Se mantiene al día con cada funcionalidad (ver [§7](#7-cómo-se-mantiene-este-documento)). El detalle técnico (convenciones de código, migraciones, RLS) está en `CLAUDE.md`. Las especificaciones de módulos concretos están en `docs/spec-*.md`.
 
@@ -63,7 +63,7 @@ Nació como app a medida de **Girona Activa** (centro de entrenamiento personal 
 | 4.4 | Galería de ejercicios | `/dashboard/ejercicios` | 🟡 faltan imágenes, edición y zonas |
 | 4.5 | Planes individuales | `/dashboard/planes` | ✅ |
 | 4.6 | Sesiones grupales (ciclos, plantillas, festivos) | `/dashboard/sesiones` | ✅ |
-| 4.7 | Agenda del día y registro de sesión | `/dashboard/hoy` | 🟡 registro solo de sesiones individuales |
+| 4.7 | Agenda del día y registro de sesión | `/dashboard/hoy` | ✅ individuales y clases grupales (pendiente: planes grupales del wizard) |
 | 4.8 | TrainWall (pantallas en sala) | `/dashboard/pantallas`, `/pantalla/[id]` | 🟡 software hecho, hardware sin confirmar |
 | 4.9 | Vista de cliente (móvil) | `/client` | 🟡 v1 construida (6 pantallas y feedback); faltan marca configurable, PWA y QA |
 | 4.10 | Perfil del personal | `/dashboard/perfil` | ✅ |
@@ -225,7 +225,16 @@ Al guardar se generan las sesiones de los 20 días laborables, saltando fines de
 - El entrenador va ejercicio a ejercicio desde la tablet: series, reps, carga (kg), RPE (1-10), RIR (0-10), comentarios y opción "Saltar".
 - Colores: RPE verde ≤ 3, amarillo ≤ 6, rojo > 6. RIR al revés (rojo ≤ 2, amarillo ≤ 5, verde > 5).
 - "Completar sesión" se activa cuando todos los ejercicios están guardados.
-- ⏳ **Solo funciona para sesiones individuales.** Registrar las grupales requiere enlazar `session_logs` con `training_sessions` (previsto en `docs/spec-vista-cliente.md` §7).
+**Registro de clase grupal** (`/dashboard/hoy/grupo/[id]`, 2026-11-08):
+1. **Pasar lista (obligatorio):** cada cliente apuntado se marca como "Vino" o "No vino", con un atajo "Todos han venido".
+   - Se puede corregir después. Marcar como "No vino" a alguien con detalle registrado lo borra, y la pantalla avisa antes.
+   - No se puede pasar lista de una sesión futura ni de una cancelada.
+2. **Detalle por asistente (opcional):** por cada cliente que vino, los ejercicios del bloque en **su dificultad**, con series, reps, carga, RPE, RIR, nota interna y "Saltado". Se guarda ejercicio a ejercicio.
+- En "Hoy", cada clase grupal lleva a esta pantalla y muestra "Pasar lista" o "N/M vinieron". Cuentan en los totales de completadas y pendientes.
+- Aviso **"Clases grupales sin pasar lista"** con las de los últimos 7 días, para registrarlas a posteriori.
+- "No vino" se guarda como un registro `absent`. Así "no vino nadie" se distingue de "no se pasó lista".
+- Con esto, la asistencia, la racha y la adherencia de los clientes de ciclo se calculan en la vista de cliente y en los KPIs, igual que el RPE y el RIR frente al objetivo del ciclo.
+- ⏳ **Planes grupales del wizard** (clientes con un plan de tipo grupal, en `plan_sessions`): siguen abriendo el registro individual, que no muestra sus ejercicios porque viven en el ciclo. Pendiente de decidir si se registran como las clases o si se unifican (deuda §5).
 
 ### 4.8 TrainWall — pantallas en sala 🟡
 
@@ -267,7 +276,6 @@ Módulo opcional. Diseño en `docs/arquitectura-pantallas.md` y propuesta comerc
 
 **Pendiente:**
 - **Marca configurable:** leer nombre, logo y color de `center_settings` en lugar de `lib/brand.ts`.
-- **Registro de sesiones grupales por el empleado** (4.7). Sin él, las grupales salen "Sin registrar" para el cliente y no cuentan en su asistencia.
 - **PWA:** instalable en la pantalla de inicio, sin notificaciones.
 - **Ronda de QA** con un cliente individual, uno de plan grupal y uno de ciclo.
 - Destacar en "Hoy" el feedback de los clientes del propio entrenador (spec P4).
@@ -351,7 +359,7 @@ Panel en `/dashboard/indicadores`, **solo para el admin** (permiso `indicadores.
 - **Dependencias compartidas con la vista de cliente:**
   - ✅ vista `client_sessions`;
   - ✅ `client_feedback`: desde el 2026-11-08 el indicador **"Dolor reportado"** muestra el % de sesiones con feedback que marcaron dolor, con filtros y comparativa;
-  - ⏳ registro de sesiones grupales: hasta entonces, la asistencia, la adherencia y el RPE/RIR de los grupales salen "sin datos".
+  - ✅ registro de clases grupales (2026-11-08): la asistencia, la adherencia y el RPE/RIR de los grupales se llenan a medida que el personal pasa lista y registra el detalle.
 - **Fuera de la v1:** leads (CRM fase 1), indicadores económicos (fase 2), resumen con IA e informe en PDF.
 
 ---
@@ -371,6 +379,7 @@ Panel en `/dashboard/indicadores`, **solo para el admin** (permiso `indicadores.
 - **Sin dependencias de un solo centro nuevas:** no se añaden más textos ni datos de Girona Activa fijos (ver marca blanca, §1).
 - **Deuda conocida:**
   - Las sesiones individuales siguen en `plan_sessions`. Solo los ciclos grupales usan `training_sessions`; la unificación está a medias. Las filas individuales copiadas a `training_sessions` en octubre no se mantienen. Decisión pendiente: terminarla o renunciar a ella.
+  - Hay dos tipos de cliente grupal: los apuntados a franjas de un ciclo (`training_session_clients`) y los que tienen un plan grupal del wizard (`plan_sessions`). Los segundos no tienen todavía un registro que muestre sus ejercicios (4.7).
   - Marca de Girona Activa fija en el login, `/auth/set-password`, el sidebar del dashboard y los correos de invitación (`clients.ts`, `employees.ts`). La vista de cliente, la recuperación de contraseña y su correo ya la leen de `lib/brand.ts`.
   - El menú dice "Empleats" (en catalán).
   - La fecha de la agenda "Hoy" del dashboard sale como "Domingo, 8 De Noviembre De 2026" (mayúscula en cada palabra).
@@ -384,7 +393,8 @@ Panel en `/dashboard/indicadores`, **solo para el admin** (permiso `indicadores.
 - [x] Vista de cliente v1: acceso de lectura, 6 pantallas y feedback (2026-11-08)
 - [x] Recuperar contraseña desde el login (2026-11-08)
 - [ ] Vista de cliente: marca desde `center_settings`, PWA y ronda de QA
-- [ ] Registro de sesiones grupales
+- [x] Registro de clases grupales: pasar lista y detalle opcional (2026-11-08)
+- [ ] Registro de los planes grupales del wizard (`plan_sessions` de tipo grupal)
 - [ ] Página de Configuración (festivos y permisos como mínimo)
 - [ ] Imágenes de ejercicios y edición de ejercicios
 - [ ] Zona de hombro en la galería
@@ -449,4 +459,5 @@ Panel solo para el admin con los indicadores que pide Girona Activa (`input-nego
 | 2.0 | 2026-11-06 | Reorganizado por módulos. Incluye lo hecho de agosto a noviembre: entrenador asignado, agenda "Hoy" y registro con RPE/RIR, adherencia, ciclos de 4 semanas con plantillas, franjas y 3 dificultades, festivos, TrainWall, empleados, roles admin/employee/client con RLS (BUG-002) y alta de cliente con acceso opcional. Integra `FASE2.md` en el roadmap |
 | 2.1 | 2026-11-06 | Módulo 4.14 Indicadores del centro (KPIs) especificado en `spec-kpis.md`: estados del cliente y flujo de baja (4.2), horas de los empleados (4.3), franja en el Panel (4.11). Roadmap de gestión del centro por fases: KPIs v1 → CRM fase 1 (leads) → KPIs económicos |
 | 2.2 | 2026-11-06 | 4.9 Vista de cliente: spec aprobada y puesta al día tras BUG-002, BUG-003 y los KPIs |
+| 2.4 | 2026-11-08 | 4.7 Registro de clases grupales: pasar lista (con estado `absent`) y detalle opcional por asistente; aviso de clases sin pasar lista en "Hoy" |
 | 2.3 | 2026-11-08 | 4.9 Vista de cliente v1 construida: acceso de lectura con vistas `mi_*`, Hoy, Calendario, Detalle, Historial, Progreso y Perfil (con cambio de contraseña) y feedback tras la sesión. 4.1 Recuperar contraseña desde el login y textos del login en castellano. 4.2 y 4.7 feedback del cliente para el personal. 4.14 indicador "Dolor reportado". §5 seguridad y privacidad del cliente. Datos de prueba de la vista de cliente |

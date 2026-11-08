@@ -1,6 +1,6 @@
 # Especificación — Vista de cliente en móvil (BrotaFit)
 
-- **Estado:** **aprobada** el 2026-11-06 y **v1 construida** el 2026-11-08: acceso de lectura, las 6 pantallas y el feedback. Faltan la marca desde `center_settings`, el registro de sesiones grupales por el empleado, la PWA y la ronda de QA (§9).
+- **Estado:** **aprobada** el 2026-11-06 y **v1 construida** el 2026-11-08: acceso de lectura, las 6 pantallas, el feedback y el registro de clases grupales por el personal. Faltan la marca desde `center_settings`, la PWA y la ronda de QA (§9).
 - **Fecha:** 2026-11-04 · **Revisada:** 2026-11-08
 - **Rama:** `dev`
 - **Relacionado:** `docs/FRD.md` §4.9, `docs/spec-kpis.md` (adherencia §5.3, estados del cliente §5.4 y §8, piezas compartidas §7.9), `docs/BUGS.md` (BUG-002, BUG-003), `input-negocio-GA/`
@@ -29,7 +29,7 @@ La v1 tiene que ser **vendible por sí sola** (a Girona Activa y en demos a otro
 | Historial, progreso, racha | ✅ Historial, Progreso (mes, año, racha, récord, asistencia D6 y sesiones por mes) |
 | Feedback | ✅ Dolor sí/no, zona y comentario hasta 7 días después de la sesión; el personal lo ve en la ficha y en "Hoy" (§7.2) |
 | Estado del cliente | ✅ Activo / Inactivo / Baja (`spec-kpis.md` §8). El cliente de baja ve su historial en solo lectura y no deja feedback (P9) |
-| Registro de sesiones grupales | 🟡 La BD ya lo admite (`session_logs.training_session_id`), pero el empleado no tiene pantalla para registrarlas. Hasta entonces, el cliente las ve como "Sin registrar" y no cuentan en su asistencia |
+| Registro de sesiones grupales | ✅ El personal pasa lista y, si quiere, registra el detalle (§7.3). Hasta que se pasa lista, el cliente ve la sesión como "Sin registrar" y no cuenta en su asistencia. Pendiente: los planes grupales del wizard |
 | Marca | 🟡 En un solo archivo (`lib/brand.ts`) para `/client`, la recuperación de contraseña y su correo. Siguen fijos en el login, `/auth/set-password`, el sidebar del dashboard y los correos de invitación. Falta leerla de `center_settings` |
 | PWA | ⏳ Sin manifest: todavía no se puede instalar en la pantalla de inicio |
 
@@ -227,7 +227,9 @@ client_feedback
 ```
 Una sola tabla "el cliente comenta sobre algo de su plan" sirve hoy para sesiones y mañana para las ingestas de Pragma, y el empleado tiene una sola bandeja. A cambio, no hay FK real sobre `target_id`; la integridad se valida en la server action.
 
-### 7.3 Asistencia en sesiones de ciclo grupal 🟡 BD hecha, falta la pantalla
+### 7.3 Asistencia en sesiones de ciclo grupal ✅ (2026-11-08)
+
+> **Cómo quedó:** pantalla `/dashboard/hoy/grupo/[id]`, donde se pasa lista (obligatorio) y se registra el detalle por asistente (opcional). "No vino" se guarda como `session_logs.status = 'absent'` (migración `20261108160000_registro_grupal.sql`), para distinguir "no vino nadie" de "no se pasó lista". En "Hoy" hay un aviso con las clases de los últimos 7 días sin pasar lista. Detalle en FRD 4.7.
 ✅ Hecho con los KPIs: `session_logs.training_session_id` con un CHECK (exactamente uno de `plan_session_id` / `training_session_id`) y un índice único de **un log por (sesión, cliente)**.
 ⏳ Falta el registro del empleado: desde "Hoy", abrir una sesión grupal, marcar quién ha venido y registrar sus ejercicios según la dificultad de cada uno. Sin esto, la racha, la asistencia y la adherencia de quien va a grupales por ciclo salen "sin datos".
 
@@ -326,7 +328,7 @@ Solo aparecen los clientes con `ranking_opt_in = true` y con su `display_alias` 
 1. ~~**BUG-002** (RLS + server actions + `proxy.ts`)~~ ✅ hecho (falta la prueba manual del propietario).
 2. ~~Alta con acceso opcional (§4.3) y BUG-003~~ ✅ hecho (falta la prueba manual).
 3. `center_settings`: columnas de marca y módulos, y retirada de la marca fija (cliente, set-password, login y correo). 🟡 tabla creada.
-4. Registro de sesiones grupales por el empleado (§7.3). 🟡 BD hecha.
+4. ~~Registro de sesiones grupales por el empleado (§7.3)~~ ✅ (2026-11-08). Pendiente: los planes grupales del wizard.
 5. ~~Acceso de lectura del cliente: vistas `mi_*`, `requireClient()` y columnas `session_label` y `difficulty` en `client_sessions` (§7.1, §8.2)~~ ✅ aplicado el 2026-11-08 y comprobado por API (49 pruebas).
 6. ~~Pantallas v1: Hoy → Calendario → Detalle → Historial → Progreso → Perfil~~ ✅ (2026-11-08).
    - ✅ **Primera entrega** (2026-11-08): barra inferior, Hoy, Calendario y Detalle de sesión, con tema oscuro, sobre las vistas `mi_*` y con la sesión del usuario (sin `createAdminClient()`). Código en `app/client/` y `lib/client-portal/` (la marca, en un solo sitio: `lib/brand.ts`). Racha con tests (`tests/client-portal/`).
