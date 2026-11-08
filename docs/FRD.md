@@ -236,7 +236,10 @@ Módulo opcional. Diseño en `docs/arquitectura-pantallas.md` y propuesta comerc
 
 **Hoy:** `/client` es una sola página con tarjeta del plan activo, calendario mensual y detalle del día. Usa tema claro y marca de Girona Activa fija. Solo muestra planes de `plan_sessions` y lee saltándose la RLS.
 
-**Hecho como requisito previo:** RLS por rol (BUG-002), alta con acceso opcional (4.2) y, con los KPIs, la vista `client_sessions`, `session_logs.training_session_id` y la tabla `center_settings` (solo con la zona horaria).
+**Hecho como requisito previo:**
+- RLS por rol (BUG-002) y alta con acceso opcional (4.2).
+- Con los KPIs: la vista `client_sessions`, `session_logs.training_session_id` y la tabla `center_settings` (solo con la zona horaria).
+- **Acceso de lectura del cliente** (2026-11-08): el cliente lee solo sus datos a través de las vistas `mi_*`, sin notas internas y sin acceso a las tablas. Incluye sesiones individuales, de plan grupal y de ciclo, con los ejercicios de su dificultad. Helper `requireClient()` para sus acciones.
 
 **v1 decidida:**
 - Solo consulta, con feedback opcional (sin registrar pesos).

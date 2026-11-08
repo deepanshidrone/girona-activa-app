@@ -189,10 +189,11 @@ La vista de cliente no debe conocer las dos fuentes (`plan_sessions` y `training
 | `source`, `source_id` | `plan_session` / `training_session` y su id, para abrir el detalle | ✅ |
 | `client_id`, `session_date`, `session_time`, `type`, `employee_id`, `duration_min` | `plan_sessions` + plan, o `training_sessions` + `training_session_clients` | ✅ |
 | `status` | `cancelled` (cancelada o posterior al fin efectivo del plan), `completed`, `unrecorded` (grupal pasada en la que no se registró a nadie), `missed`, `scheduled` | ✅ |
-| `session_label` | Bloque A/B/C | ⏳ añadir |
-| `difficulty` | `training_session_clients.difficulty` o, si no hay, el nivel del plan (1→regression, 2→base, 3→progression) | ⏳ añadir |
+| `session_label` | Bloque A/B/C | ✅ (`20261106140000`) |
+| `difficulty` | `training_session_clients.difficulty` o, si no hay, el nivel del plan (1→regression, 2→base, 3→progression) | ✅ (`20261106140000`) |
+| `cycle_id` | Ciclo del plan grupal o de la sesión | ✅ (`20261106140000`) |
 
-Hoy la leen solo los KPIs (con `service_role`). El cliente no obtiene filas porque las tablas de debajo no tienen políticas para él: hay que añadirlas (§8.2).
+La regla vive en `private.sesiones`. `client_sessions` la leen solo los KPIs (`service_role`) y el cliente la lee filtrada en `mi_sesiones` (§8.2).
 
 Los ejercicios del detalle salen de `plan_session_exercises` (individual) o de `group_sessions` + `group_session_exercises` filtrados por ciclo, bloque y dificultad (grupal).
 
@@ -266,13 +267,41 @@ La usan `/client`, `/auth/set-password`, el login y el correo de invitación. As
 - `screens` está cerrada al personal; `screen_assignments` mantiene la lectura pública para el tiempo real de TrainWall.
 - Comprobado con 26 pruebas por API como "Cliente Test" y sin sesión.
 
-**Pendiente para la v1 de la vista de cliente:**
-1. **`is_client_of(client_id)`** (o similar): función `security definer` que devuelve true si `clients.user_id = auth.uid()` para ese cliente, para no repetir el join en cada política.
-2. **Políticas de cliente solo de lectura**, todas nuevas: `clients` (solo su fila), `training_plans`, `plan_sessions`, `plan_session_exercises`, `training_sessions` y `training_session_clients` (solo sus filas), `session_logs` y `exercise_logs` (solo los suyos), `group_sessions` y `group_session_exercises` (solo los ciclos en los que participa), y lectura del catálogo de ejercicios y de los festivos. `client_feedback`: las suyas, con inserción y edición solo con su `client_id` y dentro de los 7 días.
-3. **Columnas internas:** RLS filtra filas, no columnas. Para no exponer `notes`, el cliente lee **a través de vistas sin esas columnas** (`client_sessions`, que ya no las tiene; `client_exercise_logs`; `my_client_profile`), con `security_invoker = on`. Recomendación: vistas, más fáciles de leer y de probar que revocar columnas. Si se abre una tabla base con política de cliente, revocar `select` sobre `notes` a `authenticated`.
-4. **`/client` deja de usar `createAdminClient()`** y lee con el cliente de Supabase de la sesión del usuario (`getUser()`, no `getSession()`). Así la RLS es la defensa real y el filtro en servidor, una segunda capa.
-5. **`requireClient()`** en `lib/auth/permissions.ts` para las Server Actions del cliente (`submitFeedbackAction`). Fija siempre el `client_id` desde la sesión, nunca desde el formulario.
-6. **Comprobación:** ampliar las pruebas por API de BUG-002: "Cliente Test" lee lo suyo y nada de otro cliente, ni `notes`, ni datos del centro.
+**Acceso de lectura del cliente** (migración `20261106140000_vista_cliente_lectura.sql`, decidido 2026-11-06):
+
+Se descartan las políticas de cliente tabla a tabla. Obligarían a abrir las tablas base al cliente y a revocar columna a columna las `notes`. En su lugar, **las tablas siguen cerradas** y el cliente solo lee vistas `mi_*`:
+
+| Vista | Contenido |
+|---|---|
+| `mi_ficha` | Su ficha sin `notes`, con su estado (`active` / `inactive` / `baja`, misma regla que `kpi_client_states`) |
+| `mi_planes` | Sus planes con el nombre del entrenador y si es el vigente |
+| `mi_sesiones` | Sus sesiones individuales y grupales con estado, bloque, dificultad y entrenador |
+| `mi_ejercicios_planificados` | Los ejercicios de cada sesión con las indicaciones (D2). Individual: `plan_session_exercises`. Plan grupal: bloque × dificultad del nivel. Ciclo: bloque × dificultad del cliente |
+| `mi_registros`, `mi_registros_ejercicios` | Lo registrado por el empleado, sin `notes` |
+| `festivos_centro` | Festivos activos |
+
+Cómo se protegen:
+- Se ejecutan con los permisos de su dueño y filtran **siempre** por `my_client_id()`, que solo devuelve una ficha si la sesión tiene rol `client`.
+- Son `security_barrier` y solo tienen `SELECT` para `authenticated` (sin escritura) y nada para `anon`.
+- Para el personal salen vacías.
+- La regla de estados de las sesiones vive en `private.sesiones`, un esquema que la API no publica y que solo puede leer `service_role`. La usan `client_sessions` (KPIs, ahora solo `service_role`) y `mi_sesiones`.
+
+Comprobado el 2026-11-06 en una transacción deshecha, antes de aplicarla:
+- **Cliente Test:** ve su ficha, su plan, sus 13 sesiones y 39 ejercicios, y nada más. No puede escribir, ni leer `notes`, ni leer las tablas base.
+- **Clientes grupales** (plan y ciclo): ven sus sesiones con los ejercicios de su dificultad.
+- **Personal:** las vistas le salen vacías.
+- **Sin sesión:** permiso denegado.
+- **KPIs:** las mismas 3675 sesiones, y sus funciones siguen funcionando.
+
+**Pendiente:**
+1. **`/client` deja de usar `createAdminClient()`** y lee las vistas `mi_*` con el cliente de Supabase de la sesión. Se hará con las pantallas v1.
+2. ✅ **`requireClient()`** en `lib/auth/permissions.ts`, para las Server Actions del cliente (`submitFeedbackAction`). El `clientId` sale de la sesión, nunca del formulario.
+3. **Escritura del feedback:** `client_feedback` con una Server Action y `requireClient()`, sin política de escritura para el cliente.
+4. ✅ **Comprobación por API** (2026-11-08, 49 pruebas con "Cliente Test", sin sesión y con `service_role`):
+   - Cliente Test lee sus vistas (1 ficha, 1 plan, 13 sesiones, 39 ejercicios) y sigue sin leer ninguna tabla.
+   - No puede pedir `notes`, ni escribir o borrar por las vistas, ni leer `client_sessions`.
+   - Sin sesión: permiso denegado en todas las vistas.
+   - `service_role` sigue leyendo `client_sessions`.
 
 ### 8.3 Datos de salud
 El feedback de dolor, los datos físicos y, en el futuro, la anamnesis y la valoración son datos de salud. Acceso limitado al propio cliente y al personal del centro, sin aparecer en el ranking ni en la comunidad. La firma del RGPD forma parte de la ficha que pide GA (fuera de esta spec).
@@ -288,7 +317,7 @@ Solo aparecen los clientes con `ranking_opt_in = true` y con su `display_alias` 
 2. ~~Alta con acceso opcional (§4.3) y BUG-003~~ ✅ hecho (falta la prueba manual).
 3. `center_settings`: columnas de marca y módulos, y retirada de la marca fija (cliente, set-password, login y correo). 🟡 tabla creada.
 4. Registro de sesiones grupales por el empleado (§7.3). 🟡 BD hecha.
-5. Acceso de lectura del cliente: políticas, vistas sin notas y `requireClient()` (§8.2 pendiente). Columnas `session_label` y `difficulty` en `client_sessions` (§7.1).
+5. ~~Acceso de lectura del cliente: vistas `mi_*`, `requireClient()` y columnas `session_label` y `difficulty` en `client_sessions` (§7.1, §8.2)~~ ✅ aplicado el 2026-11-08 y comprobado por API (49 pruebas).
 6. Pantallas v1: Hoy → Calendario → Detalle → Historial → Progreso → Perfil.
 7. `client_feedback` y su visualización en el dashboard (también alimenta el KPI de dolor, `spec-kpis.md` §7.9).
 8. PWA (manifest).

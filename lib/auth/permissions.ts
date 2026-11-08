@@ -77,3 +77,40 @@ export async function requirePermission(permission: Permission): Promise<AuthRes
   if (!user || !hasPermission(user.role, permission)) return { error: NO_AUTORIZADO }
   return { user }
 }
+
+// ---------------------------------------------------------------------------
+// Clientes (vista /client)
+//
+// El cliente no lee tablas: solo las vistas mi_* (migración
+// 20261106140000_vista_cliente_lectura.sql), que filtran por su cuenta. Para
+// leerlas se usa el cliente de Supabase con su sesión (createClient), nunca
+// createAdminClient(). En las Server Actions del cliente, el clientId sale
+// SIEMPRE de requireClient(), nunca de los datos del formulario.
+
+export type ClientUser = {
+  id: string          // auth.users.id
+  email: string | null
+  clientId: string    // clients.id enlazado a la cuenta
+}
+
+export type ClientAuthResult =
+  | { user: ClientUser; error?: undefined }
+  | { user?: undefined; error: string }
+
+export async function getClientUser(): Promise<ClientUser | null> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user || user.app_metadata?.role !== 'client') return null
+
+  // mi_ficha devuelve como mucho una fila: la ficha enlazada a esta cuenta.
+  const { data: ficha } = await supabase.from('mi_ficha').select('id').maybeSingle()
+  if (!ficha) return null
+
+  return { id: user.id, email: user.email ?? null, clientId: ficha.id }
+}
+
+export async function requireClient(): Promise<ClientAuthResult> {
+  const user = await getClientUser()
+  if (!user) return { error: NO_AUTORIZADO }
+  return { user }
+}

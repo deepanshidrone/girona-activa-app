@@ -95,8 +95,9 @@ RESEND_API_KEY=re_...
 | Nombre | UUID | Email |
 |---|---|---|
 | Ezequiel (admin) | `29a82d0f-bab5-4a42-b4fc-68cfe64db63a` | ezequiel@gironaactiva.com |
-| Maria | `62ba0e07-b75f-4528-9e36-87f774418882` | maria@gironaactiva.com |
-| Rima Babani | `f47ae5ba-d477-4ddd-9bbb-69bc00d25a40` | miababani@gmail.com |
+| Rima Babani (admin) | `2a6f249c-7484-49cc-af8b-9f1618cd4454` | miababani@gmail.com |
+
+Revisado en `auth.users` el 2026-11-06. El resto de cuentas de personal son de prueba (`mariagruart@hotmail.com`, `ezequielfernandezperello@gmail.com`, `rimaydeepy@gmail.com` y `entrenadorN@demo.brotafit.invalid` de la demo de KPIs). Para la lista actual: `select id, email, raw_app_meta_data->>'role' from auth.users`. Dos fichas de cliente antiguas de prueba están enlazadas a cuentas de personal; las vistas `mi_*` no les muestran nada porque exigen el rol `client`.
 
 Nota: los empleados necesitan cuenta en Supabase Auth para aparecer como opción al asignar planes.
 Para dar de alta a un empleado existente (que ya tiene cuenta): `UPDATE profiles SET full_name='Nombre', role='employee' WHERE id='uuid'`.
@@ -262,7 +263,13 @@ create policy "personal_todo" on public.<tabla> for all to authenticated
   using ((select public.is_staff())) with check ((select public.is_staff()));
 ```
 - **Nunca** usar `auth.role() = 'authenticated'` ni `using (true)`: deja entrar a los clientes con login.
-- Los clientes no tienen acceso directo a ninguna tabla. Lo que vean se les dará con vistas de solo lectura sin columnas internas (ver `docs/spec-vista-cliente.md`).
+- Los clientes no tienen acceso directo a ninguna tabla. Solo leen las vistas `mi_*` (`mi_ficha`, `mi_planes`, `mi_sesiones`, `mi_ejercicios_planificados`, `mi_registros`, `mi_registros_ejercicios`) y `festivos_centro`, de la migración `20261106140000_vista_cliente_lectura.sql` (detalle en `docs/spec-vista-cliente.md` §8.2):
+  - se ejecutan con los permisos del dueño y filtran siempre por `my_client_id()`, que solo devuelve algo con rol `client`;
+  - no tienen columnas internas (`notes`);
+  - solo tienen `GRANT SELECT` a `authenticated`.
+  - En `/client` se leen con `createClient()` (sesión del usuario), nunca con `createAdminClient()`. Las Server Actions del cliente usan `requireClient()`.
+  - Para añadir una vista de cliente nueva: mismo patrón (`security_barrier`, filtro por `my_client_id()`, `revoke all` + `grant select`). **Nunca** crear una vista sin ese filtro con permisos del dueño: vería todo el centro.
+  - Una vista con `security_invoker = on` (como `client_sessions`) no sirve como base de una `mi_*`, porque dentro se aplica la RLS del cliente. La lógica compartida va en el esquema `private` (no publicado en la API, solo `service_role`).
 - Excepción: `screen_assignments` tiene lectura pública para el tiempo real de las pantallas de TrainWall.
 - `profiles`: cada usuario lee el suyo y solo puede editar `full_name`, `avatar_url` y `updated_at`.
 
