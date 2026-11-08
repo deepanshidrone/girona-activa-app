@@ -57,6 +57,22 @@ export type MiRegistroEjercicio = {
   skipped: boolean | null
 }
 
+export type MiPlan = {
+  id: string
+  type: 'individual' | 'group'
+  level: number | null
+  status: string
+  start_date: string
+  end_date: string | null
+  eff_end: string | null
+  duration_months: number | null
+  weekly_frequency: number | null
+  session_duration: number | null
+  cycle_id: string | null
+  trainer_name: string | null
+  is_current: boolean
+}
+
 export type ClientState = 'active' | 'inactive' | 'baja'
 
 export type MiFicha = {

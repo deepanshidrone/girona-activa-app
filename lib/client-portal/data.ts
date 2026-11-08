@@ -3,7 +3,7 @@ import 'server-only'
 import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { todayIn } from '@/lib/center'
-import type { MiEjercicio, MiFicha, MiRegistro, MiRegistroEjercicio, MiSesion } from './types'
+import type { MiEjercicio, MiFicha, MiPlan, MiRegistro, MiRegistroEjercicio, MiSesion } from './types'
 
 // Datos de la vista de cliente. Lee SOLO las vistas mi_* y festivos_centro con
 // la sesión del usuario (createClient), nunca con createAdminClient(): la base
@@ -83,6 +83,14 @@ export async function getRegistro(sourceId: string): Promise<{ registro: MiRegis
     .eq('session_log_id', registro.id)
   return { registro: registro as MiRegistro, ejercicios: (ejercicios ?? []) as MiRegistroEjercicio[] }
 }
+
+// Planes del cliente, del más reciente al más antiguo.
+export const getPlanes = cache(async (): Promise<MiPlan[]> => {
+  const supabase = await db()
+  if (!supabase) return []
+  const { data } = await supabase.from('mi_planes').select('*').order('start_date', { ascending: false })
+  return (data ?? []) as MiPlan[]
+})
 
 export async function getFestivos(from: string, to: string): Promise<{ date: string; name: string }[]> {
   const supabase = await db()

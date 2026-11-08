@@ -242,7 +242,12 @@ Módulo opcional. Diseño en `docs/arquitectura-pantallas.md` y propuesta comerc
 - Muestra sesiones individuales, de plan grupal y de ciclo. Lee solo las vistas `mi_*`, con la sesión del cliente.
 - La marca sigue fija, pero en un solo archivo (`lib/client-portal/brand.ts`).
 
-**Pendiente (segunda entrega):** Historial, Progreso y Perfil completo (hoy Progreso es un aviso y Perfil solo tiene nombre, email y cerrar sesión). Después, el feedback del cliente, la marca desde `center_settings` y la PWA.
+**Implementado (segunda entrega, 2026-11-08):**
+- **Historial:** sesiones pasadas por mes y planes (actual y terminados).
+- **Progreso:** sesiones del mes y del año, racha actual y récord, asistencia al plan vigente con la definición única de los KPIs y gráfico de sesiones hechas por mes (6 meses).
+- **Perfil:** ficha en solo lectura, cambio de contraseña (pide la actual) y cerrar sesión.
+
+**Pendiente:** feedback del cliente tras la sesión, marca desde `center_settings`, registro de sesiones grupales por el empleado, PWA y ronda de QA.
 
 **Hecho como requisito previo:**
 - RLS por rol (BUG-002) y alta con acceso opcional (4.2).
