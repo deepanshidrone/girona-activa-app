@@ -11,7 +11,7 @@ import { parseLeadPayload } from '@/lib/leads/validate'
 //   LEADS_WEBHOOK_SECRET_PREVIOUS). Sin secreto configurado no acepta nada.
 // - Cuerpo de 32 KB como máximo y validación estricta del contrato v1.
 // - Idempotencia por (source, external_id): un reenvío no duplica.
-// - Límite global de 60 leads nuevos por hora.
+// - Límite global de 60 leads nuevos de la web por hora.
 // Los logs nunca llevan datos del lead: solo el id del envío y el resultado.
 // proxy.ts deja pasar esta ruta sin mirar la sesión.
 
@@ -86,6 +86,7 @@ export async function POST(request: Request) {
   const { count, error: countError } = await admin
     .from('leads')
     .select('id', { count: 'exact', head: true })
+    .eq('source', 'web') // las altas manuales del dashboard no cuentan (§16.2)
     .gte('created_at', new Date(Date.now() - 60 * 60 * 1000).toISOString())
   if (countError) return dbError('contar', lead.external_id)
   if ((count ?? 0) >= MAX_NEW_PER_HOUR) {

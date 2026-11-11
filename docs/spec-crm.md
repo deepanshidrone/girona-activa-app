@@ -1,6 +1,6 @@
 # Especificación — CRM fase 1: leads de la web
 
-- **Estado:** aprobada por el propietario el 2026-11-08. En desarrollo: hechos la migración, el permiso, `/api/leads` y las pantallas (§15); falta la web.
+- **Estado:** aprobada por el propietario el 2026-11-08. Fase 1 funcionando de extremo a extremo desde el 2026-11-09: la web de producción envía cada lead a Notion y al preview de `dev` de BrotaFit (§15). Faltan la ronda de QA, la vista móvil y la revisión legal (§10.3).
 - **Fecha:** 2026-11-08
 - **Rama:** `dev` (brotafit) · `dev` (girona-activa-web)
 - **Relacionado:** `docs/FRD.md` (§4.15, §5 y roadmap §6, punto 2), `docs/spec-kpis.md` (K1, Q7 y §4.7), `input-negocio-GA/Especificaciones de la app – Girona Activa.pdf` (apartado "CRM y KPIs"), repo `girona-activa-web` (`index.html`, `netlify/functions/submission-created.js`)
@@ -370,12 +370,13 @@ Si se decide un plazo, se añade un borrado automático configurable sin cambiar
 
 | Pieza | Cómo encaja con lo de la fase 1 |
 |---|---|
-| **Estados del lead** (nuevo, contactado, contacto fallido, convertido, descartado) | Columna `status` nueva. Los leads existentes pasan a `nuevo`, o a `contactado` si tienen nota. "Visto" y "spam" siguen aparte: visto no es contactado y el spam no es un estado comercial |
+| **Estados del lead** | Adelantado a la fase 1.1 (§17), con los estados que pidió Girona Activa |
 | **Seguimiento de llamadas e intentos** | Tabla `lead_activities` (lead, tipo: llamada / WhatsApp / email / visita / nota, resultado: contestó / no contestó / buzón…, fecha y quién). "Contacto fallido" sale de los intentos sin respuesta. La nota interna de la fase 1 pasa a ser la primera actividad |
 | **Conversión a cliente** | Botón "Crear cliente" en el detalle, que abre el alta de cliente con el nombre y el email ya rellenos. Columnas `converted_client_id` (→ `clients`, `on delete set null`), `converted_at` y `converted_by` en `leads`. El aviso "Ya es cliente" ofrece enlazar el lead a esa ficha |
 | **Quién lo atendió** (Q7 de `spec-kpis.md`) | `assigned_to` (→ `profiles`) en `leads` y `by` en cada actividad. La atribución de altas sale del lead convertido |
 | **Indicadores de leads** (§4.7 de `spec-kpis.md`) | Leads por mes y por canal, % de conversión, tiempo hasta el primer contacto y contactos fallidos, todo con `received_at` como fecha de negocio. Pestaña o tarjeta en `/dashboard/indicadores` con `indicadores.ver` |
-| **Otros orígenes** | Alta manual de un lead (llamada, visita, Instagram) con `source` distinto de `web` y sin `external_id` |
+| **Otros orígenes** | Alta manual: especificada en §16. Quedan otros orígenes (Instagram, llamadas con registro automático) |
+| **Alertas de seguimiento** (pedido por Girona Activa el 2026-11-11) | Avisos para los leads que llevan cierto tiempo en un mismo estado (por ejemplo, "Sin contestación" o "No convertido" desde hace N días), para retomar el contacto comercial o enviarles promociones. Necesita guardar desde cuándo está el lead en su estado (`status_changed_at`) y una regla por estado con el plazo, configurable por el centro. Se verían como lista o contador en el CRM; el envío de promociones necesita además el consentimiento para comunicaciones comerciales, que hoy no se pide (revisión legal, §10.3) |
 | **Avisos por correo** | Si se piden, un correo sin datos de salud con el nombre y un enlace (D5 lo descarta hoy) |
 
 ---
@@ -412,9 +413,8 @@ Resueltas el 2026-11-08:
 - **P3:** se conserva lo hecho por un empleado borrado (D14).
 - **P4:** aceptado.
 
-| # | Pendiente | Responsable |
-|---|---|---|
-| P4 | Comprobar el límite mensual de envíos de Netlify Forms en el plan Free y el volumen de Girona Activa antes de pasar la web a producción | Claude, al tocar la web |
+Resuelta el 2026-11-09:
+- **P4 (límite de Netlify Forms):** el equipo "NexeAI" está en el plan Free **por créditos** (300 créditos al mes), no en el Starter antiguo. En ese plan los envíos de formulario son gratis y sin límite mensual; el límite de 100 envíos al mes solo existe en los planes legacy. El único riesgo es agotar los créditos, que pausaría el sitio entero. Volumen de Girona Activa: entre 7 y 11 envíos verificados al mes (junio–noviembre de 2026) y más de 100 marcados como spam en total.
 
 ---
 
@@ -428,8 +428,11 @@ Resueltas el 2026-11-08:
 | Tests | ✅ 45 tests (firma, normalización del teléfono, validación y la ruta con la BD simulada) | `tests/leads/leads.test.ts` |
 | Prueba local de extremo a extremo | ✅ 2026-11-08 contra la BD real: 201, reenvío 200, secreto incorrecto y firma caducada 401, sin consentimiento 400, GET 405. Fila de prueba borrada | — |
 | Pantallas y contador del menú | ✅ 2026-11-08. Probadas en local con un admin: listado, filtros (periodo, visto, canal, respuesta, búsqueda y spam), detalle, marcar visto al abrir y todos a la vez, nota, spam, borrado y contador. Vista móvil sin revisar a ojo | `app/dashboard/crm/`, `app/actions/leads.ts`, `lib/leads/{data,filters,duplicates,contact}.ts`, `components/app-sidebar.tsx`; 21 tests en `tests/leads/list.test.ts` |
-| Web de Girona Activa | ⏳ | §9 |
-| Secreto en Vercel y protección del preview | ⏳ | §6.1 y §6.4 |
+| Web de Girona Activa | ✅ 2026-11-09, commit `f45f054` en `dev` y `main` de `gironaactiva`: función con doble envío (Notion y BrotaFit con `Promise.allSettled`), corrección de "cómo nos ha conocido", logs sin datos personales, honeypot, Node 22 y script de reenvío. Probada en local contra BrotaFit local: 201, repetido 200, secreto incorrecto 401 sin reintentar, BrotaFit caído (3 intentos y `LEAD NO ENTREGADO`), colgado (termina en 9 s), sin variables (solo aviso), sin consentimiento (no se envía), los dos destinos fallando (500) y `--dry-run` | `girona-activa-web`: `netlify/functions/submission-created.js`, `netlify/lib/brotafit.js`, `scripts/reenviar-leads.mjs`, `index.html`, `netlify.toml`; detalle en su `CLAUDE.md` |
+| Secreto y variables | ✅ 2026-11-09. `LEADS_WEBHOOK_SECRET` (64 hex, *Sensitive*) en Vercel, en **Preview y Production**. En Netlify, `BROTAFIT_LEADS_URL` (preview de `dev`, todos los contextos) y `BROTAFIT_LEADS_SECRET` (secreto, por contexto: production, deploy-preview y branch-deploy). El preview de Vercel **no tiene protección**, así que no hace falta `BROTAFIT_VERCEL_BYPASS` | §6.1 y §6.4 |
+| Prueba de extremo a extremo en producción | ✅ 2026-11-09: envío real desde `gironaactiva.com` → Netlify → preview de `dev` → visible en CRM → Leads (log de Vercel: `creado` y, 2 s después, `ya existía` por una segunda llamada de Netlify, sin duplicar) | — |
+| Alta manual y estado (fase 1.1) | ✅ 2026-11-11. Migración aplicada tras probarla en una transacción deshecha. Probado en local con un admin: errores por campo sin perder lo escrito, alta con canal, estado, respuesta y comentario, aviso de duplicado, cambio de estado en el detalle y filtro por estado. Lead de prueba borrado | `supabase/migrations/20261111120000_crm_leads_manual_estado.sql`, `lib/leads/{manual,status}.ts`, `app/actions/leads.ts` (`createLeadAction`, `setLeadStatusAction`), `app/dashboard/crm/leads/nuevo/`; 17 tests en `tests/leads/manual.test.ts` |
+| Ronda de QA y vista móvil | ⏳ | §13, punto 6 |
 
 **Diferencias con lo especificado:**
 - `phone_normalized` en formato internacional (§7.1). El comentario de la columna en la BD todavía dice "sin el prefijo del país": se corregirá en la próxima migración del CRM.
@@ -437,3 +440,125 @@ Resueltas el 2026-11-08:
 - El lead se marca como visto desde el navegador al abrir el detalle, no al pintar la página en el servidor, para que una precarga del enlace no lo marque.
 - Filtro "Respuesta": solo ofrece preguntas con entre 2 y 12 valores distintos que no sean números (la edad y los textos libres no salen). "Primera respuesta" del listado muestra la primera respuesta de texto.
 - El color del centro llega a las pantallas nuevas como variable CSS `--brand` (desde `lib/brand.ts`, definida en el layout del dashboard), sin escribir el color en el código.
+
+**Diferencias en la fase 1.1 (2026-11-11):**
+- La etiqueta de "no visto" del listado pasa de "Nuevo" a **"Sin ver"**, para no confundirla con el estado "Nuevo".
+- El filtro de estado va en la URL como `etapa` (el filtro `estado` ya era visto / sin ver).
+- En el alta manual también se puede elegir el estado de entrada (por defecto "Nuevo").
+- Una respuesta se trata como larga (área de texto, sin sugerencias) si algún lead web la tiene con más de 60 caracteres o con saltos de línea.
+
+**Diferencias en la web (2026-11-09):**
+- **Orden de trabajo (§13):** por decisión del propietario, la web pasó a producción (punto 7) sin la prueba previa desde `dev` (punto 5) y antes de la ronda de QA (punto 6). Con la web también salieron a producción la casilla RGPD y el banner de cookies, que llevaban en `dev` desde septiembre: **sin la casilla, ningún lead anterior lleva consentimiento**, así que el reenvío no puede recuperar envíos antiguos.
+- **Etiquetas de `answers`:** son las preguntas tal como se ven en la web, sin el asterisco ("Què vols aconseguir?", "Per què creus que no ho estàs aconseguint fins ara?"…), no los nombres cortos del ejemplo de §5.2.
+- **Notion:** no admite comas en las opciones de tipo select, así que "Recomanació (amic/ga, familiar)" se guarda allí como "Recomanació (amic/ga o familiar)". BrotaFit recibe el texto exacto. Inversión mantiene en Notion las opciones que ya existían ("50 – 100€"…); BrotaFit recibe el texto visible ("Entre 50€ i 100€/mes").
+- **Reintentos:** además de 2 s por intento, la función tiene un **límite total de 9 s**; sin él, el peor caso llegaría justo a los 10 s de la función.
+- **Teléfono:** la web lo envía tal cual. Si lleva puntos u otros caracteres no admitidos, BrotaFit responde 400 y ese lead solo queda en Notion y en Netlify Forms (decisión del propietario).
+- **Secreto no recuperable:** no se guardó copia y ni Vercel (*Sensitive*) ni Netlify (secreto) dejan leerlo. Para usar `scripts/reenviar-leads.mjs` hay que **rotarlo** antes: valor nuevo en `LEADS_WEBHOOK_SECRET` (y el anterior en `LEADS_WEBHOOK_SECRET_PREVIOUS` mientras dure el cambio), el mismo valor en `BROTAFIT_LEADS_SECRET` de Netlify y redesplegar el preview de Vercel y la producción de Netlify.
+- **Spam (§6.3):** en la prueba, **Akismet marcó como spam un envío real** con textos "PRUEBA". Un envío marcado como spam no dispara la función, así que no llega ni a Notion ni a BrotaFit. Al marcarlo como "no spam" en Netlify (API `PUT /submissions/<id>/ham`), la función se dispara y el lead llega. Riesgo: un lead real marcado por Akismet se pierde sin aviso; conviene revisar de vez en cuando la carpeta de spam de Netlify Forms.
+- **Notion sin idempotencia:** Netlify puede llamar a la función dos veces con el mismo envío (pasó al marcar como "no spam"). BrotaFit no duplica, pero Notion puede crear la página dos veces.
+
+---
+
+## 16. Alta manual de leads (fase 1.1)
+
+- **Estado:** aprobada por el propietario el 2026-11-09. Hecha el 2026-11-11 junto con el estado del lead (§15 y §17).
+- **Para qué:** registrar a alguien que se interesa en el propio centro (visita o llamada) y no ha pasado por la web, para que esté en el mismo listado que los leads de la web.
+
+### 16.1 Decisiones (2026-11-09)
+
+| # | Decisión |
+|---|---|
+| M1 | **Solo el admin** puede dar de alta un lead, con el mismo permiso `leads.gestionar`. No hay permiso nuevo; el employee (recepción) sigue sin ver el CRM |
+| M2 | **Consentimiento con casilla obligatoria:** quien da de alta marca que ha informado a la persona de la política de privacidad y que acepta que la contacten. Sin la casilla no se guarda. Entra en la revisión legal pendiente (§10.3) |
+| M3 | **Las mismas preguntas que la web**, todas opcionales |
+| M4 | **Las preguntas salen de los leads web recibidos** (etiqueta y orden), no del código ni de una lista guardada: si la web cambia el formulario, el alta manual se adapta sola (marca blanca, §12) |
+| M5 | **"Cómo nos ha conocido"**: los canales que han llegado por la web, opcional. No hace falta un canal "presencial": el origen del lead ya lo dice |
+| M6 | **Entra siempre como visto** (por quien lo crea): no suma al contador del menú |
+
+### 16.2 Datos
+
+Misma tabla `leads`, con estos valores:
+
+| Columna | Valor en un alta manual |
+|---|---|
+| `source` | `'manual'` (la restricción pasa a `in ('web', 'manual')`) |
+| `created_by` | **columna nueva**, `uuid → profiles on delete set null` (D14): quién lo dio de alta. Nula en los de la web |
+| `form_name`, `external_id`, `page_url` | `null` (no hay envío de origen; el `unique(source, external_id)` no les afecta) |
+| `received_at`, `consent_at` | el momento del alta |
+| `full_name`, `email`, `phone`, `phone_normalized` | como en la web: nombre obligatorio y al menos email o teléfono; mismas reglas de validación y normalización (`lib/leads/validate.ts`) |
+| `channel_key`, `channel_label` | el canal elegido, o `null` |
+| `message` | `null` (el comentario de recepción va a la nota interna) |
+| `answers` | solo las preguntas contestadas, con la misma `key` y `label` que en la web, para que el filtro "Respuesta" y el detalle funcionen igual |
+| `consent_text` | el texto de la casilla, genérico: "El centro ha informado a la persona de la política de privacidad y acepta que la contacten." |
+| `privacy_policy_url` | la del último lead web recibido, o `null` si no hay ninguno |
+| `seen_at`, `seen_by` | el momento del alta y quien lo crea (M6) |
+| `internal_notes` | el comentario del formulario, si se escribe (con `notes_updated_at/by`) |
+
+En la misma migración se corrige el comentario de `phone_normalized` (formato internacional, §15).
+
+**Límite por hora de `/api/leads`:** hoy cuenta todas las filas creadas en la última hora. Pasa a contar solo `source = 'web'`, para que un alta manual no bloquee la web.
+
+### 16.3 Catálogo de preguntas y canales
+
+Se calcula al abrir el formulario con los últimos 200 leads web (sin spam):
+- **Preguntas:** cada `key` distinta, con la etiqueta y el orden del lead más reciente que la tenga.
+- **Sugerencias de respuesta:** si una pregunta tiene como mucho 12 valores distintos y todos cortos (≤ 60 caracteres), esos valores se ofrecen como sugerencias. El campo sigue siendo de texto (`<input list>`), porque con pocos leads recibidos aún no habrán salido todas las opciones de la web. Las respuestas largas (más de 60 caracteres) van en un área de texto.
+- **Canales:** los `channel_key`/`channel_label` distintos recibidos.
+- Si todavía no ha llegado ningún lead web, el formulario solo tiene los datos de contacto, el comentario y la casilla.
+
+### 16.4 Pantallas
+
+- **Listado:** botón **"Nuevo lead"** en la cabecera, que lleva a `/dashboard/crm/leads/nuevo`. En cada fila, la etiqueta **"En el centro"** cuando `source = 'manual'`. No hay filtro por origen en esta fase.
+- **Formulario** `/dashboard/crm/leads/nuevo`, en este orden:
+  1. Nombre*, teléfono y email (al menos uno), con el prefijo del centro (`default_country_code`) por defecto.
+  2. Cómo nos ha conocido (desplegable opcional).
+  3. Las preguntas del catálogo.
+  4. Comentario (va a la nota interna).
+  5. Casilla de consentimiento* y enlace a la política, si la hay.
+  6. "Guardar" y "Cancelar". Los errores se muestran junto a cada campo y no se pierde lo escrito.
+- **Al guardar** se abre el detalle del lead nuevo, que ya muestra los avisos de duplicado ("Ya es cliente", "Ha escrito N veces"). No se impide guardar un duplicado (D9).
+- **Detalle:** el origen dice "En el centro · alta de <nombre>" en vez de "Formulario web · contacte". El resto funciona igual (spam, nota, borrar).
+
+### 16.5 Implementación prevista
+
+| Pieza | Dónde |
+|---|---|
+| Migración: `source in ('web','manual')`, `created_by`, comentario de `phone_normalized`. Se prueba en una transacción deshecha | `supabase/migrations/20261111120000_crm_leads_manual_estado.sql` (la misma que §17) |
+| Validación del alta manual, reutilizando las reglas del contrato v1 | `lib/leads/validate.ts` (`parseManualLead`) |
+| Catálogo de preguntas y canales | `lib/leads/data.ts` (`getLeadFormCatalog`) |
+| Acción `createLeadAction` con `requirePermission('leads.gestionar')` | `app/actions/leads.ts` |
+| Formulario y botón | `app/dashboard/crm/leads/nuevo/`, `page.tsx` del listado y del detalle |
+| Límite por hora solo para la web | `app/api/leads/route.ts` |
+| Tests: validación manual, catálogo y límite por hora | `tests/leads/` |
+
+---
+
+## 17. Estado del lead (fase 1.1)
+
+- **Estado:** aprobado por el propietario el 2026-11-11, a petición de Girona Activa en una reunión ese mismo día. Hecho ese mismo día junto con el alta manual (§16), en la misma migración.
+- **Para qué:** saber en qué punto está cada lead y poder filtrar por ello. Es la base de las alertas de seguimiento de la fase 2 (§11).
+
+### 17.1 Decisiones (2026-11-11)
+
+| # | Decisión |
+|---|---|
+| E1 | Estados: **Nuevo** (por defecto, nadie lo ha trabajado aún), **Contactado**, **Sin contestación**, **Entrenamiento iniciado** y **No convertido**. Los leads que ya existen pasan a "Nuevo" |
+| E2 | El estado lo cambia a mano el admin (`leads.gestionar`), sin reglas de paso: se puede ir de cualquier estado a cualquier otro |
+| E3 | Se ve como columna y filtro en el listado; se cambia con un desplegable en el detalle |
+| E4 | Se guarda quién y cuándo hizo el último cambio. No hay historial de cambios: llegará con el seguimiento de contactos (`lead_activities`, §11) |
+| E5 | "Visto" y "spam" siguen aparte. Marcar como spam no cambia el estado |
+
+### 17.2 Datos
+
+| Columna | Qué guarda |
+|---|---|
+| `status` | `nuevo`, `contactado`, `sin_contestacion`, `entrenamiento_iniciado` o `no_convertido`; por defecto `nuevo` |
+| `status_changed_at`, `status_changed_by` | Último cambio (`→ profiles on delete set null`, D14). Nulos mientras sigue en "Nuevo" sin tocar |
+
+Las claves están en la base de datos y las etiquetas en `lib/leads/status.ts`. Son genéricas, válidas para cualquier centro (§12).
+
+### 17.3 Pantallas
+
+- **Listado:** columna "Estado" con una etiqueta de color y filtro "Estado" (todos o uno). En el móvil, la etiqueta va en la tarjeta.
+- **Detalle:** desplegable "Estado" en la cabecera. Al cambiarlo se guarda en el momento, y debajo aparece "Cambiado por <nombre>, <fecha>".
+- **Alta manual (§16):** entra como "Nuevo", y en el formulario se puede elegir otro estado.

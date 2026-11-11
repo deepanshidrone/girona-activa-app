@@ -9,7 +9,7 @@ import { getLeadDetail } from '@/lib/leads/data'
 import { leadFiltersQuery, parseLeadFilters } from '@/lib/leads/filters'
 import { mailHref, telHref, whatsappHref } from '@/lib/leads/contact'
 import { LeadBadges } from '../lead-badges'
-import { DeleteLeadButton, MarkSeenOnOpen, NotesEditor, SpamButton } from './lead-actions'
+import { DeleteLeadButton, MarkSeenOnOpen, NotesEditor, SpamButton, StatusSelect } from './lead-actions'
 
 // CRM fase 1: detalle de un lead (docs/spec-crm.md §8.3). Solo con leads.gestionar.
 export const dynamic = 'force-dynamic'
@@ -37,7 +37,9 @@ export default async function LeadDetailPage({
   const tel = telHref(lead.phone_normalized)
   const wa = whatsappHref(lead.phone_normalized)
   const mail = mailHref(lead.email)
-  const origin = lead.source === 'web' ? `Formulario web${lead.form_name ? ` · ${lead.form_name}` : ''}` : lead.source
+  const origin = lead.source === 'web'
+    ? `Formulario web${lead.form_name ? ` · ${lead.form_name}` : ''}`
+    : lead.source === 'manual' ? `En el centro · alta de ${lead.created_by_name ?? '—'}` : lead.source
 
   return (
     <div className="p-4 sm:p-6 pb-28 md:pb-6 flex flex-col gap-4 max-w-3xl">
@@ -58,6 +60,13 @@ export default async function LeadDetailPage({
             </p>
           </div>
           <LeadBadges seen={!!lead.seen_at} duplicates={lead.duplicates} hasNotes={false} linkClient />
+        </div>
+
+        <div className="mt-4 max-w-xs">
+          <StatusSelect leadId={lead.id} status={lead.status}
+            footer={lead.status_changed_at
+              ? `Cambiado por ${lead.status_changed_by_name ?? '—'}, ${formatDateTimeEs(lead.status_changed_at, timezone)}`
+              : null} />
         </div>
 
         {lead.is_spam && (
@@ -91,9 +100,9 @@ export default async function LeadDetailPage({
 
       {/* Respuestas del formulario */}
       <div className={card}>
-        <h2 className="font-semibold text-white mb-3">Lo que ha escrito</h2>
+        <h2 className="font-semibold text-white mb-3">{lead.source === 'manual' ? 'Respuestas' : 'Lo que ha escrito'}</h2>
         {lead.answers.length === 0 && !lead.message ? (
-          <p className="text-sm text-white/40">El formulario no tenía más preguntas.</p>
+          <p className="text-sm text-white/40">{lead.source === 'manual' ? 'No se apuntaron respuestas en el alta.' : 'El formulario no tenía más preguntas.'}</p>
         ) : (
           <dl className="flex flex-col gap-3">
             {lead.answers.map((a, i) => (
@@ -145,10 +154,14 @@ export default async function LeadDetailPage({
       <details className={`${card} group`}>
         <summary className="cursor-pointer text-sm font-semibold text-white list-none flex items-center justify-between">
           Consentimiento
-          <span className="text-xs font-normal text-white/40 group-open:hidden">Aceptado el {formatDateTimeEs(lead.consent_at, timezone)}</span>
+          <span className="text-xs font-normal text-white/40 group-open:hidden">{lead.source === 'manual' ? 'Registrado el' : 'Aceptado el'} {formatDateTimeEs(lead.consent_at, timezone)}</span>
         </summary>
         <div className="mt-3 text-sm flex flex-col gap-2">
-          <p className="text-white/40 text-xs">Aceptado el {formatDateTimeEs(lead.consent_at, timezone)}</p>
+          <p className="text-white/40 text-xs">
+            {lead.source === 'manual'
+              ? `Registrado en el centro por ${lead.created_by_name ?? '—'} el ${formatDateTimeEs(lead.consent_at, timezone)}`
+              : `Aceptado el ${formatDateTimeEs(lead.consent_at, timezone)}`}
+          </p>
           <p className="text-white/75 whitespace-pre-line">“{lead.consent_text}”</p>
           {lead.privacy_policy_url && (
             <a href={lead.privacy_policy_url} target="_blank" rel="noopener noreferrer"

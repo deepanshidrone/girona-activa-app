@@ -1,6 +1,6 @@
 # FRD — BrotaFit (Girona Activa)
 **Documento de requisitos funcionales**
-Versión: 2.5 | Última actualización: 2026-11-08 | Repo: `deepanshidrone/girona-activa-app`
+Versión: 2.6 | Última actualización: 2026-11-09 | Repo: `deepanshidrone/girona-activa-app`
 
 Este es el **documento de producto** de BrotaFit: qué hace la app, qué está hecho y qué falta. Se mantiene al día con cada funcionalidad (ver [§7](#7-cómo-se-mantiene-este-documento)). El detalle técnico (convenciones de código, migraciones, RLS) está en `CLAUDE.md`. Las especificaciones de módulos concretos están en `docs/spec-*.md`.
 
@@ -71,7 +71,7 @@ Nació como app a medida de **Girona Activa** (centro de entrenamiento personal 
 | 4.12 | Configuración del centro | `/dashboard/configuracion` | ⏳ |
 | 4.13 | Informes, ranking, comunidad, nutrición | — | ⏳ fases posteriores |
 | 4.14 | Indicadores del centro (KPIs, solo admin) | `/dashboard/indicadores` | 🟡 v1 implementada (con dolor reportado), pendiente de QA |
-| 4.15 | CRM: leads de la web (solo admin) | `/dashboard/crm/leads` | 🟡 app hecha (entrada y pantallas); falta conectar la web |
+| 4.15 | CRM: leads de la web (solo admin) | `/dashboard/crm/leads` | 🟡 funcionando con la web de producción (2026-11-09); faltan QA, vista móvil y revisión legal |
 
 ---
 
@@ -377,9 +377,14 @@ Panel en `/dashboard/indicadores`, **solo para el admin** (permiso `indicadores.
 - **Pantallas:** menú "CRM" con contador de no vistos → Leads. Listado con filtros (periodo, visto, canal, respuesta, búsqueda y spam) y detalle con llamar, WhatsApp y email, nota interna, marcar como spam y borrar. Se señalan los duplicados ("Ha escrito N veces", "Ya es cliente").
 - **Permiso:** `leads.gestionar`, solo admin por defecto. La tabla solo es accesible desde el servidor.
 - **Marca blanca:** contrato de entrada genérico; las preguntas y los canales llegan como datos.
-- **Después (fase 2):** estados del lead, seguimiento de llamadas (incluidos los contactos fallidos), conversión a cliente, quién lo atendió e indicadores de leads.
+- **Fase 1.1 (2026-11-11, `spec-crm.md` §16 y §17):**
+  - **Alta manual** ("Nuevo lead", solo admin) para quien se interesa en el propio centro: mismas preguntas y canales que la web (sacados de los leads recibidos), casilla de consentimiento obligatoria, comentario a la nota interna; entra como visto y se marca "En el centro".
+  - **Estado del lead:** Nuevo, Contactado, Sin contestación, Entrenamiento iniciado y No convertido (pedido por Girona Activa). Columna y filtro en el listado, desplegable en el detalle, con quién y cuándo lo cambió.
+- **Después (fase 2):** seguimiento de llamadas (incluidos los contactos fallidos), conversión a cliente, quién lo atendió, indicadores de leads y alertas por tiempo en un estado.
 - **Hecho (2026-11-08):** tabla `leads` (solo accesible desde el servidor), permiso `leads.gestionar`, entrada `/api/leads` y las pantallas (menú CRM con contador, listado con filtros y detalle con contacto, nota, spam y borrado), con sus tests.
-- **Pendiente:** revisar la vista móvil, cambios en la web de Girona Activa, secreto en Vercel y revisión legal con Girona Activa de los datos de los leads (conservación, datos de salud y encargado del tratamiento).
+- **Hecho (2026-11-09):** web de Girona Activa conectada y en producción. Cada envío del formulario de `gironaactiva.com` llega a Notion y a BrotaFit (preview de `dev`, misma BD), con campo trampa antispam y logs sin datos personales. Secreto configurado en Vercel y Netlify. Probado con un envío real que aparece en CRM → Leads. Detalle y diferencias con la spec en `spec-crm.md` §15.
+- **A tener en cuenta:** Akismet (antispam de Netlify) puede marcar un lead real como spam y entonces no llega a ningún sitio; hay que revisar de vez en cuando la carpeta de spam de Netlify Forms. Para usar el script de reenvío hay que rotar antes el secreto, porque no se puede leer en ningún sitio.
+- **Pendiente:** ronda de QA, revisar la vista móvil y revisión legal con Girona Activa de los datos de los leads (conservación, datos de salud, encargado del tratamiento y política de privacidad de la web, que no menciona BrotaFit). En el go-live, cambiar `BROTAFIT_LEADS_URL` en Netlify a producción; retirar Notion cuando lo decida el propietario.
 
 ---
 
@@ -427,8 +432,9 @@ Panel en `/dashboard/indicadores`, **solo para el admin** (permiso `indicadores.
 Panel solo para el admin con los indicadores que pide Girona Activa (`input-negocio-GA/`). Especificación: [`docs/spec-kpis.md`](./spec-kpis.md).
 1. [ ] **KPIs v1** (§4.14): indicadores de clientes, retención, asistencia, ocupación, entrenadores y progreso, con alertas. Incluye registrar los datos que hoy no existen: baja de cliente con fecha y motivo, estados Activo / Inactivo / Baja, horas de los empleados y el script de datos de demo.
 2. [ ] **CRM fase 1, leads** (§4.15, [`spec-crm.md`](./spec-crm.md)): todos los contactos que llegan por la web quedan registrados en BrotaFit y se ven en la app (integración con el formulario web, que también es nuestro). Va justo después de los KPIs v1.
+   - [x] Entrada, pantallas y web de Girona Activa conectada en producción (2026-11-09). Falta la ronda de QA y la vista móvil.
    - [ ] Revisar con Girona Activa los temas legales de los datos de los leads: plazo de conservación, datos de salud en las respuestas, encargado del tratamiento y política de privacidad (`spec-crm.md` §10.3).
-   - [ ] **CRM fase 2:** estados del lead y seguimiento de cada contacto (incluidos los contactos fallidos), conversión a cliente, quién lo atendió e indicadores de leads (`spec-crm.md` §11).
+   - [ ] **CRM fase 2:** seguimiento de cada contacto (incluidos los contactos fallidos), conversión a cliente, quién lo atendió, indicadores de leads y **alertas** para los leads que llevan un tiempo en un estado (retomar el contacto o enviar promociones; pedido por Girona Activa el 2026-11-11) (`spec-crm.md` §11).
 3. [ ] **KPIs fase 2, económicos:** facturación, gastos, ticket medio y LTV. Antes hay que definir cómo se registran los ingresos en la app (por ejemplo, la cuota por plan).
 
 ### Mejoras de producto (backlog; incluye el antiguo `FASE2.md`)
@@ -483,3 +489,5 @@ Panel solo para el admin con los indicadores que pide Girona Activa (`input-nego
 | 2.4 | 2026-11-08 | 4.7 Registro de clases grupales: pasar lista (con estado `absent`) y detalle opcional por asistente; aviso de clases sin pasar lista en "Hoy" |
 | 2.3 | 2026-11-08 | 4.9 Vista de cliente v1 construida: acceso de lectura con vistas `mi_*`, Hoy, Calendario, Detalle, Historial, Progreso y Perfil (con cambio de contraseña) y feedback tras la sesión. 4.1 Recuperar contraseña desde el login y textos del login en castellano. 4.2 y 4.7 feedback del cliente para el personal. 4.14 indicador "Dolor reportado". §5 seguridad y privacidad del cliente. Datos de prueba de la vista de cliente |
 | 2.5 | 2026-11-08 | 4.15 CRM fase 1 (leads de la web) especificado en `spec-crm.md`, en borrador. Roadmap: el seguimiento de los contactos pasa a la fase 2 del CRM y se añade la revisión legal de los datos de los leads |
+| 2.7 | 2026-11-11 | 4.15 CRM fase 1.1: alta manual de leads y estado del lead (Nuevo, Contactado, Sin contestación, Entrenamiento iniciado, No convertido). Roadmap: alertas de seguimiento en la fase 2 del CRM |
+| 2.6 | 2026-11-09 | 4.15 CRM fase 1: web de Girona Activa conectada y en producción (doble envío a Notion y BrotaFit, honeypot, Node 22 y script de reenvío), secreto en Vercel y Netlify y prueba real de extremo a extremo. Avisos sobre el spam de Akismet y el secreto no recuperable |

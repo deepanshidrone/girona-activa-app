@@ -29,8 +29,8 @@ export type LeadInsert = {
 export type ParseResult = { ok: true; lead: LeadInsert } | { ok: false; error: string }
 
 const MAX_FUTURE_MS = 5 * 60 * 1000
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const PHONE_RE = /^[0-9 +\-()]+$/
+export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+export const PHONE_RE = /^[0-9 +\-()]+$/
 
 class Invalid extends Error {}
 const fail = (msg: string): never => { throw new Invalid(msg) }
@@ -47,7 +47,7 @@ function onlyKeys(o: Obj, allowed: string[], where: string) {
 
 // Quita caracteres de control. En los campos de una línea, también los saltos,
 // y junta los espacios repetidos.
-function clean(s: string, multiline: boolean): string {
+export function clean(s: string, multiline: boolean): string {
   if (multiline) return s.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').trim()
   return s.replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/\s+/g, ' ').trim()
 }

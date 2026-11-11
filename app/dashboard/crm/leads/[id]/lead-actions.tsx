@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ShieldAlert, ShieldCheck, Trash2 } from 'lucide-react'
-import { deleteLeadAction, markLeadSeenAction, saveLeadNotesAction, setLeadSpamAction } from '@/app/actions/leads'
+import { deleteLeadAction, markLeadSeenAction, saveLeadNotesAction, setLeadSpamAction, setLeadStatusAction } from '@/app/actions/leads'
+import { LEAD_STATUSES, leadStatusInfo } from '@/lib/leads/status'
 
 // Marca el lead como visto al abrir el detalle (docs/spec-crm.md D5). Se hace
 // desde el navegador y no al pintar la página en el servidor, para que una
@@ -122,6 +123,36 @@ export function DeleteLeadButton({ leadId, name, backHref }: { leadId: string; n
         <Trash2 className="h-4 w-4" /> Borrar lead
       </button>
       {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+    </div>
+  )
+}
+
+// Estado comercial (docs/spec-crm.md §17): se guarda al cambiarlo.
+export function StatusSelect({ leadId, status, footer }: { leadId: string; status: string; footer: string | null }) {
+  const router = useRouter()
+  const [value, setValue] = useState(status)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function change(next: string) {
+    const prev = value
+    setValue(next)
+    setSaving(true)
+    setError(null)
+    const r = await setLeadStatusAction(leadId, next)
+    setSaving(false)
+    if (!r.ok) { setValue(prev); return setError(r.error) }
+    router.refresh()
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <label htmlFor="lead-status" className="text-xs text-white/40">Estado</label>
+      <select id="lead-status" value={value} disabled={saving} onChange={e => change(e.target.value)}
+        className={`rounded-lg border border-white/10 text-sm font-semibold px-3 py-2 focus:outline-none focus:border-[var(--brand)]/60 disabled:opacity-60 bg-[#111111] ${leadStatusInfo(value).cls}`}>
+        {LEAD_STATUSES.map(s => <option key={s.key} value={s.key} className="bg-[#1C1C1C] text-white">{s.label}</option>)}
+      </select>
+      {error ? <span className="text-xs text-red-400">{error}</span> : footer && <span className="text-xs text-white/35">{footer}</span>}
     </div>
   )
 }

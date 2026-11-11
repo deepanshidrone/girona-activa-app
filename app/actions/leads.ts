@@ -1,8 +1,12 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requirePermission } from '@/lib/auth/permissions'
+import { getLeadFormCatalog } from '@/lib/leads/data'
+import { parseManualLead, type CreateLeadState, type ManualLeadFields } from '@/lib/leads/manual'
+import { isLeadStatus } from '@/lib/leads/status'
 
 // Gestión de leads (docs/spec-crm.md §8 y D10). Todas exigen leads.gestionar
 // (hoy solo admin). La tabla solo es accesible con service_role.
@@ -101,4 +105,80 @@ export async function deleteLeadAction(leadId: string): Promise<Result> {
   if (error) return { ok: false, error: 'No se ha podido borrar' }
   console.info('[leads] borrado', leadId, 'por', a.user.id)
   return done()
+}
+
+// Estado comercial (§17). Se puede pasar de cualquier estado a cualquier otro (E2).
+export async function setLeadStatusAction(leadId: string, status: string): Promise<Result> {
+  const a = await auth()
+  if (!a.user) return { ok: false, error: a.error }
+  if (!isUuid(leadId)) return { ok: false, error: 'Lead no encontrado' }
+  if (!isLeadStatus(status)) return { ok: false, error: 'Estado no válido' }
+
+  const now = new Date().toISOString()
+  const { data, error } = await createAdminClient()
+    .from('leads')
+    .update({ status, status_changed_at: now, status_changed_by: a.user.id, updated_at: now })
+    .eq('id', leadId)
+    .select('id')
+  if (error) return { ok: false, error: 'No se ha podido cambiar el estado' }
+  if (!data?.length) return { ok: false, error: 'Lead no encontrado' }
+  return done()
+}
+
+// Alta manual (§16). Se usa con useActionState: devuelve los errores por campo o
+// redirige al detalle del lead nuevo.
+export async function createLeadAction(prev: CreateLeadState, formData: FormData): Promise<CreateLeadState> {
+  const attempt = (prev?.attempt ?? 0) + 1
+  const a = await auth()
+  if (!a.user) return { errors: { form: a.error }, attempt }
+
+  const str = (k: string) => {
+    const v = formData.get(k)
+    return typeof v === 'string' ? v : undefined
+  }
+  const answers: Record<string, string> = {}
+  for (const [k, v] of formData.entries()) {
+    if (k.startsWith('answer:') && typeof v === 'string') answers[k.slice('answer:'.length)] = v
+  }
+  const fields: ManualLeadFields = {
+    full_name: str('full_name'),
+    email: str('email'),
+    phone: str('phone'),
+    channel_key: str('channel_key'),
+    status: str('status'),
+    notes: str('notes'),
+    consent: str('consent') === 'on',
+    answers,
+  }
+
+  const admin = createAdminClient()
+  const [catalog, { data: settings }] = await Promise.all([
+    getLeadFormCatalog(admin),
+    admin.from('center_settings').select('default_country_code').eq('id', 1).maybeSingle(),
+  ])
+  const parsed = parseManualLead(fields, catalog, { now: new Date(), countryCode: settings?.default_country_code ?? '34' })
+  if (!parsed.ok) return { errors: parsed.errors, values: fields, attempt }
+
+  const { lead, notes } = parsed
+  const now = lead.received_at
+  const { data, error } = await admin
+    .from('leads')
+    .insert({
+      ...lead,
+      created_by: a.user.id,
+      seen_at: now, // M6: entra siempre como visto
+      seen_by: a.user.id,
+      ...(lead.status !== 'nuevo' ? { status_changed_at: now, status_changed_by: a.user.id } : {}),
+      ...(notes ? { internal_notes: notes, notes_updated_at: now, notes_updated_by: a.user.id } : {}),
+    })
+    .select('id')
+    .single()
+  if (error || !data) {
+    console.error('[leads] alta manual:', error?.code, error?.message)
+    return { errors: { form: 'No se ha podido guardar el lead' }, values: fields, attempt }
+  }
+
+  console.info('[leads] alta manual', data.id, 'por', a.user.id)
+  revalidatePath('/dashboard', 'layout')
+  redirect(`/dashboard/crm/leads/${data.id}`)
 }

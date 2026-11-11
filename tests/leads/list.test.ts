@@ -18,7 +18,7 @@ describe('zonedDayStart', () => {
 describe('parseLeadFilters', () => {
   it('valores por defecto', () => {
     expect(parseLeadFilters({})).toEqual({
-      periodo: '30d', estado: 'todos', canal: null, pregunta: null, valor: null, q: null, spam: false, pagina: 1,
+      periodo: '30d', estado: 'todos', etapa: null, canal: null, pregunta: null, valor: null, q: null, spam: false, pagina: 1,
     })
   })
   it('ignora valores no válidos', () => {

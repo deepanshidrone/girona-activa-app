@@ -4,6 +4,7 @@ import type { createAdminClient } from '@/lib/supabase/admin'
 import { findDuplicates, type ClientEmail, type DuplicateInfo, type LeadContactKey } from '@/lib/leads/duplicates'
 import { leadPeriodRange, LEADS_PER_PAGE, sanitizeSearch, type LeadFilters } from '@/lib/leads/filters'
 import type { LeadAnswer } from '@/lib/leads/validate'
+import { buildLeadFormCatalog, type LeadFormCatalog } from '@/lib/leads/manual'
 
 // Lectura de leads (docs/spec-crm.md §8). La tabla solo es accesible con
 // service_role: quien llame a estas funciones tiene que haber comprobado antes
@@ -12,7 +13,7 @@ import type { LeadAnswer } from '@/lib/leads/validate'
 type AdminClient = ReturnType<typeof createAdminClient>
 
 const LIST_COLUMNS =
-  'id, received_at, full_name, email, phone, phone_normalized, channel_key, channel_label, answers, seen_at, is_spam, internal_notes'
+  'id, received_at, full_name, email, phone, phone_normalized, channel_key, channel_label, answers, seen_at, is_spam, internal_notes, source, status'
 
 export type LeadListItem = {
   id: string
@@ -27,11 +28,12 @@ export type LeadListItem = {
   seen_at: string | null
   is_spam: boolean
   internal_notes: string | null
+  source: string
+  status: string
   duplicates: DuplicateInfo
 }
 
 export type LeadDetail = LeadListItem & {
-  source: string
   form_name: string | null
   page_url: string | null
   message: string | null
@@ -40,6 +42,9 @@ export type LeadDetail = LeadListItem & {
   privacy_policy_url: string | null
   spam_marked_at: string | null
   notes_updated_at: string | null
+  status_changed_at: string | null
+  status_changed_by_name: string | null
+  created_by_name: string | null
   seen_by_name: string | null
   spam_marked_by_name: string | null
   notes_updated_by_name: string | null
@@ -69,6 +74,7 @@ export async function listLeads(admin: AdminClient, f: LeadFilters, ctx: { today
   if (to) q = q.lt('received_at', to)
   if (f.estado === 'sin_ver') q = q.is('seen_at', null)
   if (f.estado === 'vistos') q = q.not('seen_at', 'is', null)
+  if (f.etapa) q = q.eq('status', f.etapa)
   if (f.canal) q = q.eq('channel_key', f.canal)
   // answers es jsonb: el filtro va como texto JSON (una lista JS la convertiría en array de Postgres)
   if (f.pregunta && f.valor) q = q.contains('answers', JSON.stringify([{ key: f.pregunta, value: f.valor }]))
@@ -128,17 +134,32 @@ export async function getLeadFilterOptions(admin: AdminClient): Promise<LeadFilt
   }
 }
 
+// Preguntas, canales y política de privacidad para el alta manual (§16.3),
+// sacados de los últimos 200 leads web que no son spam.
+export async function getLeadFormCatalog(admin: AdminClient): Promise<LeadFormCatalog> {
+  const { data, error } = await admin
+    .from('leads')
+    .select('channel_key, channel_label, answers, privacy_policy_url')
+    .eq('source', 'web')
+    .eq('is_spam', false)
+    .order('received_at', { ascending: false })
+    .limit(200)
+  if (error) console.error('[leads] catálogo:', error.code, error.message)
+  return buildLeadFormCatalog((data ?? []) as Parameters<typeof buildLeadFormCatalog>[0])
+}
+
 export async function getLeadDetail(admin: AdminClient, id: string): Promise<LeadDetail | null> {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null
   const { data } = await admin
     .from('leads')
-    .select(`${LIST_COLUMNS}, source, form_name, page_url, message, consent_at, consent_text, privacy_policy_url,
-      spam_marked_at, notes_updated_at, seen_by, spam_marked_by, notes_updated_by`)
+    .select(`${LIST_COLUMNS}, form_name, page_url, message, consent_at, consent_text, privacy_policy_url,
+      spam_marked_at, notes_updated_at, status_changed_at, seen_by, spam_marked_by, notes_updated_by, status_changed_by, created_by`)
     .eq('id', id)
     .maybeSingle()
   if (!data) return null
-  const lead = data as Omit<LeadDetail, 'duplicates' | 'other_leads' | 'seen_by_name' | 'spam_marked_by_name' | 'notes_updated_by_name'>
-    & { seen_by: string | null; spam_marked_by: string | null; notes_updated_by: string | null }
+  type StaffCols = 'seen_by' | 'spam_marked_by' | 'notes_updated_by' | 'status_changed_by' | 'created_by'
+  const lead = data as Omit<LeadDetail, 'duplicates' | 'other_leads' | `${StaffCols}_name`>
+    & Record<StaffCols, string | null>
 
   const dupes = await loadDuplicateContext(admin, [lead])
   const duplicates = findDuplicates(lead, dupes.related, dupes.clients)
@@ -147,7 +168,7 @@ export async function getLeadDetail(admin: AdminClient, id: string): Promise<Lea
     .sort((a, b) => b.received_at.localeCompare(a.received_at))
     .map(r => ({ id: r.id, received_at: r.received_at, full_name: r.full_name }))
 
-  const staffIds = [lead.seen_by, lead.spam_marked_by, lead.notes_updated_by].filter((x): x is string => !!x)
+  const staffIds = [lead.seen_by, lead.spam_marked_by, lead.notes_updated_by, lead.status_changed_by, lead.created_by].filter((x): x is string => !!x)
   const names = new Map<string, string>()
   if (staffIds.length) {
     const { data: profiles } = await admin.from('profiles').select('id, full_name').in('id', [...new Set(staffIds)])
@@ -155,7 +176,7 @@ export async function getLeadDetail(admin: AdminClient, id: string): Promise<Lea
   }
   const nameOf = (uid: string | null) => (uid ? names.get(uid) ?? '—' : null)
 
-  const { seen_by, spam_marked_by, notes_updated_by, ...rest } = lead
+  const { seen_by, spam_marked_by, notes_updated_by, status_changed_by, created_by, ...rest } = lead
   return {
     ...rest,
     duplicates,
@@ -163,6 +184,8 @@ export async function getLeadDetail(admin: AdminClient, id: string): Promise<Lea
     seen_by_name: nameOf(seen_by),
     spam_marked_by_name: nameOf(spam_marked_by),
     notes_updated_by_name: nameOf(notes_updated_by),
+    status_changed_by_name: nameOf(status_changed_by),
+    created_by_name: nameOf(created_by),
   }
 }
 

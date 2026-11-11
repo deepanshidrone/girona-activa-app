@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { Inbox, Phone, MessageCircle, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Inbox, Phone, MessageCircle, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getStaffUser, hasPermission } from '@/lib/auth/permissions'
 import { getCenterTimezone } from '@/lib/center-settings'
@@ -9,7 +9,7 @@ import { countUnseenLeads, getLeadFilterOptions, listLeads, type LeadListItem } 
 import { LEAD_PERIODS, LEADS_PER_PAGE, leadFiltersQuery, parseLeadFilters, type LeadFilters } from '@/lib/leads/filters'
 import { telHref, whatsappHref } from '@/lib/leads/contact'
 import { LeadsFiltersBar } from './filters-bar'
-import { LeadBadges } from './lead-badges'
+import { LeadBadges, LeadStatusBadge } from './lead-badges'
 import { MarkAllSeenButton } from './mark-all-seen-button'
 
 // CRM fase 1: listado de leads de la web (docs/spec-crm.md §8.2). Solo con leads.gestionar.
@@ -39,7 +39,7 @@ export default async function LeadsPage({
   const pages = Math.max(1, Math.ceil(total / LEADS_PER_PAGE))
   const periodLabel = LEAD_PERIODS.find(p => p.key === filters.periodo)!.label.toLowerCase()
   const detailQuery = leadFiltersQuery(filters) // para volver al listado con los mismos filtros
-  const hasFilters = !!(filters.canal || filters.pregunta || filters.q || filters.estado !== 'todos' || filters.spam)
+  const hasFilters = !!(filters.etapa || filters.canal || filters.pregunta || filters.q || filters.estado !== 'todos' || filters.spam)
 
   return (
     <div className="p-4 sm:p-6 flex flex-col gap-4">
@@ -54,7 +54,13 @@ export default async function LeadsPage({
             {' · '}{unseen} sin ver
           </p>
         </div>
-        {unseen > 0 && <MarkAllSeenButton />}
+        <div className="flex items-center gap-2 flex-wrap">
+          {unseen > 0 && <MarkAllSeenButton />}
+          <Link href={`${BASE}/nuevo`}
+            className="flex items-center gap-1.5 rounded-lg bg-[var(--brand)] hover:opacity-90 text-white text-sm font-semibold px-4 py-2 transition-opacity">
+            <Plus className="h-4 w-4" /> Nuevo lead
+          </Link>
+        </div>
       </div>
 
       <LeadsFiltersBar filters={filters} options={options} />
@@ -80,7 +86,7 @@ export default async function LeadsPage({
             <table className="w-full">
               <thead>
                 <tr className="border-b border-white/10 bg-white/5">
-                  {['Recibido', 'Nombre', 'Contacto', 'Canal', 'Primera respuesta'].map(h => (
+                  {['Recibido', 'Nombre', 'Estado', 'Contacto', 'Canal', 'Primera respuesta'].map(h => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-white/40 uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
@@ -95,9 +101,10 @@ export default async function LeadsPage({
                         {l.full_name}
                       </Link>
                       <div className="mt-1">
-                        <LeadBadges seen={!!l.seen_at} duplicates={l.duplicates} hasNotes={!!l.internal_notes} />
+                        <LeadBadges seen={!!l.seen_at} duplicates={l.duplicates} hasNotes={!!l.internal_notes} manual={l.source === 'manual'} />
                       </div>
                     </td>
+                    <td className="px-4 py-3"><LeadStatusBadge status={l.status} /></td>
                     <td className="px-4 py-3 text-sm text-white/70">
                       {l.phone && <div className="whitespace-nowrap">{l.phone}</div>}
                       {l.email && <div className="text-white/50 truncate max-w-[220px]">{l.email}</div>}
@@ -144,7 +151,10 @@ function LeadCard({ lead, href, timezone }: { lead: LeadListItem; href: string; 
           <span className="text-xs text-white/40 whitespace-nowrap">{formatDateTimeEs(lead.received_at, timezone)}</span>
         </div>
         <p className="text-sm text-white/50 mt-0.5">{lead.channel_label ?? 'Sin canal'}</p>
-        <div className="mt-2"><LeadBadges seen={!!lead.seen_at} duplicates={lead.duplicates} hasNotes={!!lead.internal_notes} /></div>
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <LeadStatusBadge status={lead.status} />
+          <LeadBadges seen={!!lead.seen_at} duplicates={lead.duplicates} hasNotes={!!lead.internal_notes} manual={lead.source === 'manual'} />
+        </div>
       </Link>
       {(tel || wa) && (
         <div className="flex gap-2 mt-3">

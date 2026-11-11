@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Search, X } from 'lucide-react'
 import { LEAD_PERIODS, LEAD_VIEWS, leadFiltersQuery, type LeadFilters } from '@/lib/leads/filters'
 import type { LeadFilterOptions } from '@/lib/leads/data'
+import { LEAD_STATUSES, type LeadStatus } from '@/lib/leads/status'
 
 const BASE = '/dashboard/crm/leads'
 const selectCls =
@@ -28,7 +29,14 @@ export function LeadsFiltersBar({ filters, options }: { filters: LeadFilters; op
           {LEAD_PERIODS.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
         </select>
 
-        <label className="sr-only" htmlFor="lead-estado">Estado</label>
+        <label className="sr-only" htmlFor="lead-etapa">Estado</label>
+        <select id="lead-etapa" className={selectCls} value={filters.etapa ?? ''}
+          onChange={e => go({ etapa: (e.target.value || null) as LeadStatus | null })}>
+          <option value="">Todos los estados</option>
+          {LEAD_STATUSES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+        </select>
+
+        <label className="sr-only" htmlFor="lead-estado">Visto</label>
         <select id="lead-estado" className={selectCls} value={filters.estado}
           onChange={e => go({ estado: e.target.value as LeadFilters['estado'] })}>
           {LEAD_VIEWS.map(v => <option key={v.key} value={v.key}>{v.label}</option>)}
@@ -83,7 +91,7 @@ export function LeadsFiltersBar({ filters, options }: { filters: LeadFilters; op
           Ver spam
         </label>
 
-        {(filters.canal || filters.pregunta || filters.q || filters.estado !== 'todos' || filters.spam || filters.periodo !== '30d') && (
+        {(filters.etapa || filters.canal || filters.pregunta || filters.q || filters.estado !== 'todos' || filters.spam || filters.periodo !== '30d') && (
           <button type="button" onClick={() => { setQ(''); router.push(BASE) }}
             className="flex items-center gap-1 text-sm text-white/50 hover:text-white transition-colors">
             <X className="h-3.5 w-3.5" /> Quitar filtros

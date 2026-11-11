@@ -2,6 +2,7 @@
 // la URL para poder guardar o compartir una vista.
 
 import { addMonths, monthStart, addDays, zonedDayStart } from '@/lib/center'
+import { isLeadStatus, type LeadStatus } from '@/lib/leads/status'
 
 export const LEAD_PERIODS = [
   { key: '30d', label: 'Últimos 30 días' },
@@ -24,6 +25,8 @@ export const LEADS_PER_PAGE = 50
 export type LeadFilters = {
   periodo: LeadPeriod
   estado: LeadView
+  // Estado comercial (§17); `estado` es visto / sin ver
+  etapa: LeadStatus | null
   canal: string | null
   pregunta: string | null
   valor: string | null
@@ -51,6 +54,7 @@ export function parseLeadFilters(sp: SP): LeadFilters {
   return {
     periodo,
     estado,
+    etapa: isLeadStatus(one(sp.etapa)) ? (one(sp.etapa) as LeadStatus) : null,
     canal: short(one(sp.canal), 50),
     pregunta,
     valor: pregunta ? short(one(sp.valor), 2000) : null,
@@ -89,6 +93,7 @@ export function leadFiltersQuery(f: LeadFilters, over: Partial<LeadFilters> = {}
   const q = new URLSearchParams()
   if (v.periodo !== '30d') q.set('periodo', v.periodo)
   if (v.estado !== 'todos') q.set('estado', v.estado)
+  if (v.etapa) q.set('etapa', v.etapa)
   if (v.canal) q.set('canal', v.canal)
   if (v.pregunta) q.set('pregunta', v.pregunta)
   if (v.pregunta && v.valor) q.set('valor', v.valor)
